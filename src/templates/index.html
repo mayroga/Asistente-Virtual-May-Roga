@@ -27,3 +27,14 @@
   </script>
 </body>
 </html>
+
+<script>
+function validarCodigo(apodo, codigo) {
+    const codigoCorrecto = "MKM991775";
+    if (codigo.toUpperCase() === codigoCorrecto) {
+        alert("Bienvenido " + apodo + ", no necesitas pago.");
+    } else {
+        alert("Hola " + apodo + ", debes realizar el pago.");
+    }
+}
+</script>
