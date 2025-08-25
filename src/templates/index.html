@@ -1,40 +1,56 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Médico Virtual May Roga</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Médico Virtual May Roga</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-  <h1>Médico Virtual May Roga</h1>
-  <button id="pagar">Pagar sesión</button>
-  <p id="mensaje" style="color:red;"></p>
+    <header>
+        <h1>Médico Virtual May Roga</h1>
+        <p>Sesiones de risoterapia y bienestar natural en línea</p>
+    </header>
 
-  <script>
-    document.getElementById("pagar").onclick = async () => {
-      const mensaje = document.getElementById("mensaje");
-      mensaje.textContent = "";
-      try {
-        const r = await fetch("/pay/create-session", { method: "POST" });
-        if (!r.ok) throw new Error("No se pudo crear la sesión de pago.");
-        const data = await r.json();
-        if (!data.url) throw new Error("URL de pago no recibida.");
-        window.location.href = data.url;
-      } catch (err) {
-        mensaje.textContent = "❌ Error al procesar el pago: " + err.message;
-      }
-    };
-  </script>
+    <main>
+        <section>
+            <h2>💳 Reserva tu sesión</h2>
+            <p>Pago único de $15.00 por sesión de 30 minutos</p>
+            <button id="payButton">Pagar Sesión</button>
+        </section>
+
+        <section>
+            <h2>Servicios adicionales</h2>
+            <ul>
+                <li>Sesiones grupales personalizadas</li>
+                <li>Planes para empresas y hospitales</li>
+                <li>Videos de bienestar y risoterapia</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 May Roga LLC. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        const payButton = document.getElementById('payButton');
+
+        payButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/pay/create-session', { method: 'POST' });
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Error al crear la sesión de pago.');
+                }
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                alert('No se pudo conectar con el servidor. Intenta más tarde.');
+            }
+        });
+    </script>
 </body>
 </html>
-
-<script>
-function validarCodigo(apodo, codigo) {
-    const codigoCorrecto = "MKM991775";
-    if (codigo.toUpperCase() === codigoCorrecto) {
-        alert("Bienvenido " + apodo + ", no necesitas pago.");
-    } else {
-        alert("Hola " + apodo + ", debes realizar el pago.");
-    }
-}
-</script>
