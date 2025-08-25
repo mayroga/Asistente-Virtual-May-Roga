@@ -1,13 +1,29 @@
-<script>
-document.getElementById("pagar").onclick = async () => {
-  try {
-    const r = await fetch("/pay/create-session", { method: "POST" });
-    if (!r.ok) throw new Error("Error creando sesión de pago");
-    const { url } = await r.json();
-    location.href = url;
-  } catch (e) {
-    alert(e.message);
-  }
-};
-</script>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Médico Virtual May Roga</title>
+</head>
+<body>
+  <h1>Médico Virtual May Roga</h1>
+  <button id="pagar">Pagar sesión</button>
+  <p id="mensaje" style="color:red;"></p>
 
+  <script>
+    document.getElementById("pagar").onclick = async () => {
+      const mensaje = document.getElementById("mensaje");
+      mensaje.textContent = "";
+      try {
+        const r = await fetch("/pay/create-session", { method: "POST" });
+        if (!r.ok) throw new Error("No se pudo crear la sesión de pago.");
+        const data = await r.json();
+        if (!data.url) throw new Error("URL de pago no recibida.");
+        window.location.href = data.url;
+      } catch (err) {
+        mensaje.textContent = "❌ Error al procesar el pago: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>
