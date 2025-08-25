@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
+import json
 
 # Claves de Stripe desde variables de entorno
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
@@ -70,13 +71,11 @@ async def success(request: Request):
 async def cancel(request: Request):
     return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
 
-import json
-
-# Cargar datos médicos y guía de emergencia
-with open("medical_data.json", "r", encoding="utf-8") as f:
+# Cargar datos médicos y guía de urgencias desde los archivos nuevos
+with open("enfermedades.json", "r", encoding="utf-8") as f:
     medical_data = json.load(f)
 
-with open("emergency_guide.json", "r", encoding="utf-8") as f:
+with open("urgencias.json", "r", encoding="utf-8") as f:
     emergency_guide = json.load(f)
 
-print("✅ Datos médicos y guía de emergencia cargados en memoria")
+print("✅ Datos de enfermedades y urgencias cargados en memoria")
