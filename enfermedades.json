@@ -1,0 +1,52 @@
+[
+    {
+        "nombre": "Hipertensión arterial",
+        "signos_sintomas": [
+            "Presión arterial elevada",
+            "Dolor de cabeza",
+            "Mareos"
+        ],
+        "tratamiento": [
+            "Dieta baja en sal",
+            "Ejercicio regular",
+            "Medicamentos antihipertensivos"
+        ],
+        "seguimiento": [
+            "Control de presión semanal",
+            "Revisión médica mensual"
+        ],
+        "examenes_complementarios": [
+            "Electrocardiograma",
+            "Ecocardiograma"
+        ],
+        "examenes_laboratorio": {
+            "Hemograma": "Normal",
+            "Perfil lipídico": "Normal"
+        }
+    },
+    {
+        "nombre": "Diabetes tipo 2",
+        "signos_sintomas": [
+            "Sed excesiva",
+            "Orina frecuente",
+            "Fatiga"
+        ],
+        "tratamiento": [
+            "Dieta controlada",
+            "Insulina o antidiabéticos",
+            "Ejercicio físico"
+        ],
+        "seguimiento": [
+            "Control de glucosa diario",
+            "Consulta endocrinológica cada 3 meses"
+        ],
+        "examenes_complementarios": [
+            "Electrocardiograma",
+            "Fondo de ojo"
+        ],
+        "examenes_laboratorio": {
+            "Glucosa en ayunas": ">=126 mg/dL",
+            "HbA1c": ">=6.5%"
+        }
+    }
+]
