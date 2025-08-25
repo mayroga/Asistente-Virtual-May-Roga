@@ -69,3 +69,14 @@ async def success(request: Request):
 @app.get("/cancel", response_class=HTMLResponse)
 async def cancel(request: Request):
     return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
+
+import json
+
+# Cargar datos médicos y guía de emergencia
+with open("medical_data.json", "r", encoding="utf-8") as f:
+    medical_data = json.load(f)
+
+with open("emergency_guide.json", "r", encoding="utf-8") as f:
+    emergency_guide = json.load(f)
+
+print("✅ Datos médicos y guía de emergencia cargados en memoria")
