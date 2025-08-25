@@ -39,8 +39,8 @@ def create_session():
                 },
                 "quantity": 1
             }],
-            success_url=os.getenv("SUCCESS_URL", "https://example.com/success"),
-            cancel_url=os.getenv("CANCEL_URL", "https://example.com/cancel"),
+            success_url=os.getenv("SUCCESS_URL", "https://medico-virtual-may-roga.onrender.com/success"),
+            cancel_url=os.getenv("CANCEL_URL", "https://medico-virtual-may-roga.onrender.com/cancel"),
         )
         return {"url": session.url}
     except Exception as e:
@@ -60,3 +60,12 @@ async def webhook(request: Request):
         print("✅ Pago confirmado, habilitar acceso de servicio.")
 
     return JSONResponse({"received": True})
+
+# Rutas de éxito y cancelación
+@app.get("/success", response_class=HTMLResponse)
+async def success(request: Request):
+    return HTMLResponse("<h1>✅ Pago exitoso. Acceso habilitado.</h1>")
+
+@app.get("/cancel", response_class=HTMLResponse)
+async def cancel(request: Request):
+    return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
