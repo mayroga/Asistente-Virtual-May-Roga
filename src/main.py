@@ -1,7 +1,7 @@
 import os, json, stripe, secrets, time
 from typing import Dict, Any
 from fastapi import FastAPI, Request, HTTPException, Body, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
@@ -25,8 +25,8 @@ app.add_middleware(
 # Templates y static
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "mi_app", "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "mi_app", "static")), name="static")
 
 # =========================
 # Memoria en servidor
@@ -98,14 +98,11 @@ async def quick_response(request: Request, nickname: str | None = None, code: st
     access_granted = False
     token = None
 
-    # Solo permitir acceso si hay nickname
     if nickname:
-        # Validar código gratis
         if code and secrets.compare_digest(code, FREE_PASS_CODE):
             token = secrets.token_urlsafe(32)
             ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
             access_granted = True
-        # También permitir acceso si ya pagó
         elif nickname in PAID_NICKNAMES:
             token = secrets.token_urlsafe(32)
             ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
@@ -113,15 +110,15 @@ async def quick_response(request: Request, nickname: str | None = None, code: st
 
     return templates.TemplateResponse(
         "quickresponse.html",
-        {
-            "request": request,
-            "nickname": nickname,
-            "token": token,
-            "access_granted": access_granted
-        }
+        {"request": request, "nickname": nickname, "token": token, "access_granted": access_granted}
     )
 
-
+# =========================
+# Redirección quick-response → quickresponse
+# =========================
+@app.get("/quick-response")
+async def redirect_quick_response():
+    return RedirectResponse(url="/quickresponse")
 
 # =========================
 # Sesión y Acceso
@@ -229,12 +226,6 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
     answer = build_answer_local(message)
     return {"reply": answer}
 
-from fastapi.responses import RedirectResponse
-
-@app.get("/quick-response")
-async def redirect_quick_response():
-    return RedirectResponse(url="/quickresponse")
-
 # =========================
 # RECORDATORIO DE ACCESO A LA APP
 # =========================
@@ -242,7 +233,6 @@ async def redirect_quick_response():
 # 1. Sobrenombre con pago
 # 2. Sobrenombre + código secreto
 # 3. Solo sobrenombre (requiere pago)
-
 
 # =========================
 # Arranque local
