@@ -1,86 +1,52 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Consulta Rápida - Médico Virtual May Roga</title>
-<link rel="stylesheet" href="/static/css/style.css">
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-  body { margin:0; font-family: Arial, sans-serif; background-color:#0077cc; color:white; }
-  .container { max-width:600px; margin: auto; padding:20px; text-align:center; }
-  button { background-color:#004f99; color:white; border:none; padding:10px 20px; margin:10px; cursor:pointer; font-size:16px; border-radius:6px; }
-  textarea{ width:100%; height:120px; border-radius:6px; padding:10px; margin:10px 0; font-size:16px; }
-  @media (max-width:768px){ .container{ width:100%; padding:10px; } textarea{ height:100px; } }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Consulta Rápida</h1>
-  <p>45 segundos - $1 (solo orientación general)</p>
-  <textarea id="consulta" placeholder="Escribe tu consulta..."></textarea><br>
-  <button onclick="sendQuick()">Enviar</button>
-  <button onclick="goBack()">← Volver</button>
-  <div id="respuesta" style="margin-top:15px;"></div>
-</div>
-
-<script>
-function goBack(){ window.location.href="/"; }
-
-function sendQuick(){
-  const consulta = document.getElementById('consulta').value;
-  if(!consulta) return alert("Escribe tu consulta");
-  const nickname = prompt("Ingresa tu apodo:");
-  if(!nickname) return alert("Apodo obligatorio");
-
-  fetch("/pay/create-session?nickname="+nickname+"&servicio=quick")
-    .then(res=>res.json())
-    .then(data=>{
-      if(data.url){ window.location.href = data.url; }
-      else alert("Error al crear sesión de pago");
-    });
-}
-</script>
-</body>
-</html>
-
-@app.get("/quick-response", response_class=HTMLResponse)
-async def quick_response(request: Request):
-    return templates.TemplateResponse("quick_response.html", {"request": request})
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta Rápida - Médico Virtual May Roga</title>
-  <link rel="stylesheet" href="/static/css/style.css"/>
 </head>
 <body>
-  <div class="fullpage">
-    <header class="topbar">
-      <button class="back" onclick="location.href='/'">← Volver</button>
-      <h1>Consulta Rápida — 45s • $1</h1>
-    </header>
+  <h1>Consulta Rápida</h1>
+  <textarea id="quick-text" placeholder="Describe brevemente tu problema (orientación general)"></textarea><br>
 
-    <main class="center">
-      <textarea id="quick-text" placeholder="Describe brevemente tu problema (orientación general)"></textarea>
+  <div id="botones">
+    {% if access_granted %}
+      <button onclick="startFreeSession('{{ nickname }}')">Entrar Gratis</button>
+    {% else %}
       <button id="quick-send">Pagar y Enviar $1</button>
-      <div id="quick-result"></div>
-    </main>
+    {% endif %}
+    <button onclick="window.location.href='/'">← Volver</button>
   </div>
 
+  <div id="quick-result"></div>
+
   <script>
+    function startFreeSession(nick){
+      if(!nick) return alert("Apodo obligatorio para sesión gratuita.");
+      const free_code = "{{ request.query_params.get('free_code','') }}";
+      fetch("/api/start-session", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({nickname: nick, code: free_code})
+      })
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.token){ window.location.href="/?paid=1&nickname="+nick; }
+        else alert("No se pudo iniciar sesión gratuita.");
+      });
+    }
+
+    {% if not access_granted %}
     document.getElementById('quick-send').addEventListener('click', async ()=>{
       const text = document.getElementById('quick-text').value.trim();
       if(!text) return alert("Escribe tu consulta rápida.");
       const nick = prompt("Apodo para la sesión:");
       if(!nick) return alert("Apodo obligatorio.");
-      // Crear sesión Stripe: usamos GET/POST compatible con main.py
       const res = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nick)}&servicio=quick`);
       const data = await res.json();
-      if(data.url){ window.location.href = data.url; } else alert("Error creando sesión.");
+      if(data.url){ window.location.href = data.url; } else alert("Error creando sesión de pago.");
     });
+    {% endif %}
   </script>
 </body>
 </html>
