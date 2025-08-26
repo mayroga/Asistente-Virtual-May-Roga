@@ -195,3 +195,7 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
         raise HTTPException(400, "Mensaje vacío.")
     answer = build_answer(message)
     return {"reply": answer}
+
+@app.get("/quick-response", response_class=HTMLResponse)
+async def quick_response(request: Request):
+    return templates.TemplateResponse("quick-response.html", {"request": request})
