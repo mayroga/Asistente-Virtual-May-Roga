@@ -12,8 +12,8 @@ from starlette.middleware.cors import CORSMiddleware
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "https://medico-virtual-may-roga.onrender.com")
-FREE_PASS_CODE = os.getenv("FREE_PASS_CODE", "MKM991775")
-USE_AI = os.getenv("USE_AI", "0") == "1"  # Placeholder para AI
+SECRET_FREE_CODE = os.getenv("SECRET_FREE_CODE", "MKM991775")
+USE_AI = os.getenv("USE_AI", "0") == "1"
 stripe.api_key = STRIPE_SECRET_KEY
 
 app = FastAPI()
@@ -25,8 +25,8 @@ app.add_middleware(
 # Templates y static
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "mi_app", "templates"))
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "mi_app", "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "..", "mi_app", "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "..", "mi_app", "static")), name="static")
 
 # =========================
 # Memoria en servidor
@@ -99,7 +99,7 @@ async def quick_response(request: Request, nickname: str | None = None, code: st
     token = None
 
     if nickname:
-        if code and secrets.compare_digest(code, FREE_PASS_CODE):
+        if code and secrets.compare_digest(code, SECRET_FREE_CODE):
             token = secrets.token_urlsafe(32)
             ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
             access_granted = True
@@ -113,9 +113,7 @@ async def quick_response(request: Request, nickname: str | None = None, code: st
         {"request": request, "nickname": nickname, "token": token, "access_granted": access_granted}
     )
 
-# =========================
-# Redirección quick-response → quickresponse
-# =========================
+# Redirigir quick-response con guion al correcto
 @app.get("/quick-response")
 async def redirect_quick_response():
     return RedirectResponse(url="/quickresponse")
@@ -129,7 +127,7 @@ async def start_session(payload: Dict[str, Any] = Body(...)):
     code = (payload.get("code") or "").strip()
     if not nickname:
         raise HTTPException(400, "Apodo obligatorio.")
-    if code and secrets.compare_digest(code, FREE_PASS_CODE):
+    if code and secrets.compare_digest(code, SECRET_FREE_CODE):
         token = secrets.token_urlsafe(32)
         ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
         return {"ok": True, "token": token, "access": "free"}
