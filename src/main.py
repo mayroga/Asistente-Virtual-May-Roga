@@ -229,6 +229,13 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
     answer = build_answer_local(message)
     return {"reply": answer}
 
+from fastapi.responses import RedirectResponse
+
+@app.get("/quick-response")
+async def redirect_quick_response():
+    return RedirectResponse(url="/quickresponse")
+
+
 # =========================
 # Arranque local
 # =========================
