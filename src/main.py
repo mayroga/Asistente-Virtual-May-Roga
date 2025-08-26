@@ -13,7 +13,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "https://medico-virtual-may-roga.onrender.com")
 FREE_PASS_CODE = os.getenv("FREE_PASS_CODE", "MKM991775")
-USE_AI = os.getenv("USE_AI", "0") == "1"  # Placeholder para AI
+USE_AI = os.getenv("USE_AI", "0") == "1"
 stripe.api_key = STRIPE_SECRET_KEY
 
 app = FastAPI()
@@ -52,7 +52,6 @@ def load_json_candidate(name):
 ENF = load_json_candidate("enfermedades.json")
 URG = load_json_candidate("urgencias.json")
 print("✅ Datos enfer/urgencias cargados:", bool(ENF), bool(URG))
-
 ENF_IDX = {e.get("nombre","").lower(): e for e in ENF if isinstance(e, dict)}
 
 # =========================
@@ -91,7 +90,7 @@ async def home(request: Request, paid: str | None = None, nickname: str | None =
     return templates.TemplateResponse("index.html", {"request": request, "paid": paid, "nickname": nickname})
 
 # =========================
-# Quick Response con código secreto
+# Quick Response y Entrar Gratis
 # =========================
 @app.get("/quickresponse", response_class=HTMLResponse)
 async def quick_response(request: Request, nickname: str | None = None, code: str | None = None):
@@ -111,6 +110,14 @@ async def quick_response(request: Request, nickname: str | None = None, code: st
             "token": token,
             "access_granted": access_granted
         }
+    )
+
+@app.get("/gratis", response_class=HTMLResponse)
+async def gratis(request: Request):
+    access_granted = True
+    return templates.TemplateResponse(
+        "quickresponse.html",
+        {"request": request, "access_granted": access_granted}
     )
 
 # =========================
@@ -203,7 +210,7 @@ async def webhook(request: Request):
 # =========================
 # Chat híbrido: local + AI placeholder
 # =========================
-@app.post("/api/message")
+@app.post("/api/message", response_model=None)
 async def chat_message(payload: Dict[str, Any] = Body(...), request: Request | None = None):
     token = payload.get("token")
     message = (payload.get("message") or "").strip()
