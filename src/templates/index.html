@@ -1,61 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Médico Virtual May Roga</title>
-<link rel="stylesheet" href="/static/css/style.css">
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-  body { margin:0; font-family: Arial, sans-serif; background-color:#0077cc; color:white; }
-  .container { max-width:600px; margin: auto; padding:20px; text-align:center; }
-  button { background-color:#004f99; color:white; border:none; padding:10px 20px; margin:10px; cursor:pointer; font-size:16px; border-radius:6px; }
-  .service { background-color:#005faa; padding:15px; margin:10px 0; border-radius:8px; cursor:pointer; }
-  .price { font-weight:bold; margin-top:5px; }
-  @media (max-width:768px){ .container{ width:100%; padding:10px; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Médico Virtual May Roga</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-<div class="container">
-  <h1>Médico Virtual May Roga</h1>
+  <div class="chat-container">
+    <h1 class="titulo">Médico Virtual May Roga</h1>
 
-  <div class="service" onclick="startService('asistente')">
-    <h2>Asistente Médico</h2>
-    <p>8 minutos - $5 (Informativo)</p>
+    <div id="chat-box" class="chat-box"></div>
+
+    <div class="input-container">
+      <input type="text" id="user-input" placeholder="Escribe tu mensaje..." />
+      <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+    <p class="informativo">*Informativo</p>
   </div>
 
-  <div class="service" onclick="startService('risoterapia')">
-    <h2>Risoterapia y Bienestar Natural</h2>
-    <p>10 minutos - $12</p>
-  </div>
-
-  <div class="service" onclick="startService('horoscopo')">
-    <h2>Horóscopo</h2>
-    <p>1 min 30 seg - $3</p>
-  </div>
-
-  <div class="service" onclick="goQuickResponse()">
-    <h2>Consulta Rápida</h2>
-    <p>45 segundos - $1</p>
-  </div>
-</div>
-
-<script>
-function startService(service){
-    const nickname = prompt("Ingresa tu apodo/sobrenombre:");
-    if(!nickname) return alert("Apodo obligatorio");
-    // Redirige a la sesión de Stripe según servicio
-    fetch(`/pay/create-session?nickname=${nickname}&servicio=${service}`)
-      .then(res=>res.json())
-      .then(data=>{
-        if(data.url){ window.location.href = data.url; }
-        else alert("Error al crear sesión de pago");
-      });
-}
-
-function goQuickResponse(){
-  window.location.href="/quick-response";
-}
-</script>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
