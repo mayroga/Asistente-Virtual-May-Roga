@@ -6,47 +6,30 @@
   <title>Consulta Rápida - Médico Virtual May Roga</title>
 </head>
 <body>
-  <h1>Consulta Rápida</h1>
-  <textarea id="quick-text" placeholder="Describe brevemente tu problema (orientación general)"></textarea><br>
+  <h1>Consulta Rápida — 45s • $1</h1>
 
-  <div id="botones">
-    {% if access_granted %}
-      <button onclick="startFreeSession('{{ nickname }}')">Entrar Gratis</button>
-    {% else %}
-      <button id="quick-send">Pagar y Enviar $1</button>
-    {% endif %}
-    <button onclick="window.location.href='/'">← Volver</button>
-  </div>
-
+  <textarea id="quick-text" placeholder="Describe brevemente tu problema (orientación general)"></textarea>
+  <br>
+  <button id="quick-send">Pagar y Enviar $1</button>
   <div id="quick-result"></div>
+  
+  {% if access_granted %}
+    <br>
+    <button onclick="window.location.href='/gratis'">Entrar Gratis</button>
+  {% endif %}
 
   <script>
-    function startFreeSession(nick){
-      if(!nick) return alert("Apodo obligatorio para sesión gratuita.");
-      const free_code = "{{ request.query_params.get('free_code','') }}";
-      fetch("/api/start-session", {
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({nickname: nick, code: free_code})
-      })
-      .then(res=>res.json())
-      .then(data=>{
-        if(data.token){ window.location.href="/?paid=1&nickname="+nick; }
-        else alert("No se pudo iniciar sesión gratuita.");
-      });
-    }
-
-    {% if not access_granted %}
     document.getElementById('quick-send').addEventListener('click', async ()=>{
       const text = document.getElementById('quick-text').value.trim();
       if(!text) return alert("Escribe tu consulta rápida.");
       const nick = prompt("Apodo para la sesión:");
       if(!nick) return alert("Apodo obligatorio.");
+      // Crear sesión Stripe simulada
       const res = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nick)}&servicio=quick`);
       const data = await res.json();
-      if(data.url){ window.location.href = data.url; } else alert("Error creando sesión de pago.");
+      if(data.url){ window.location.href = data.url; } 
+      else alert("Error creando sesión.");
     });
-    {% endif %}
   </script>
 </body>
 </html>
