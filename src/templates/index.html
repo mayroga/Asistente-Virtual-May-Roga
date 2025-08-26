@@ -1,25 +1,65 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Médico Virtual May Roga</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Médico Virtual May Roga</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script>
+async function iniciarServicio(servicio) {
+    const nickname = document.getElementById('nickname').value.trim();
+    const code = document.getElementById('code').value.trim();
+
+    if (!nickname) {
+        alert("Ingresa tu apodo primero.");
+        return;
+    }
+
+    // Verifica acceso vía API
+    let response = await fetch(`/api/start-session`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nickname, code})
+    });
+
+    let data = await response.json();
+
+    if (data.access) {
+        // Acceso permitido → abrir servicio
+        if (servicio === "quickresponse") {
+            window.location.href = "/quickresponse?nickname=" + encodeURIComponent(nickname) + (code ? "&code=" + encodeURIComponent(code) : "");
+        } else {
+            alert(`Acceso a ${servicio} activado. Próximo paso: servicio listo.`);
+            // Aquí puedes abrir la página real del servicio si la tienes
+        }
+    } else if (data.requires_payment) {
+        // Redirige al checkout de Stripe
+        const sessionResp = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nickname)}&servicio=${encodeURIComponent(servicio)}`);
+        const sessionData = await sessionResp.json();
+        if (sessionData.url) {
+            window.location.href = sessionData.url;
+        } else {
+            alert("Error al crear la sesión de pago.");
+        }
+    } else {
+        alert("No se pudo iniciar sesión, intenta de nuevo.");
+    }
+}
+</script>
 </head>
 <body>
-  <div class="chat-container">
-    <h1 class="titulo">Médico Virtual May Roga</h1>
-
-    <div id="chat-box" class="chat-box"></div>
-
-    <div class="input-container">
-      <input type="text" id="user-input" placeholder="Escribe tu mensaje..." />
-      <button onclick="sendMessage()">Enviar</button>
+<div class="container">
+    <h1>Médico Virtual May Roga</h1>
+    <div class="login">
+        <input id="nickname" type="text" placeholder="Ingresa tu apodo">
+        <input id="code" type="text" placeholder="Código gratuito (si tienes)">
     </div>
-
-    <p class="informativo">*Informativo</p>
-  </div>
-
-  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <div class="servicios">
+        <button onclick="iniciarServicio('asistente')">Asistente Médico</button>
+        <button onclick="iniciarServicio('risoterapia')">Risoterapia</button>
+        <button onclick="iniciarServicio('horoscopo')">Horóscopo</button>
+        <button onclick="iniciarServicio('quickresponse')">Consulta rápida</button>
+    </div>
+</div>
 </body>
 </html>
