@@ -135,4 +135,4 @@ async def api_message(request: Request):
         data = await request.json()
     except Exception:
         data = {}
-    return JSONResponse({"ok": True, "data": data})
+    return {"ok": True, "data": data}
