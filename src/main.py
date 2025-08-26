@@ -31,12 +31,12 @@ ACTIVE_TOKENS: Dict[str, Dict[str, Any]] = {}
 PAID_NICKNAMES = set()
 
 # =========================
-# Carga de datos locales (corregido) # >>> CORREGIDO
+# Carga de datos locales (corregido ruta a raíz)
 # =========================
 try:
-    with open(os.path.join(BASE_DIR, "enfermedades.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join(BASE_DIR, "../enfermedades.json"), "r", encoding="utf-8") as f:
         ENF = json.load(f)
-    with open(os.path.join(BASE_DIR, "urgencias.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join(BASE_DIR, "../urgencias.json"), "r", encoding="utf-8") as f:
         URG = json.load(f)
     print("✅ Datos de enfermedades y urgencias cargados en memoria")
 except Exception as e:
@@ -147,7 +147,6 @@ def match_condition(text: str) -> Dict[str, Any] | None:
     for name, data in ENF_IDX.items():
         if any(word in t for word in name.split()):
             return data
-    # Heurística básica
     keywords = {
         "tos": "Neumonía adquirida en la comunidad",
         "fiebre": "Síndrome febril inespecífico",
@@ -194,5 +193,5 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
         raise HTTPException(401, "Sesión inválida o expirada.")
     if not message:
         raise HTTPException(400, "Mensaje vacío.")
-    answer = build_answer(message)  # >>> CORREGIDO: mantiene tu “cerebro” local y permite integración OpenAI/Gemini
+    answer = build_answer(message)
     return {"reply": answer}
