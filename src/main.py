@@ -235,6 +235,14 @@ from fastapi.responses import RedirectResponse
 async def redirect_quick_response():
     return RedirectResponse(url="/quickresponse")
 
+# =========================
+# RECORDATORIO DE ACCESO A LA APP
+# =========================
+# Formas de entrar a la app:
+# 1. Sobrenombre con pago
+# 2. Sobrenombre + código secreto
+# 3. Solo sobrenombre (requiere pago)
+
 
 # =========================
 # Arranque local
