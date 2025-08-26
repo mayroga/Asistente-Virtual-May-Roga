@@ -32,6 +32,7 @@ with open("urgencias.json", "r", encoding="utf-8") as f:
 
 # Código secreto para servicio gratuito
 SECRET_FREE_CODE = "MKM991775"
+
 # ------------------ RUTAS ------------------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -126,5 +127,14 @@ async def success(request: Request):
 @app.get("/cancel", response_class=HTMLResponse)
 async def cancel(request: Request):
     return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
+
+# ------------------ API QUICK RESPONSE ------------------
+@app.post("/api/message", response_model=None)
+async def api_message(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    return {"ok": True, "data": data}
 
 print("✅ Datos de enfermedades y urgencias cargados en memoria")
