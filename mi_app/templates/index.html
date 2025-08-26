@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Médico Virtual May Roga</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Médico Virtual May Roga</h1>
+    <form id="medicoForm">
+      <label for="apodo">Apodo/Sobrenombre/Número:</label>
+      <input type="text" id="apodo" name="apodo" required>
+
+      <label for="servicio">Selecciona el servicio:</label>
+      <select id="servicio" name="servicio" required>
+        <option value="">--Selecciona--</option>
+        <option value="resfriado">Resfriado</option>
+        <option value="dolor_cabeza">Dolor de cabeza</option>
+        <option value="cortadura">Cortadura</option>
+        <option value="emergencia_cardiaca">Emergencia cardíaca</option>
+        <!-- Agrega más servicios según tus JSON -->
+      </select>
+
+      <label for="codigo">Código secreto (si aplica):</label>
+      <input type="text" id="codigo" name="codigo" placeholder="Opcional">
+
+      <button type="submit">Solicitar Servicio</button>
+    </form>
+
+    <div id="resultado" style="margin-top:20px;"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('medicoForm');
+    const resultadoDiv = document.getElementById('resultado');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const apodo = document.getElementById('apodo').value;
+      const servicio = document.getElementById('servicio').value;
+      const codigo = document.getElementById('codigo').value;
+
+      // Verificar si tiene código secreto para servicio gratis
+      const servicioGratis = codigo === "MKM991775";
+
+      if (servicioGratis) {
+        const response = await fetch("/medico-virtual", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: new URLSearchParams({
+            apodo: apodo,
+            servicio: servicio,
+            codigo: codigo,
+            pago_confirmado: "ok"
+          })
+        });
+        const data = await response.json();
+        resultadoDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        return;
+      }
+
+      // Crear sesión de pago con Stripe
+      try {
+        const sessionRes = await fetch("/pay/create-session", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: new URLSearchParams({apodo: apodo, servicio: servicio})
+        });
+        const sessionData = await sessionRes.json();
+        if (sessionData.url) {
+          window.location.href = sessionData.url; // Redirige a Stripe
+        } else {
+          resultadoDiv.innerText = "Error al crear sesión de pago.";
+        }
+      } catch (error) {
+        resultadoDiv.innerText = "Error: " + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
