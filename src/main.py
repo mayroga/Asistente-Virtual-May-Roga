@@ -90,21 +90,37 @@ def build_answer_local(text: str) -> str:
 async def home(request: Request, paid: str | None = None, nickname: str | None = None):
     return templates.TemplateResponse("index.html", {"request": request, "paid": paid, "nickname": nickname})
 
+# =========================
+# Quick Response con código secreto
+# =========================
 @app.get("/quickresponse", response_class=HTMLResponse)
 async def quick_response(request: Request, nickname: str | None = None, code: str | None = None):
     access_granted = False
+    token = None
 
-    if nickname and code and secrets.compare_digest(code, FREE_PASS_CODE):
-        access_granted = True
+    # Solo permitir acceso si hay nickname
+    if nickname:
+        # Validar código gratis
+        if code and secrets.compare_digest(code, FREE_PASS_CODE):
+            token = secrets.token_urlsafe(32)
+            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
+            access_granted = True
+        # También permitir acceso si ya pagó
+        elif nickname in PAID_NICKNAMES:
+            token = secrets.token_urlsafe(32)
+            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
+            access_granted = True
 
     return templates.TemplateResponse(
         "quickresponse.html",
         {
             "request": request,
             "nickname": nickname,
+            "token": token,
             "access_granted": access_granted
         }
     )
+
 
 
 # =========================
