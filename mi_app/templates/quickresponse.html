@@ -33,3 +33,15 @@
   </script>
 </body>
 </html>
+
+{% if access_granted %}
+<div>
+  <p>✅ ¡Acceso habilitado!</p>
+  {% if nickname %}
+    <p>Tu código de servicio: {{ nickname }}</p>
+  {% endif %}
+  <button onclick="window.location.href='/gratis'">Entrar Gratis</button>
+</div>
+{% else %}
+<p>Introduce tu código para acceso gratis o realiza el pago.</p>
+{% endif %}
