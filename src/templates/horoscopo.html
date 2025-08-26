@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horóscopo - May Roga</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+        header { background-color: #0077cc; color: white; padding: 1rem; text-align: center; font-size: 1.5rem; }
+        main { padding: 1rem; max-width: 600px; margin: auto; }
+        .client { color: #333; margin: 1rem 0; }
+        .mayroga { color: #0077cc; margin: 1rem 0; }
+        button { background-color: #0077cc; color: white; border: none; padding: 0.5rem 1rem; margin: 0.5rem 0; cursor: pointer; border-radius: 5px; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        footer { font-size: 0.7rem; color: #555; text-align: center; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <header>Horóscopo - May Roga</header>
+    <main>
+        <div id="session">
+            <div class="mayroga">¡Bienvenido! Selecciona tu signo para conocer tu horóscopo.</div>
+            <select id="signo">
+                <option value="">Selecciona tu signo</option>
+                <option value="aries">Aries</option>
+                <option value="tauro">Tauro</option>
+                <option value="geminis">Géminis</option>
+                <option value="cancer">Cáncer</option>
+                <option value="leo">Leo</option>
+                <option value="virgo">Virgo</option>
+                <option value="libra">Libra</option>
+                <option value="escorpio">Escorpio</option>
+                <option value="sagitario">Sagitario</option>
+                <option value="capricornio">Capricornio</option>
+                <option value="acuario">Acuario</option>
+                <option value="piscis">Piscis</option>
+            </select>
+            <div class="exercise" id="horoscopeText" style="margin-top:1rem;"></div>
+            <button id="showBtn">Mostrar horóscopo</button>
+        </div>
+    </main>
+    <footer>Información educativa. No es diagnóstico médico.</footer>
+
+    <script>
+        const horoscopos = {
+            aries: "Hoy Aries se sentirá lleno de energía y motivación para nuevos proyectos.",
+            tauro: "Tauro, momentos de calma y reflexión te ayudarán a tomar buenas decisiones.",
+            geminis: "Géminis, tu creatividad estará en su punto máximo. Aprovecha para innovar.",
+            cancer: "Cáncer, cuida tus emociones y dedícate tiempo para ti.",
+            leo: "Leo, el liderazgo y la confianza te acompañan hoy.",
+            virgo: "Virgo, organiza tus tareas y tendrás éxito en tus proyectos.",
+            libra: "Libra, busca equilibrio en tus relaciones personales.",
+            escorpio: "Escorpio, tu intuición será clave para tomar decisiones.",
+            sagitario: "Sagitario, aventura y curiosidad te guiarán hoy.",
+            capricornio: "Capricornio, enfoque y disciplina te acercan a tus metas.",
+            acuario: "Acuario, tu originalidad destacará y atraerá buenas oportunidades.",
+            piscis: "Piscis, conecta con tus emociones y canaliza tu creatividad."
+        };
+
+        const signoSelect = document.getElementById("signo");
+        const horoscopeText = document.getElementById("horoscopeText");
+        const showBtn = document.getElementById("showBtn");
+
+        showBtn.addEventListener("click", () => {
+            const signo = signoSelect.value;
+            if (signo && horoscopos[signo]) {
+                horoscopeText.textContent = horoscopos[signo];
+            } else {
+                horoscopeText.textContent = "Por favor, selecciona un signo válido.";
+            }
+        });
+
+        // Validar token en URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        if (!token) {
+            horoscopeText.textContent = "Acceso denegado. Necesitas un token válido.";
+            showBtn.disabled = true;
+            signoSelect.disabled = true;
+        }
+    </script>
+</body>
+</html>
