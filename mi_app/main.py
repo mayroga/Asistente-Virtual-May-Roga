@@ -12,7 +12,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = STRIPE_SECRET_KEY
 
-# ------------------ APP ------------------
+# Crear app FastAPI
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
@@ -24,21 +24,19 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # ------------------ CARGA DE DATOS ------------------
-try:
-    with open(os.path.join(BASE_DIR, "enfermedades.json"), "r", encoding="utf-8") as f:
-        enfermedades = json.load(f)
-    with open(os.path.join(BASE_DIR, "urgencias.json"), "r", encoding="utf-8") as f:
-        urgencias = json.load(f)
-    print("✅ Datos de enfermedades y urgencias cargados en memoria")
-except Exception as e:
-    enfermedades = {}
-    urgencias = {}
-    print(f"⚠️ Error cargando archivos JSON: {e}")
+with open("enfermedades.json", "r", encoding="utf-8") as f:
+    enfermedades = json.load(f)
+
+with open("urgencias.json", "r", encoding="utf-8") as f:
+    urgencias = json.load(f)
+
+print("✅ Datos de enfermedades y urgencias cargados en memoria")
+print("✅ Datos enfer/urgencias cargados:", bool(enfermedades), bool(urgencias))
 
 # Código secreto para servicio gratuito
 SECRET_FREE_CODE = "MKM991775"
 
-# ------------------ RUTAS PRINCIPALES ------------------
+# ------------------ RUTAS ------------------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -51,27 +49,21 @@ async def medico_virtual(
     pago_confirmado: str = Form(None),
     codigo: str = Form(None)
 ):
-    # Validar apodo
     if not apodo.strip():
         return JSONResponse({"error": "Debes indicar un apodo o sobrenombre."}, status_code=400)
 
-    # Verificar código secreto
     servicio_gratis = codigo == SECRET_FREE_CODE
-
-    # Verificar pago
     pago_valido = pago_confirmado == "ok" or servicio_gratis
 
     if not pago_valido:
         return JSONResponse({"error": "Servicio no habilitado. Debes pagar o usar el código secreto."}, status_code=403)
 
-    # Procesar el servicio
     resultado = {
         "mensaje": f"✅ Servicio habilitado para {apodo}.",
         "servicio": servicio,
         "informacion": {}
     }
 
-    # Buscar en datos de enfermedades y urgencias
     if servicio in enfermedades:
         resultado["informacion"] = enfermedades[servicio]
     elif servicio in urgencias:
@@ -81,11 +73,12 @@ async def medico_virtual(
 
     return JSONResponse(resultado)
 
-# ------------------ SESIÓN DE PAGO STRIPE ------------------
+# ------------------ CREAR SESIÓN DE PAGO ------------------
 @app.post("/pay/create-session")
-async def create_session(servicio: str = Form(...), apodo: str = Form(...)):
+def create_session(servicio: str = Form(...), apodo: str = Form(...)):
     if not apodo.strip():
         raise HTTPException(400, "Debes indicar un apodo o sobrenombre.")
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
