@@ -58,3 +58,61 @@
   <button>Ir a Quick Response</button>
 </a>
 
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Médico Virtual May Roga</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <header class="topbar">
+    <img src="/static/images/logo.png" alt="logo" class="logo"/>
+    <h1>Médico Virtual May Roga</h1>
+  </header>
+
+  <main class="container">
+    <section id="gate">
+      <h2>Acceso</h2>
+      <p class="note">Usa apodo/sobrenombre/número. Si tienes <b>código especial</b>, ingrésalo.</p>
+      <div class="formrow">
+        <input id="nickname" type="text" placeholder="Ej: Sol_2025" autocomplete="off">
+      </div>
+      <div class="formrow">
+        <input id="freecode" type="password" placeholder="Código (si lo tienes)">
+      </div>
+
+      <div class="services">
+        <button class="svc" data-service="asistente">Asistente Médico — 8 min (informativo)</button>
+        <button class="svc" data-service="risoterapia">Risoterapia — 10 min — $12</button>
+        <button class="svc" data-service="horoscopo">Horóscopo — 1m30s — $3</button>
+        <a class="quick-link" href="/quickresponse">→ Consulta rápida $1 (45s)</a>
+      </div>
+
+      <div class="actions">
+        <button id="btn-start">Iniciar / Pagar</button>
+      </div>
+      <p id="gate-msg" class="msg"></p>
+    </section>
+
+    <section id="chat" class="hidden">
+      <div class="chat-head">
+        <h2 id="chat-title">Consulta por mensajes</h2>
+        <div id="sessionBadge" class="badge"></div>
+      </div>
+      <div id="chatlog" class="chatlog"></div>
+      <div class="composer">
+        <input id="msg" type="text" placeholder="Escribe tu consulta..."/>
+        <button id="send">Enviar</button>
+      </div>
+      <p class="legal">
+        No se guardan nombres reales. Servicio informativo. En emergencias, acude a urgencias.
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/js/script.js"></script>
+</body>
+</html>
