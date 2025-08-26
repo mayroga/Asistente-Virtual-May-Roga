@@ -199,3 +199,8 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
 @app.get("/quick-response", response_class=HTMLResponse)
 async def quick_response(request: Request):
     return templates.TemplateResponse("quick-response.html", {"request": request})
+
+@app.route("/quick_response")
+def quick_response():
+    return render_template("quick_response.html")
+
