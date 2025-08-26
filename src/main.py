@@ -13,7 +13,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "https://medico-virtual-may-roga.onrender.com")
 FREE_PASS_CODE = os.getenv("FREE_PASS_CODE", "MKM991775")
-USE_AI = os.getenv("USE_AI", "0") == "1"  # 1 = usar OpenAI/Gemini (placeholder)
+USE_AI = os.getenv("USE_AI", "0") == "1"  # Placeholder para AI
 stripe.api_key = STRIPE_SECRET_KEY
 
 app = FastAPI()
@@ -22,13 +22,11 @@ app.add_middleware(
 )
 
 # =========================
-# Rutas de archivos
+# Templates y static
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # =========================
 # Memoria en servidor
@@ -55,10 +53,10 @@ ENF = load_json_candidate("enfermedades.json")
 URG = load_json_candidate("urgencias.json")
 print("✅ Datos enfer/urgencias cargados:", bool(ENF), bool(URG))
 
-ENF_IDX = {e.get("nombre", "").lower(): e for e in ENF if isinstance(e, dict)}
+ENF_IDX = {e.get("nombre","").lower(): e for e in ENF if isinstance(e, dict)}
 
 # =========================
-# Utilidades y seguridad
+# Utilidades
 # =========================
 SAFETY_FOOTER = "\n\n—\nInformación educativa. No es diagnóstico médico. Si empeoran síntomas, acudir a urgencias."
 EMERGENCY_SIGNS = ["dolor torácico","ahogo","disnea","debilidad","convulsión","sangrado","fiebre muy alta","pérdida de conciencia"]
@@ -82,29 +80,41 @@ def build_answer_local(text: str) -> str:
     pre = triage + "\n\n" if triage else ""
     cond = match_condition(text)
     if cond:
-        return pre + (
-            f"**Condición informativa:** {cond.get('nombre','—')}\n"
-            f"**Qué es:** {cond.get('descripcion','—')}\n"
-            f"**Síntomas frecuentes:** {', '.join(cond.get('signos_sintomas',[])[:6]) or '—'}\n"
-            f"**Exámenes sugeridos:** {', '.join(cond.get('examenes_sugeridos',[])[:6]) or '—'}\n"
-            f"**Medidas generales:** {', '.join(cond.get('opciones_tratamiento_informativo',[])[:6]) or '—'}"
-            + SAFETY_FOOTER
-        )
+        return pre + f"**Condición informativa:** {cond.get('nombre','—')}\n**Qué es:** {cond.get('descripcion','—')}\n{SAFETY_FOOTER}"
     return pre + "Respuesta informativa general. Describe tiempo de inicio, fiebre, intensidad del dolor, etc." + SAFETY_FOOTER
 
 # =========================
-# Rutas web
+# Página raíz
 # =========================
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, paid: str | None = None, nickname: str | None = None):
     return templates.TemplateResponse("index.html", {"request": request, "paid": paid, "nickname": nickname})
 
+# =========================
+# Quick Response con código secreto
+# =========================
 @app.get("/quickresponse", response_class=HTMLResponse)
-async def quick_response(request: Request):
-    return templates.TemplateResponse("quickresponse.html", {"request": request})
+async def quick_response(request: Request, nickname: str | None = None, code: str | None = None):
+    access_granted = False
+    token = None
+
+    if nickname and code and secrets.compare_digest(code, FREE_PASS_CODE):
+        token = secrets.token_urlsafe(32)
+        ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
+        access_granted = True
+
+    return templates.TemplateResponse(
+        "quickresponse.html",
+        {
+            "request": request,
+            "nickname": nickname,
+            "token": token,
+            "access_granted": access_granted
+        }
+    )
 
 # =========================
-# Sesión y acceso
+# Sesión y Acceso
 # =========================
 @app.post("/api/start-session")
 async def start_session(payload: Dict[str, Any] = Body(...)):
@@ -127,9 +137,9 @@ async def check_access(nickname: str = Query(...)):
     return {"paid": nickname in PAID_NICKNAMES}
 
 # =========================
-# Stripe: crear sesión
+# Stripe: Crear checkout
 # =========================
-@app.api_route("/pay/create-session", methods=["GET","POST"])
+@app.api_route("/pay/create-session", methods=["GET", "POST"])
 async def create_session(request: Request):
     if request.method == "POST":
         form = await request.form()
@@ -141,13 +151,16 @@ async def create_session(request: Request):
         nickname = (qs.get("nickname") or "").strip()
         servicio = (qs.get("servicio") or "").strip()
         price_cents = qs.get("price_cents")
+
     if not nickname:
         raise HTTPException(400, "Debes indicar un apodo.")
+
     prices = {"asistente":500, "risoterapia":1200, "horoscopo":300, "quick":100}
     try:
         amount = int(price_cents) if price_cents else prices.get(servicio, int(os.getenv("PRICE_USD_CENTS","1500")))
     except Exception:
         amount = prices.get(servicio, int(os.getenv("PRICE_USD_CENTS","1500")))
+
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -178,6 +191,7 @@ async def webhook(request: Request):
         event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
     except Exception as e:
         raise HTTPException(400, f"Webhook error: {e}")
+
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         nickname = session.get("client_reference_id")
@@ -187,27 +201,27 @@ async def webhook(request: Request):
     return JSONResponse({"received": True})
 
 # =========================
-# Chat híbrido
+# Chat híbrido: local + AI placeholder
 # =========================
 @app.post("/api/message")
-async def chat_message(payload: Dict[str, Any] = Body(...)):
+async def chat_message(payload: Dict[str, Any] = Body(...), request: Request | None = None):
     token = payload.get("token")
     message = (payload.get("message") or "").strip()
     if not token or token not in ACTIVE_TOKENS:
         raise HTTPException(401, "Sesión inválida o expirada.")
     if not message:
         raise HTTPException(400, "Mensaje vacío.")
+
     if USE_AI:
-        # placeholder AI
         ai_reply = f"[AI] Respuesta avanzada para: {message}"
         return {"reply": ai_reply + SAFETY_FOOTER}
+
     answer = build_answer_local(message)
     return {"reply": answer}
 
 # =========================
-# Arranque
+# Arranque local
 # =========================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
-
