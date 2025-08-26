@@ -12,7 +12,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = STRIPE_SECRET_KEY
 
-# Crear app FastAPI
+# ------------------ APP ------------------
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
@@ -24,16 +24,21 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # ------------------ CARGA DE DATOS ------------------
-with open("enfermedades.json", "r", encoding="utf-8") as f:
-    enfermedades = json.load(f)
-
-with open("urgencias.json", "r", encoding="utf-8") as f:
-    urgencias = json.load(f)
+try:
+    with open(os.path.join(BASE_DIR, "enfermedades.json"), "r", encoding="utf-8") as f:
+        enfermedades = json.load(f)
+    with open(os.path.join(BASE_DIR, "urgencias.json"), "r", encoding="utf-8") as f:
+        urgencias = json.load(f)
+    print("✅ Datos de enfermedades y urgencias cargados en memoria")
+except Exception as e:
+    enfermedades = {}
+    urgencias = {}
+    print(f"⚠️ Error cargando archivos JSON: {e}")
 
 # Código secreto para servicio gratuito
 SECRET_FREE_CODE = "MKM991775"
 
-# ------------------ RUTAS ------------------
+# ------------------ RUTAS PRINCIPALES ------------------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -46,10 +51,6 @@ async def medico_virtual(
     pago_confirmado: str = Form(None),
     codigo: str = Form(None)
 ):
-    """
-    Servicio de médico virtual.
-    Debe haber apodo y pago o código secreto.
-    """
     # Validar apodo
     if not apodo.strip():
         return JSONResponse({"error": "Debes indicar un apodo o sobrenombre."}, status_code=400)
@@ -70,7 +71,7 @@ async def medico_virtual(
         "informacion": {}
     }
 
-    # Buscar en datos de enfermedades
+    # Buscar en datos de enfermedades y urgencias
     if servicio in enfermedades:
         resultado["informacion"] = enfermedades[servicio]
     elif servicio in urgencias:
@@ -80,12 +81,11 @@ async def medico_virtual(
 
     return JSONResponse(resultado)
 
-# ------------------ CREAR SESIÓN DE PAGO ------------------
+# ------------------ SESIÓN DE PAGO STRIPE ------------------
 @app.post("/pay/create-session")
-def create_session(servicio: str = Form(...), apodo: str = Form(...)):
+async def create_session(servicio: str = Form(...), apodo: str = Form(...)):
     if not apodo.strip():
         raise HTTPException(400, "Debes indicar un apodo o sobrenombre.")
-
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -129,11 +129,10 @@ async def cancel(request: Request):
     return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
 
 # ------------------ API QUICK RESPONSE ------------------
-@app.post("/api/message", response_model=None)  # 👈 esto es clave
+@app.post("/api/message", response_model=None)
 async def api_message(request: Request):
     try:
         data = await request.json()
     except Exception:
         data = {}
-    return {"ok": True, "data": data}
-
+    return JSONResponse({"ok": True, "data": data})
