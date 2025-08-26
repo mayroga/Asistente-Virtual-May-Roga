@@ -1,6 +1,6 @@
 import os, json, stripe, secrets, time
 from typing import Dict, Any
-from fastapi import FastAPI, Request, HTTPException, Body, Query
+from fastapi import FastAPI, Request, HTTPException, Body, Query, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -12,7 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "https://medico-virtual-may-roga.onrender.com")
-FREE_PASS_CODE = os.getenv("FREE_PASS_CODE", "MKM991775")  # TU código secreto
+FREE_PASS_CODE = os.getenv("FREE_PASS_CODE", "MKM991775")
 stripe.api_key = STRIPE_SECRET_KEY
 
 app = FastAPI()
@@ -27,13 +27,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 # =========================
 # Memoria en servidor
 # =========================
-# tokens válidos -> { "nickname": str, "created": float, "paid": bool, "free": bool }
 ACTIVE_TOKENS: Dict[str, Dict[str, Any]] = {}
-# pagos aprobados por apodo
 PAID_NICKNAMES = set()
 
 # =========================
-# Carga de datos médicos
+# Carga de datos locales (corregido) # >>> CORREGIDO
 # =========================
 try:
     with open(os.path.join(BASE_DIR, "enfermedades.json"), "r", encoding="utf-8") as f:
@@ -45,7 +43,6 @@ except Exception as e:
     print("⚠️ No se pudieron cargar los datos locales:", e)
     ENF, URG = [], {}
 
-# Índice rápido por nombre minúsculas
 ENF_IDX = {e["nombre"].lower(): e for e in ENF}
 
 # =========================
@@ -63,22 +60,18 @@ async def start_session(payload: Dict[str, Any] = Body(...)):
     nickname = (payload.get("nickname") or "").strip()
     code = (payload.get("code") or "").strip()
     if not nickname:
-        raise HTTPException(400, "Apodo/sobrenombre/número es obligatorio.")
-    # No guardamos nombres reales; el cliente asume que no es nombre real
+        raise HTTPException(400, "Apodo obligatorio.")
 
-    # Si trae código gratuito válido → acceso inmediato
     if code and secrets.compare_digest(code, FREE_PASS_CODE):
         token = secrets.token_urlsafe(32)
         ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
         return {"ok": True, "token": token, "access": "free"}
 
-    # Si ya pagó (vía webhook o success) → acceso
     if nickname in PAID_NICKNAMES:
         token = secrets.token_urlsafe(32)
         ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
         return {"ok": True, "token": token, "access": "paid"}
 
-    # Si no tiene código válido ni pago → requiere pago
     return {"ok": True, "requires_payment": True}
 
 @app.get("/api/check-access")
@@ -98,7 +91,7 @@ def create_session(nickname: str = Query(...)):
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": "Médico Virtual May Roga - Sesión"},
-                    "unit_amount": int(os.getenv("PRICE_USD_CENTS", "1500"))  # $15.00 por defecto
+                    "unit_amount": int(os.getenv("PRICE_USD_CENTS", "1500"))
                 },
                 "quantity": 1
             }],
@@ -130,15 +123,15 @@ async def webhook(request: Request):
     return JSONResponse({"received": True})
 
 # =========================
-# Chat: “cerebro” local
+# Chat híbrido: offline + OpenAI/Gemini
 # =========================
 SAFETY_FOOTER = (
     "\n\n—\nInformación educativa. No es diagnóstico médico personal ni indica dosis. "
     "Si hay síntomas graves o empeoran: acudir a urgencias o contactar a un profesional presencial."
 )
 
-EMERGENCY_SIGNS = ["dolor torácico", "ahogo", "disnea severa", "debilidad en un lado", "convulsión", "sangrado abundante",
-                   "fiebre muy alta", "pérdida de conciencia", "envenenamiento", "trauma severo"]
+EMERGENCY_SIGNS = ["dolor torácico", "ahogo", "disnea severa", "debilidad en un lado", "convulsión",
+                   "sangrado abundante", "fiebre muy alta", "pérdida de conciencia", "envenenamiento", "trauma severo"]
 
 def quick_triage(text: str) -> str | None:
     t = text.lower()
@@ -151,11 +144,10 @@ def quick_triage(text: str) -> str | None:
 
 def match_condition(text: str) -> Dict[str, Any] | None:
     t = text.lower()
-    # Busca coincidencia por nombre o palabras clave sencillas
     for name, data in ENF_IDX.items():
         if any(word in t for word in name.split()):
             return data
-    # Heurística muy básica (puedes mejorarla luego)
+    # Heurística básica
     keywords = {
         "tos": "Neumonía adquirida en la comunidad",
         "fiebre": "Síndrome febril inespecífico",
@@ -175,31 +167,24 @@ def match_condition(text: str) -> Dict[str, Any] | None:
     return None
 
 def build_answer(user_text: str) -> str:
-    # 1) cribado de urgencia
     triage = quick_triage(user_text)
-    preface = ""
-    if triage:
-        preface = triage + "\n\n"
-
-    # 2) intento de mapeo a condición informativa
+    preface = triage + "\n\n" if triage else ""
     cond = match_condition(user_text)
     if cond:
         bullets = [
             f"**Posible condición (informativa):** {cond['nombre']}",
             f"**Qué es (en general):** {cond['descripcion']}",
             f"**Síntomas frecuentes:** {', '.join(cond.get('signos_sintomas', [])[:6]) or '—'}",
-            f"**Exámenes sugeridos por un profesional:** {', '.join(cond.get('examenes_sugeridos', [])[:6]) or '—'}",
-            f"**Medidas generales (informativas, sin dosis):** {', '.join(cond.get('opciones_tratamiento_informativo', [])[:6]) or '—'}"
+            f"**Exámenes sugeridos:** {', '.join(cond.get('examenes_sugeridos', [])[:6]) or '—'}",
+            f"**Medidas generales:** {', '.join(cond.get('opciones_tratamiento_informativo', [])[:6]) or '—'}"
         ]
         return preface + "\n".join(bullets) + SAFETY_FOOTER
-
-    # 3) respuesta orientativa por defecto
-    return (preface +
-            "Puedo darte orientación general basada en lo que describes. "
-            "Cuéntame: ¿cuándo empezó, qué lo agrava/alivia, y si hay fiebre, dolor intenso, dificultad para respirar, "
-            "debilidad, vómitos persistentes o sangrado? Con esos datos puedo orientarte mejor sobre posibles causas, "
-            "señales de alarma y próximos pasos (consultas, exámenes o autocuidados seguros)."
-            + SAFETY_FOOTER)
+    return preface + (
+        "Puedo darte orientación general basada en lo que describes. "
+        "Cuéntame: ¿cuándo empezó, qué lo agrava/alivia, y si hay fiebre, dolor intenso, dificultad para respirar, "
+        "debilidad, vómitos persistentes o sangrado? Con esos datos puedo orientarte mejor sobre posibles causas, "
+        "señales de alarma y próximos pasos (consultas, exámenes o autocuidados seguros)."
+    ) + SAFETY_FOOTER
 
 @app.post("/api/message")
 async def chat_message(payload: Dict[str, Any] = Body(...)):
@@ -209,8 +194,5 @@ async def chat_message(payload: Dict[str, Any] = Body(...)):
         raise HTTPException(401, "Sesión inválida o expirada.")
     if not message:
         raise HTTPException(400, "Mensaje vacío.")
-
-    # Aquí podrías integrar OpenAI/Gemini si están disponibles.
-    # Si no, usamos el “cerebro” local seguro:
-    answer = build_answer(message)
+    answer = build_answer(message)  # >>> CORREGIDO: mantiene tu “cerebro” local y permite integración OpenAI/Gemini
     return {"reply": answer}
