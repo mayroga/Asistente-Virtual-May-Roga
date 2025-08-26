@@ -129,7 +129,9 @@ async def cancel(request: Request):
     return HTMLResponse("<h1>❌ Pago cancelado.</h1>")
 
 # ------------------ API QUICK RESPONSE ------------------
-@app.post("/api/message", response_model=None)
+from fastapi.responses import JSONResponse
+
+@app.post("/api/message", response_class=JSONResponse)
 async def api_message(request: Request):
     try:
         data = await request.json()
@@ -137,4 +139,3 @@ async def api_message(request: Request):
         data = {}
     return {"ok": True, "data": data}
 
-print("✅ Datos de enfermedades y urgencias cargados en memoria")
