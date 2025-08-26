@@ -1,53 +1,61 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Médico Virtual May Roga</title>
-  <link rel="stylesheet" href="/static/css/style.css"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Médico Virtual May Roga</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  body { margin:0; font-family: Arial, sans-serif; background-color:#0077cc; color:white; }
+  .container { max-width:600px; margin: auto; padding:20px; text-align:center; }
+  button { background-color:#004f99; color:white; border:none; padding:10px 20px; margin:10px; cursor:pointer; font-size:16px; border-radius:6px; }
+  .service { background-color:#005faa; padding:15px; margin:10px 0; border-radius:8px; cursor:pointer; }
+  .price { font-weight:bold; margin-top:5px; }
+  @media (max-width:768px){ .container{ width:100%; padding:10px; } }
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <img src="/static/images/logo.png" alt="logo" class="logo"/>
-    <h1>Médico Virtual May Roga</h1>
-  </header>
+<div class="container">
+  <h1>Médico Virtual May Roga</h1>
 
-  <main class="container">
-    <section id="gate">
-      <h2>Acceso</h2>
-      <p class="note">Usa apodo/sobrenombre/número (no tu nombre real). Si tienes <b>código especial</b>, ingrésalo.</p>
-      <div class="formrow">
-        <label>Apodo / Sobrenombre / Número</label>
-        <input id="nickname" type="text" placeholder="Ej: Sol_2025" autocomplete="off">
-      </div>
-      <div class="formrow">
-        <label>Código especial (opcional)</label>
-        <input id="freecode" type="password" placeholder="Código (si lo tienes)">
-      </div>
-      <div class="actions">
-        <button id="btn-start">Iniciar</button>
-        <button id="btn-pay" class="alt">Pagar sesión</button>
-      </div>
-      <p id="gate-msg" class="msg"></p>
-    </section>
+  <div class="service" onclick="startService('asistente')">
+    <h2>Asistente Médico</h2>
+    <p>8 minutos - $5 (Informativo)</p>
+  </div>
 
-    <section id="chat" class="hidden">
-      <div class="chat-head">
-        <h2>Consulta por mensajes</h2>
-        <div id="sessionBadge" class="badge"></div>
-      </div>
-      <div id="chatlog" class="chatlog"></div>
-      <div class="composer">
-        <input id="msg" type="text" placeholder="Escribe tu consulta..."/>
-        <button id="send">Enviar</button>
-      </div>
-      <p class="legal">
-        No se guardan nombres reales. Este servicio brinda orientación informativa y promueve la
-        consulta presencial cuando corresponde.
-      </p>
-    </section>
-  </main>
+  <div class="service" onclick="startService('risoterapia')">
+    <h2>Risoterapia y Bienestar Natural</h2>
+    <p>10 minutos - $12</p>
+  </div>
 
-  <script src="/static/js/script.js"></script>
+  <div class="service" onclick="startService('horoscopo')">
+    <h2>Horóscopo</h2>
+    <p>1 min 30 seg - $3</p>
+  </div>
+
+  <div class="service" onclick="goQuickResponse()">
+    <h2>Consulta Rápida</h2>
+    <p>45 segundos - $1</p>
+  </div>
+</div>
+
+<script>
+function startService(service){
+    const nickname = prompt("Ingresa tu apodo/sobrenombre:");
+    if(!nickname) return alert("Apodo obligatorio");
+    // Redirige a la sesión de Stripe según servicio
+    fetch(`/pay/create-session?nickname=${nickname}&servicio=${service}`)
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.url){ window.location.href = data.url; }
+        else alert("Error al crear sesión de pago");
+      });
+}
+
+function goQuickResponse(){
+  window.location.href="/quick-response";
+}
+</script>
 </body>
 </html>
