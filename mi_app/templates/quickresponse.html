@@ -48,3 +48,39 @@ function sendQuick(){
 async def quick_response(request: Request):
     return templates.TemplateResponse("quick_response.html", {"request": request})
 
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Consulta Rápida - Médico Virtual May Roga</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+</head>
+<body>
+  <div class="fullpage">
+    <header class="topbar">
+      <button class="back" onclick="location.href='/'">← Volver</button>
+      <h1>Consulta Rápida — 45s • $1</h1>
+    </header>
+
+    <main class="center">
+      <textarea id="quick-text" placeholder="Describe brevemente tu problema (orientación general)"></textarea>
+      <button id="quick-send">Pagar y Enviar $1</button>
+      <div id="quick-result"></div>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('quick-send').addEventListener('click', async ()=>{
+      const text = document.getElementById('quick-text').value.trim();
+      if(!text) return alert("Escribe tu consulta rápida.");
+      const nick = prompt("Apodo para la sesión:");
+      if(!nick) return alert("Apodo obligatorio.");
+      // Crear sesión Stripe: usamos GET/POST compatible con main.py
+      const res = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nick)}&servicio=quick`);
+      const data = await res.json();
+      if(data.url){ window.location.href = data.url; } else alert("Error creando sesión.");
+    });
+  </script>
+</body>
+</html>
