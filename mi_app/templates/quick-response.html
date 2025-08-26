@@ -43,3 +43,8 @@ function sendQuick(){
 </script>
 </body>
 </html>
+
+@app.get("/quick-response", response_class=HTMLResponse)
+async def quick_response(request: Request):
+    return templates.TemplateResponse("quick_response.html", {"request": request})
+
