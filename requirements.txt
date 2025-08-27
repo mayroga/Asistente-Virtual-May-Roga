@@ -5,3 +5,5 @@ python-dotenv==1.1.1
 requests==2.31.0
 openai==0.28.0
 stripe==12.4.0
+python-multipart
+
