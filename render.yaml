@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: medico-virtual-may-roga
+    env: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SUCCESS_URL
+        value: https://tu-dominio/success
+      - key: CANCEL_URL
+        value: https://tu-dominio/cancel
