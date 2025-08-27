@@ -1,7 +1,14 @@
-{
-  "acciones": [
-    {"nombre": "saludar", "respuesta": "Hola, bienvenido al Medico Virtual de May Roga LLC."},
-    {"nombre": "despedir", "respuesta": "Hasta luego, cuídate mucho."},
-    {"nombre": "consultar", "respuesta": "Por favor, describe tu síntoma o pregunta médica."}
-  ]
-}
+[
+  {
+    "accion": "respirar",
+    "descripcion": "Respira profundo para calmarte"
+  },
+  {
+    "accion": "sonreir",
+    "descripcion": "Sonríe aunque sea pequeño, ayuda al bienestar"
+  },
+  {
+    "accion": "meditar",
+    "descripcion": "Meditar 5 minutos mejora concentración y calma"
+  }
+]
