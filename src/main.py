@@ -426,3 +426,32 @@ async def send_message(request: Request):
 
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import openai  # Asegúrate de tener la variable OPENAI_API_KEY en tu entorno
+
+app = FastAPI()
+
+# Inicializa OpenAI con tu API Key
+openai.api_key = "TU_OPENAI_API_KEY"
+
+@app.post("/api/message")
+async def receive_message(request: Request):
+    data = await request.json()
+    user_message = data.get("message", "").strip()
+
+    if not user_message:
+        return JSONResponse({"reply": "No recibí ningún mensaje."})
+
+    try:
+        # Llamada al modelo de OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": user_message}],
+            temperature=0.7
+        )
+        reply_text = response.choices[0].message.content.strip()
+        return JSONResponse({"reply": reply_text})
+    except Exception as e:
+        return JSONResponse({"reply": f"Ocurrió un error: {str(e)}"})
