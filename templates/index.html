@@ -1,78 +1,127 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asistente May Roga</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 20px; padding: 20px; line-height: 1.6; }
-    h1 { font-size: 32px; margin-bottom: 5px; }
-    .subtitulo { font-size: 13px; color: gray; margin-bottom: 20px; }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    select, input { width: 100%; padding: 12px; margin-top: 5px; font-size: 20px; }
-    button { margin-top: 20px; padding: 14px; font-size: 22px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 6px; }
-    button:hover { background-color: #0056b3; }
-    #servicio-output { margin-top: 30px; font-size: 22px; font-weight: bold; }
-    #iframe-container { margin-top: 40px; display:none; }
-    iframe { width: 100%; height: 500px; border: 1px solid #ccc; border-radius: 6px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 20px; padding: 20px; line-height: 1.6; }
+  h1 { font-size: 32px; margin-bottom: 5px; }
+  .subtitulo { font-size: 14px; color: gray; margin-bottom: 20px; }
+  label { display: block; margin-top: 15px; font-weight: bold; }
+  select, input { width: 100%; padding: 12px; margin-top: 5px; font-size: 20px; }
+  button { margin-top: 20px; padding: 14px; font-size: 22px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 6px; }
+  button:hover { background-color: #0056b3; }
+  #servicio-output { margin-top: 30px; font-size: 22px; font-weight: bold; }
+  #response { margin-top: 20px; font-size: 20px; }
+</style>
 </head>
 <body>
-  <h1>Asistente May Roga</h1>
-  <div class="subtitulo">Asistente Virtual Médico - Informativo</div>
-  <p>Ingresa tu <b>apodo/sobrenombre</b> o el <b>código secreto</b> y comienza el servicio.</p>
 
-  <form id="access-form">
-    <label for="apodo">Apodo o Código:</label>
-    <input type="text" id="apodo" required placeholder="Ej: Luna12 o MKM991775">
+<h1>Asistente May Roga</h1>
+<div class="subtitulo">Asistente Virtual Médico - Informativo</div>
+<p>Ingresa tu apodo y selecciona un servicio o usa el código secreto para iniciar directamente.</p>
 
-    <label for="servicio">Selecciona Servicio:</label>
-    <select id="servicio" required>
-      <option value="asistente_virtual">Asistente Virtual Médico (8 min)</option>
-      <option value="risoterapia">Risoterapia y Bienestar (10 min)</option>
-      <option value="horoscopo">Horóscopo (35 seg)</option>
-    </select>
+<!-- OPCIÓN 1: Pago -->
+<form id="payment-form">
+  <label for="apodo">Tu Apodo/Sobrenombre:</label>
+  <input type="text" id="apodo" name="apodo" required>
 
-    <button type="submit">Comenzar Servicio</button>
-  </form>
+  <label for="servicio">Selecciona Servicio:</label>
+  <select id="servicio" name="servicio" required>
+    <option value="asistente_virtual">Asistente Virtual (8 min, $5)</option>
+    <option value="risoterapia">Risoterapia (10 min, $12)</option>
+    <option value="horoscopo">Horóscopo (35 seg, $3)</option>
+  </select>
 
-  <div id="servicio-output"></div>
+  <button type="submit">Pagar con Stripe</button>
+</form>
 
-  <div id="iframe-container">
-    <iframe id="asistente-frame" src=""></iframe>
-  </div>
+<!-- OPCIÓN 2: Código Secreto -->
+<form id="secret-form" style="margin-top:30px;">
+  <label for="apodo2">Tu Apodo/Sobrenombre:</label>
+  <input type="text" id="apodo2" required>
 
-  <script>
-    const accessForm = document.getElementById("access-form");
-    const outputDiv = document.getElementById("servicio-output");
-    const iframeContainer = document.getElementById("iframe-container");
-    const asistenteFrame = document.getElementById("asistente-frame");
+  <label for="codigo">Código Secreto:</label>
+  <input type="text" id="codigo" placeholder="MKM991775" required>
 
-    accessForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const apodo = document.getElementById("apodo").value.trim();
-      const servicio = document.getElementById("servicio").value;
+  <button type="submit">Iniciar Servicio</button>
+</form>
 
-      if(!apodo) {
-        alert("Por favor ingresa tu apodo o código secreto");
-        return;
-      }
+<div id="servicio-output"></div>
 
-      // Acceso directo con código secreto
-      if(apodo.toLowerCase() === "mkm991775") {
-        outputDiv.innerHTML = `<b>Acceso autorizado con código secreto:</b> ${servicio}`;
-        asistenteFrame.src = `https://medico-virtual-may-roga.onrender.com/iframe-service?servicio=${servicio}&apodo=${apodo}`;
-        iframeContainer.style.display = "block";
-        return;
-      }
+<!-- Chat con asistente -->
+<form id="chatForm" style="margin-top:40px;">
+  <label for="message">Envía tu mensaje al asistente:</label>
+  <input type="text" id="message" placeholder="Escribe tu mensaje..." required>
+  <button type="submit">Enviar</button>
+</form>
+<div id="response"></div>
 
-      // Acceso mediante pago: abrir checkout en iframe
-      // Para Stripe necesitarías una página que devuelva el checkout en modo iframe
-      // Aquí se simula con la misma página de servicio
-      outputDiv.innerHTML = `<b>Redirigiendo al pago seguro...</b>`;
-      asistenteFrame.src = `https://medico-virtual-may-roga.onrender.com/iframe-service?servicio=${servicio}&apodo=${apodo}`;
-      iframeContainer.style.display = "block";
-    });
-  </script>
+<script>
+const paymentForm = document.getElementById("payment-form");
+const secretForm = document.getElementById("secret-form");
+const chatForm = document.getElementById("chatForm");
+const outputDiv = document.getElementById("servicio-output");
+const responseDiv = document.getElementById("response");
+
+let currentApodo = "";
+
+// OPCIÓN 1: Pago con Stripe
+paymentForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const apodo = document.getElementById("apodo").value;
+  const servicio = document.getElementById("servicio").value;
+
+  if(!apodo) { alert("Ingresa tu apodo."); return; }
+
+  currentApodo = apodo;
+
+  const response = await fetch("/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ apodo, servicio })
+  });
+
+  const data = await response.json();
+  if(data.url){ window.location.href = data.url; }
+  else { alert("Error al generar el pago: " + data.error); }
+});
+
+// OPCIÓN 2: Inicio con código secreto
+secretForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const apodo = document.getElementById("apodo2").value;
+  const codigo = document.getElementById("codigo").value.trim().toUpperCase();
+
+  if(!apodo) { alert("Ingresa tu apodo."); return; }
+
+  if(codigo === "MKM991775"){
+    currentApodo = apodo;
+    outputDiv.innerHTML = `<b>Hola ${apodo}, has iniciado tu servicio con código secreto.</b>`;
+  } else {
+    alert("Código secreto incorrecto.");
+  }
+});
+
+// Chat con asistente
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = document.getElementById("message").value;
+  if(!message || !currentApodo) { alert("Debes iniciar primero con apodo."); return; }
+
+  responseDiv.innerHTML = "Procesando...";
+  const res = await fetch("/chat", {
+    method: "POST",
+    body: new URLSearchParams({ apodo: currentApodo, message })
+  });
+
+  const data = await res.json();
+  responseDiv.innerHTML = `<b>Respuesta:</b> ${data.respuesta}`;
+  chatForm.reset();
+});
+</script>
+
 </body>
 </html>
