@@ -1,3 +1,17 @@
 {
   "respuesta": "Si presentas dolor intenso, dificultad para respirar o sangrado abundante, llama a emergencias inmediatamente. Para otras urgencias, sigue protocolos médicos y busca ayuda profesional."
 }
+{
+  "respuestas": [
+    "Si presentas dolor intenso, dificultad para respirar o sangrado abundante, llama a emergencias inmediatamente.",
+    "Ante pérdida de conciencia o convulsión, llama a emergencias y no muevas a la persona.",
+    "Si hay quemaduras graves, enfría la zona con agua corriente y busca atención médica urgente.",
+    "En caso de fractura o golpe fuerte, inmoviliza la zona y acude a un hospital.",
+    "Si hay ingestión de sustancias tóxicas, llama a control de intoxicaciones y busca atención médica inmediata.",
+    "Para síntomas de ataque cardíaco: dolor en pecho, dificultad para respirar, llama a emergencias de inmediato.",
+    "En caso de accidente de tránsito con heridos, llama a emergencias y no muevas a las personas lesionadas.",
+    "Si hay hemorragia abundante, aplica presión directa y busca ayuda médica urgente.",
+    "Ante dificultad respiratoria severa, posición semi-sentada y llama a emergencias inmediatamente.",
+    "Si hay reacción alérgica grave con hinchazón o dificultad para respirar, aplica EpiPen si disponible y llama a emergencias."
+  ]
+}
