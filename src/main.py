@@ -1,49 +1,32 @@
-# src/main.py
-from fastapi import FastAPI, Request
+import os
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import stripe
-import os
 
-# ===== CONFIGURACIONES =====
+# Configuración Stripe
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")  # Tu clave privada en Render
+endpoint_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")  # Variable de entorno segura
+
+# Constantes de tu servicio
 SECRET_CODE_NAME = "MKM991775"
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu clave secreta de Stripe
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 templates = Jinja2Templates(directory="templates")
 
-# ===== SIMULACIÓN DE SERVICIOS =====
-SERVICIOS = {
-    "asistente_virtual": "Asistente Virtual Médico activado, duración 8 min.",
-    "risoterapia": "Sesión de Risoterapia y Bienestar Natural activada, duración 10 min.",
-    "horoscopo": "Consulta de Horóscopo activada, duración 35 seg."
-}
+# Montar carpeta static solo si existe
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except RuntimeError:
+    pass
 
-# ===== INICIO SERVICIO CON CÓDIGO SECRETO =====
-@app.post("/start-service-secret")
-async def start_service_secret(request: Request):
-    form = await request.form()
-    apodo = form.get("apodo")
-    codigo = form.get("codigo", "").upper()
+# Página principal
+@app.get("/")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-    if not apodo or not codigo:
-        return JSONResponse({"error": "Apodo y código son obligatorios"}, status_code=400)
-
-    if codigo != SECRET_CODE_NAME.upper():
-        return JSONResponse({"error": "Código secreto incorrecto"}, status_code=403)
-
-    # Retorna los servicios disponibles
-    return JSONResponse({"resultado": f"Hola {apodo}, acceso concedido. Selecciona tu servicio para comenzar."})
-
-# ===== CREAR SESIÓN DE PAGO STRIPE =====
+# Crear checkout session
 @app.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
     form = await request.form()
@@ -51,64 +34,39 @@ async def create_checkout_session(request: Request):
     servicio = form.get("servicio")
 
     if not apodo or not servicio:
-        return JSONResponse({"error": "Apodo y servicio son obligatorios"}, status_code=400)
+        return JSONResponse({"error": "Falta apodo o servicio"}, status_code=400)
 
-    if servicio not in SERVICIOS:
+    # Mapear precios
+    precios = {
+        "asistente_virtual": 500,
+        "risoterapia": 1200,
+        "horoscopo": 300
+    }
+
+    precio = precios.get(servicio)
+    if precio is None:
         return JSONResponse({"error": "Servicio no válido"}, status_code=400)
 
     try:
-        checkout_session = stripe.checkout.Session.create(
+        session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
-                    "product_data": {"name": SERVICIOS[servicio]},
-                    "unit_amount": 500 if servicio=="asistente_virtual" else 1200 if servicio=="risoterapia" else 300
+                    "product_data": {"name": servicio},
+                    "unit_amount": precio,
                 },
-                "quantity": 1
+                "quantity": 1,
             }],
             mode="payment",
-            success_url=f"{os.getenv('SUCCESS_URL')}?apodo={apodo}&servicio={servicio}",
-            cancel_url=os.getenv('CANCEL_URL')
+            success_url=f"{os.environ.get('APP_URL')}?apodo={apodo}&servicio={servicio}",
+            cancel_url=os.environ.get('APP_URL'),
         )
-        return JSONResponse({"url": checkout_session.url})
+        return JSONResponse({"url": session.url})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-# ===== WEBHOOK STRIPE =====
-@app.post("/webhook-stripe")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-
-    # Solo confirma que el pago fue exitoso
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        apodo = session.get("client_reference_id", "Usuario")
-        servicio = session.get("metadata", {}).get("servicio", "asistente_virtual")
-        # Aquí se podría marcar en DB que el servicio está activo
-        print(f"Pago exitoso: {apodo} activó {servicio}")
-    return JSONResponse({"status": "ok"})
-
-# ===== OBTENER SERVICIO =====
-@app.post("/get-service")
-async def get_service(request: Request):
-    form = await request.form()
-    apodo = form.get("apodo")
-    servicio = form.get("servicio")
-
-    if not apodo or not servicio:
-        return JSONResponse({"error": "Apodo y servicio son obligatorios"}, status_code=400)
-
-    resultado = SERVICIOS.get(servicio, "Servicio no disponible")
-    return JSONResponse({"resultado": resultado})
-
-# ===== CHAT CON ASISTENTE =====
+# Chat con asistente
 @app.post("/chat")
 async def chat(request: Request):
     form = await request.form()
@@ -116,13 +74,49 @@ async def chat(request: Request):
     message = form.get("message")
 
     if not apodo or not message:
-        return JSONResponse({"error": "Apodo y mensaje son obligatorios"}, status_code=400)
+        return JSONResponse({"error": "Falta apodo o mensaje"}, status_code=400)
 
-    # Respuesta simulada (aquí puedes integrar IA)
-    respuesta = f"{apodo}, tu mensaje '{message}' ha sido recibido por Asistente Virtual Médico."
+    # Simular respuesta del asistente (OpenAI u offline)
+    respuesta = f"Respuesta generada para '{apodo}': tu mensaje '{message}' ha sido recibido por Asistente Virtual Médico."
+
     return JSONResponse({"respuesta": respuesta})
 
-# ===== RUTA RAÍZ =====
-@app.get("/")
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+# Acceso directo con código secreto
+@app.post("/secret-access")
+async def secret_access(request: Request):
+    form = await request.form()
+    apodo = form.get("apodo")
+    code = form.get("code")
+
+    if not apodo or not code:
+        return JSONResponse({"error": "Falta apodo o código"}, status_code=400)
+
+    if code.upper() != SECRET_CODE_NAME:
+        return JSONResponse({"error": "Código secreto incorrecto"}, status_code=403)
+
+    return JSONResponse({
+        "mensaje": f"Acceso concedido para {apodo}. Ya puedes usar el Asistente Virtual Médico, Risoterapia y Horóscopo."
+    })
+
+# Webhook de Stripe
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if endpoint_secret is None:
+        raise HTTPException(status_code=500, detail="Webhook secret no configurado")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma no válida")
+
+    # Manejar evento exitoso de pago
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        apodo = session["metadata"].get("apodo", "Cliente")
+        servicio = session["metadata"].get("servicio", "Servicio")
+        print(f"Pago recibido: {apodo} - {servicio}")
+
+    return JSONResponse({"status": "success"})
