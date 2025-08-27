@@ -1,46 +1,60 @@
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+# src/main.py
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.cors import CORSMiddleware
 import stripe
 import os
 
-# Stripe key
-stripe.api_key = "TU_STRIPE_SECRET_KEY"
+# ===== CONFIGURACIONES =====
+SECRET_CODE_NAME = "MKM991775"
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu clave secreta de Stripe
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Templates
 templates = Jinja2Templates(directory="templates")
 
-# No usamos StaticFiles para evitar errores de carpeta
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+# ===== SIMULACIÓN DE SERVICIOS =====
+SERVICIOS = {
+    "asistente_virtual": "Asistente Virtual Médico activado, duración 8 min.",
+    "risoterapia": "Sesión de Risoterapia y Bienestar Natural activada, duración 10 min.",
+    "horoscopo": "Consulta de Horóscopo activada, duración 35 seg."
+}
 
-# Código secreto válido
-CODIGO_SECRETO = "MKM991775"
+# ===== INICIO SERVICIO CON CÓDIGO SECRETO =====
+@app.post("/start-service-secret")
+async def start_service_secret(request: Request):
+    form = await request.form()
+    apodo = form.get("apodo")
+    codigo = form.get("codigo", "").upper()
 
-# Página principal
-@app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    if not apodo or not codigo:
+        return JSONResponse({"error": "Apodo y código son obligatorios"}, status_code=400)
 
-# Crear sesión de pago Stripe
+    if codigo != SECRET_CODE_NAME.upper():
+        return JSONResponse({"error": "Código secreto incorrecto"}, status_code=403)
+
+    # Retorna los servicios disponibles
+    return JSONResponse({"resultado": f"Hola {apodo}, acceso concedido. Selecciona tu servicio para comenzar."})
+
+# ===== CREAR SESIÓN DE PAGO STRIPE =====
 @app.post("/create-checkout-session")
-async def create_checkout_session(
-    request: Request,
-    apodo: str = Form(...),
-    servicio: str = Form(...)
-):
-    if not apodo:
-        return JSONResponse({"error": "Debes ingresar un apodo"})
-    
-    # Lógica de precios
-    precios = {
-        "asistente_virtual": 500,  # $5 en centavos
-        "risoterapia": 1200,       # $12
-        "horoscopo": 300           # $3
-    }
-    precio = precios.get(servicio, 0)
+async def create_checkout_session(request: Request):
+    form = await request.form()
+    apodo = form.get("apodo")
+    servicio = form.get("servicio")
+
+    if not apodo or not servicio:
+        return JSONResponse({"error": "Apodo y servicio son obligatorios"}, status_code=400)
+
+    if servicio not in SERVICIOS:
+        return JSONResponse({"error": "Servicio no válido"}, status_code=400)
 
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -48,40 +62,67 @@ async def create_checkout_session(
             line_items=[{
                 "price_data": {
                     "currency": "usd",
-                    "product_data": {"name": servicio},
-                    "unit_amount": precio,
+                    "product_data": {"name": SERVICIOS[servicio]},
+                    "unit_amount": 500 if servicio=="asistente_virtual" else 1200 if servicio=="risoterapia" else 300
                 },
-                "quantity": 1,
+                "quantity": 1
             }],
             mode="payment",
-            success_url=f"{request.url.scheme}://{request.url.hostname}?apodo={apodo}&servicio={servicio}",
-            cancel_url=f"{request.url.scheme}://{request.url.hostname}",
+            success_url=f"{os.getenv('SUCCESS_URL')}?apodo={apodo}&servicio={servicio}",
+            cancel_url=os.getenv('CANCEL_URL')
         )
         return JSONResponse({"url": checkout_session.url})
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        return JSONResponse({"error": str(e)}, status_code=500)
 
-# Obtener servicio después del pago
+# ===== WEBHOOK STRIPE =====
+@app.post("/webhook-stripe")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    # Solo confirma que el pago fue exitoso
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        apodo = session.get("client_reference_id", "Usuario")
+        servicio = session.get("metadata", {}).get("servicio", "asistente_virtual")
+        # Aquí se podría marcar en DB que el servicio está activo
+        print(f"Pago exitoso: {apodo} activó {servicio}")
+    return JSONResponse({"status": "ok"})
+
+# ===== OBTENER SERVICIO =====
 @app.post("/get-service")
-async def get_service(apodo: str = Form(...), servicio: str = Form(...)):
-    mensajes_servicio = {
-        "asistente_virtual": "Acceso completo al Asistente Virtual Médico",
-        "risoterapia": "Sesión de Risoterapia y Bienestar Natural",
-        "horoscopo": "Tu Horóscopo personalizado"
-    }
-    resultado = mensajes_servicio.get(servicio, "Servicio no encontrado")
+async def get_service(request: Request):
+    form = await request.form()
+    apodo = form.get("apodo")
+    servicio = form.get("servicio")
+
+    if not apodo or not servicio:
+        return JSONResponse({"error": "Apodo y servicio son obligatorios"}, status_code=400)
+
+    resultado = SERVICIOS.get(servicio, "Servicio no disponible")
     return JSONResponse({"resultado": resultado})
 
-# Chat con Asistente Virtual
+# ===== CHAT CON ASISTENTE =====
 @app.post("/chat")
-async def chat(apodo: str = Form(...), message: str = Form(...)):
-    # Aquí puedes integrar la lógica real de AI o respuestas predefinidas
-    respuesta = f"{apodo}, recibí tu mensaje: '{message}'. Pronto recibirás tu asistencia."
+async def chat(request: Request):
+    form = await request.form()
+    apodo = form.get("apodo")
+    message = form.get("message")
+
+    if not apodo or not message:
+        return JSONResponse({"error": "Apodo y mensaje son obligatorios"}, status_code=400)
+
+    # Respuesta simulada (aquí puedes integrar IA)
+    respuesta = f"{apodo}, tu mensaje '{message}' ha sido recibido por Asistente Virtual Médico."
     return JSONResponse({"respuesta": respuesta})
 
-# Validación de código secreto al iniciar el servicio
-@app.post("/start-service")
-async def start_service(apodo: str = Form(...), codigo: str = Form(...), servicio: str = Form(...)):
-    if codigo.lower() != CODIGO_SECRETO.lower():
-        return JSONResponse({"error": "Código secreto incorrecto"})
-    return JSONResponse({"resultado": f"Bienvenido {apodo}, comenzando tu servicio: {servicio}"})
+# ===== RUTA RAÍZ =====
+@app.get("/")
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
