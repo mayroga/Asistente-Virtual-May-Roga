@@ -392,3 +392,37 @@ async def api_quickresponse(payload: Dict[str, Any] = Body(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import openai
+import os
+
+# Asegúrate de tener la variable de entorno OPENAI_API_KEY
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@app.post("/api/message")
+async def send_message(request: Request):
+    """
+    Endpoint para recibir un mensaje del cliente y responder usando OpenAI.
+    """
+    data = await request.json()
+    nickname = data.get("nickname")
+    message = data.get("message")
+
+    if not nickname or not message:
+        return JSONResponse({"error": "Falta nickname o mensaje"}, status_code=400)
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Eres el asistente médico May Roga, profesional en risoterapia y bienestar natural."},
+                {"role": "user", "content": message}
+            ]
+        )
+        reply = response['choices'][0]['message']['content']
+        return {"reply": reply}
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
