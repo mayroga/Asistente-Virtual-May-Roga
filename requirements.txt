@@ -1,6 +1,9 @@
-fastapi
-uvicorn[standard]
-jinja2
-python-multipart
-stripe
-
+fastapi==0.111.2
+uvicorn[standard]==0.23.1
+jinja2==3.1.2
+requests==2.31.0
+stripe==7.16.0
+python-dotenv==1.0.1
+openai==1.29.0
+pydantic==2.7.0
+aiofiles==23.2.0
