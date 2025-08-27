@@ -1,3 +1,4 @@
+# src/main.py
 import os, json, stripe, secrets, time
 from typing import Dict, Any
 from fastapi import FastAPI, Request, HTTPException, Body, Query
@@ -12,8 +13,8 @@ from starlette.middleware.cors import CORSMiddleware
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "https://medico-virtual-may-roga.onrender.com")
-SECRET_FREE_CODE = os.getenv("SECRET_FREE_CODE", "MKM991775")
-USE_AI = os.getenv("USE_AI", "0") == "1"
+SECRET_FREE_CODE = os.getenv("SECRET_FREE_CODE", "MKM991775")  # <<— TU ENV
+USE_AI = os.getenv("USE_AI", "0") == "1"  # si luego conectas IA real
 stripe.api_key = STRIPE_SECRET_KEY
 
 app = FastAPI()
@@ -25,17 +26,17 @@ app.add_middleware(
 # Templates y static
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "..", "mi_app", "templates"))
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "..", "mi_app", "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # =========================
-# Memoria en servidor
+# Memoria en servidor (simple)
 # =========================
 ACTIVE_TOKENS: Dict[str, Dict[str, Any]] = {}
 PAID_NICKNAMES = set()
 
 # =========================
-# Carga de datos locales
+# Carga de datos locales (opcional)
 # =========================
 def load_json_candidate(name):
     paths = [
@@ -75,13 +76,24 @@ def match_condition(text: str) -> Dict[str, Any] | None:
             return data
     return None
 
-def build_answer_local(text: str) -> str:
+def build_answer_local_asistente(text: str) -> str:
     triage = quick_triage(text)
     pre = triage + "\n\n" if triage else ""
     cond = match_condition(text)
     if cond:
         return pre + f"**Condición informativa:** {cond.get('nombre','—')}\n**Qué es:** {cond.get('descripcion','—')}\n{SAFETY_FOOTER}"
-    return pre + "Respuesta informativa general. Describe tiempo de inicio, fiebre, intensidad del dolor, etc." + SAFETY_FOOTER
+    return pre + "Guíame con tus síntomas: inicio, fiebre, intensidad del dolor, medicación tomada." + SAFETY_FOOTER
+
+def build_answer_local_risoterapia(text: str) -> str:
+    return "😄 ¡Gracias por escribir! Toma 3 respiraciones profundas. Piensa en 1 cosa buena de hoy. Repite: “Puedo con esto”. ¿Qué te gustaría mejorar ahora mismo?"
+
+def build_answer_local_horoscopo(text: str) -> str:
+    return "✨ Horóscopo express: confía en tu intuición hoy, evita decisiones impulsivas y prioriza tu paz mental."
+
+def build_answer_local_quick(text: str) -> str:
+    triage = quick_triage(text)
+    pre = (triage + " ") if triage else ""
+    return pre + "Consulta rápida recibida. Si puedes, añade edad, tiempo de inicio y síntomas clave."
 
 # =========================
 # Página raíz
@@ -91,35 +103,52 @@ async def home(request: Request, paid: str | None = None, nickname: str | None =
     return templates.TemplateResponse("index.html", {"request": request, "paid": paid, "nickname": nickname})
 
 # =========================
-# Quick Response con código secreto
+# Redirección legacy
 # =========================
-@app.get("/quickresponse", response_class=HTMLResponse)
-async def quick_response(request: Request, nickname: str | None = None, code: str | None = None):
-    access_granted = False
-    token = None
-
-    if nickname:
-        if code and secrets.compare_digest(code, SECRET_FREE_CODE):
-            token = secrets.token_urlsafe(32)
-            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
-            access_granted = True
-        elif nickname in PAID_NICKNAMES:
-            token = secrets.token_urlsafe(32)
-            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
-            access_granted = True
-
-    return templates.TemplateResponse(
-        "quickresponse.html",
-        {"request": request, "nickname": nickname, "token": token, "access_granted": access_granted}
-    )
-
-# Redirigir quick-response con guion al correcto
 @app.get("/quick-response")
 async def redirect_quick_response():
     return RedirectResponse(url="/quickresponse")
 
 # =========================
-# Sesión y Acceso
+# Vistas (HTML) de cada servicio
+# =========================
+def _token_from_query(nickname: str | None, code: str | None):
+    """
+    Si viene nickname + código secreto válido o nickname ya pagado,
+    se emite token. Si no, no hay token (solo vista).
+    """
+    token = None
+    if nickname:
+        if code and secrets.compare_digest(code, SECRET_FREE_CODE):
+            token = secrets.token_urlsafe(32)
+            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
+        elif nickname in PAID_NICKNAMES:
+            token = secrets.token_urlsafe(32)
+            ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
+    return token
+
+@app.get("/asistente", response_class=HTMLResponse)
+async def asistente_view(request: Request, nickname: str | None = None, code: str | None = None):
+    token = _token_from_query(nickname, code)
+    return templates.TemplateResponse("asistente.html", {"request": request, "nickname": nickname, "token": token})
+
+@app.get("/risoterapia", response_class=HTMLResponse)
+async def risoterapia_view(request: Request, nickname: str | None = None, code: str | None = None):
+    token = _token_from_query(nickname, code)
+    return templates.TemplateResponse("risoterapia.html", {"request": request, "nickname": nickname, "token": token})
+
+@app.get("/horoscopo", response_class=HTMLResponse)
+async def horoscopo_view(request: Request, nickname: str | None = None, code: str | None = None):
+    token = _token_from_query(nickname, code)
+    return templates.TemplateResponse("horoscopo.html", {"request": request, "nickname": nickname, "token": token})
+
+@app.get("/quickresponse", response_class=HTMLResponse)
+async def quickresponse_view(request: Request, nickname: str | None = None, code: str | None = None):
+    token = _token_from_query(nickname, code)
+    return templates.TemplateResponse("quickresponse.html", {"request": request, "nickname": nickname, "token": token})
+
+# =========================
+# Sesiones / acceso explícito (form o fetch)
 # =========================
 @app.post("/api/start-session")
 async def start_session(payload: Dict[str, Any] = Body(...)):
@@ -127,14 +156,17 @@ async def start_session(payload: Dict[str, Any] = Body(...)):
     code = (payload.get("code") or "").strip()
     if not nickname:
         raise HTTPException(400, "Apodo obligatorio.")
+
     if code and secrets.compare_digest(code, SECRET_FREE_CODE):
         token = secrets.token_urlsafe(32)
         ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": True}
         return {"ok": True, "token": token, "access": "free"}
+
     if nickname in PAID_NICKNAMES:
         token = secrets.token_urlsafe(32)
         ACTIVE_TOKENS[token] = {"nickname": nickname, "created": time.time(), "paid": True, "free": False}
         return {"ok": True, "token": token, "access": "paid"}
+
     return {"ok": True, "requires_payment": True}
 
 @app.get("/api/check-access")
@@ -142,7 +174,7 @@ async def check_access(nickname: str = Query(...)):
     return {"paid": nickname in PAID_NICKNAMES}
 
 # =========================
-# Stripe: Crear checkout
+# Stripe: Crear checkout (opcional)
 # =========================
 @app.api_route("/pay/create-session", methods=["GET", "POST"])
 async def create_session(request: Request):
@@ -186,7 +218,7 @@ async def create_session(request: Request):
         raise HTTPException(400, str(e))
 
 # =========================
-# Webhook Stripe
+# Webhook Stripe (confirma pagos)
 # =========================
 @app.post("/webhook-stripe")
 async def webhook(request: Request):
@@ -206,31 +238,53 @@ async def webhook(request: Request):
     return JSONResponse({"received": True})
 
 # =========================
-# Chat híbrido: local + AI placeholder
+# ENDPOINTS DE MENSAJE (funcionan ya)
+# Requieren: token válido y message
 # =========================
-@app.post("/api/message", response_model=None)
-async def chat_message(payload: Dict[str, Any] = Body(...)):
+def _require_token_and_message(payload: Dict[str, Any]):
     token = payload.get("token")
     message = (payload.get("message") or "").strip()
     if not token or token not in ACTIVE_TOKENS:
-        raise HTTPException(401, "Sesión inválida o expirada.")
+        raise HTTPException(401, "Sesión inválida o expirada (token).")
     if not message:
         raise HTTPException(400, "Mensaje vacío.")
+    return token, message
 
+@app.post("/api/asistente")
+async def api_asistente(payload: Dict[str, Any] = Body(...)):
+    _, message = _require_token_and_message(payload)
     if USE_AI:
-        ai_reply = f"[AI] Respuesta avanzada para: {message}"
-        return {"reply": ai_reply + SAFETY_FOOTER}
+        reply = f"[AI-Asistente] {message}"
+    else:
+        reply = build_answer_local_asistente(message)
+    return {"reply": reply}
 
-    answer = build_answer_local(message)
-    return {"reply": answer}
+@app.post("/api/risoterapia")
+async def api_risoterapia(payload: Dict[str, Any] = Body(...)):
+    _, message = _require_token_and_message(payload)
+    if USE_AI:
+        reply = f"[AI-Risoterapia] {message}"
+    else:
+        reply = build_answer_local_risoterapia(message)
+    return {"reply": reply}
 
-# =========================
-# RECORDATORIO DE ACCESO A LA APP
-# =========================
-# Formas de entrar a la app:
-# 1. Sobrenombre con pago
-# 2. Sobrenombre + código secreto
-# 3. Solo sobrenombre (requiere pago)
+@app.post("/api/horoscopo")
+async def api_horoscopo(payload: Dict[str, Any] = Body(...)):
+    _, message = _require_token_and_message(payload)
+    if USE_AI:
+        reply = f"[AI-Horóscopo] {message}"
+    else:
+        reply = build_answer_local_horoscopo(message)
+    return {"reply": reply}
+
+@app.post("/api/quickresponse")
+async def api_quickresponse(payload: Dict[str, Any] = Body(...)):
+    _, message = _require_token_and_message(payload)
+    if USE_AI:
+        reply = f"[AI-Quick] {message}"
+    else:
+        reply = build_answer_local_quick(message)
+    return {"reply": reply}
 
 # =========================
 # Arranque local
