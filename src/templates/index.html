@@ -1,67 +1,88 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Médico Virtual May Roga</title>
-<link rel="stylesheet" href="/static/css/style.css">
-<script>
-async function iniciarServicio(servicio) {
-    const nickname = document.getElementById('nickname').value.trim();
-    const code = document.getElementById('code').value.trim();
-
-    if (!nickname) {
-        alert("Ingresa tu apodo primero.");
-        return;
-    }
-
-    // Verifica acceso vía API
-    let response = await fetch(`/api/start-session`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({nickname, code})
-    });
-
-    let data = await response.json();
-
-    if (data.access) {
-        // Acceso permitido → abrir servicio
-        if (servicio === "quickresponse") {
-            window.location.href = "/quickresponse?nickname=" + encodeURIComponent(nickname) + (code ? "&code=" + encodeURIComponent(code) : "");
-        } else {
-            alert(`Acceso a ${servicio} activado. Próximo paso: servicio listo.`);
-            // Aquí puedes abrir la página real del servicio si la tienes
-        }
-    } else if (data.requires_payment) {
-        // Redirige al checkout de Stripe
-        const sessionResp = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nickname)}&servicio=${encodeURIComponent(servicio)}`);
-        const sessionData = await sessionResp.json();
-        if (sessionData.url) {
-            window.location.href = sessionData.url;
-        } else {
-            alert("Error al crear la sesión de pago.");
-        }
-    } else {
-        alert("No se pudo iniciar sesión, intenta de nuevo.");
-    }
-}
-</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Médico Virtual May Roga</title>
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-<div class="container">
-    <h1>Médico Virtual May Roga</h1>
-    <div class="login">
-        <input id="nickname" type="text" placeholder="Ingresa tu apodo">
-        <input id="code" type="text" placeholder="Código gratuito (si tienes)">
+  <div class="container" style="max-width:720px;margin:auto;padding:16px;">
+    <h1 style="margin-bottom:8px;">Médico Virtual May Roga</h1>
+
+    <p>Usa tu apodo (sobrenombre). Si tienes código gratuito, agrégalo.</p>
+
+    <div class="login" style="margin-bottom:12px;">
+      <!-- IDs: nickInput y codeInput (coinciden con /static/js/app.js) -->
+      <input id="nickInput" type="text" placeholder="Ingresa tu apodo" style="width:65%;padding:8px;margin-right:8px;" />
+      <input id="codeInput" type="password" placeholder="Código gratuito (si tienes)" style="width:30%;padding:8px;" />
     </div>
-    <div class="servicios">
-        <button onclick="iniciarServicio('asistente')">Asistente Médico</button>
-        <button onclick="iniciarServicio('risoterapia')">Risoterapia</button>
-        <button onclick="iniciarServicio('horoscopo')">Horóscopo</button>
-        <button onclick="iniciarServicio('quickresponse')">Consulta rápida</button>
+
+    <div class="servicios" style="display:flex;flex-wrap:wrap;gap:8px;">
+      <!-- IDs de botones también coinciden con app.js -->
+      <button id="goAsistente" style="flex:1;min-width:160px;padding:10px;">Asistente Médico</button>
+      <button id="goRisoterapia" style="flex:1;min-width:160px;padding:10px;">Risoterapia</button>
+      <button id="goHoroscopo" style="flex:1;min-width:160px;padding:10px;">Horóscopo</button>
+      <button id="goQuick" style="flex:1;min-width:160px;padding:10px;">Consulta rápida</button>
     </div>
-</div>
+
+    <hr style="margin:18px 0;">
+
+    <small>
+      Nota: el flujo de acceso es en este orden: 1) Sobrenombre + pago; 2) Sobrenombre + código secreto; 3) Solo sobrenombre (requiere pago).
+    </small>
+  </div>
+
+  <script>
+  // Función de respaldo: usar /api/start-session y redirigir según respuesta.
+  async function iniciarServicio(servicio) {
+    const nickname = document.getElementById('nickInput').value.trim();
+    const code = document.getElementById('codeInput').value.trim();
+
+    if (!nickname) {
+      alert("Ingresa tu apodo primero.");
+      return;
+    }
+
+    // Llamada al API que crea sesión o indica pago
+    let resp = await fetch('/api/start-session', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nickname, code })
+    });
+    const data = await resp.json();
+
+    if (data.access) {
+      // acceso permitido (access = "free" o "paid")
+      // redirige a la página del servicio con nickname y (si hay) code
+      const url = `${location.origin}/${servicio}?nickname=${encodeURIComponent(nickname)}${code ? '&code=' + encodeURIComponent(code) : ''}`;
+      window.location.href = url;
+      return;
+    }
+
+    if (data.requires_payment) {
+      // crear sesión Stripe (endpoint admite GET)
+      const sessionResp = await fetch(`/pay/create-session?nickname=${encodeURIComponent(nickname)}&servicio=${encodeURIComponent(servicio)}`);
+      const sessionData = await sessionResp.json();
+      if (sessionData.url) {
+        window.location.href = sessionData.url;
+      } else {
+        alert("Error al crear la sesión de pago.");
+      }
+      return;
+    }
+
+    alert("No se pudo iniciar sesión. Intenta de nuevo.");
+  }
+
+  // Conectar botones (también app.js hará esto si está cargado)
+  document.getElementById('goAsistente').addEventListener('click', ()=> iniciarServicio('asistente'));
+  document.getElementById('goRisoterapia').addEventListener('click', ()=> iniciarServicio('risoterapia'));
+  document.getElementById('goHoroscopo').addEventListener('click', ()=> iniciarServicio('horoscopo'));
+  document.getElementById('goQuick').addEventListener('click', ()=> iniciarServicio('quickresponse'));
+  </script>
+
+  <!-- Carga el JS común si lo tienes (no es obligatorio pero recomendado) -->
+  <script src="/static/js/app.js" defer></script>
 </body>
 </html>
-
-/asistente?token=TU_TOKEN
