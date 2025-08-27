@@ -23,6 +23,61 @@ templates = Jinja2Templates(directory="templates")
 # Configura tu API Key (usa variable de entorno en producción)
 openai.api_key = "TU_API_KEY_AQUI"
 
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import openai
+import os
+
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Asegúrate de tener tu API Key
+
+app = FastAPI()
+
+# Permitir CORS para que tu frontend pueda llamar al backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Modelo para recibir mensajes
+class MessageRequest(BaseModel):
+    nickname: str
+    message: str
+
+# Almacén simple de conversaciones (en memoria)
+conversations = {}
+
+@app.post("/api/message")
+async def handle_message(req: MessageRequest):
+    user = req.nickname
+    msg = req.message
+
+    # Inicializa historial si no existe
+    if user not in conversations:
+        conversations[user] = []
+
+    # Agrega mensaje del usuario al historial
+    conversations[user].append({"role": "user", "content": msg})
+
+    # Genera respuesta usando GPT
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=conversations[user],
+            max_tokens=200
+        )
+        reply = response.choices[0].message.content.strip()
+    except Exception as e:
+        reply = f"Error al procesar tu mensaje: {str(e)}"
+
+    # Agrega la respuesta al historial
+    conversations[user].append({"role": "assistant", "content": reply})
+
+    return {"reply": reply}
+
+
 @app.post("/api/message")
 async def send_message(request: Request):
     data = await request.json()
