@@ -1,93 +1,101 @@
-# src/main.py
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+# main.py
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+import stripe
 import os
 import openai
-import stripe
 
-# Configuración Render y Stripe
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
-
+# Configuración
+SECRET_CODE_NAME = "MKM991775"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-SECRET_CODE_NAME = "MKM991775"
-
 stripe.api_key = STRIPE_SECRET_KEY
 
-# Montaje de carpeta estática opcional (solo si usas CSS/JS)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+# Inicialización
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+env = Environment(
+    loader=FileSystemLoader("templates"),
+    autoescape=select_autoescape()
+)
+openai.api_key = OPENAI_API_KEY
 
-# Simulación de "cerebro offline"
-OFFLINE_MEMORY = {}
+# Servicios disponibles
+SERVICES = {
+    "horoscopo": {"name": "Horóscopo", "duration": 35, "price": 3},
+    "risoterapia": {"name": "Risoterapia y Bienestar", "duration": 10, "price": 12},
+    "asistente": {"name": "Asistente Virtual Médico", "duration": 8, "price": 5}
+}
 
-# Página principal
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "stripe_key": STRIPE_PUBLISHABLE_KEY})
+async def index():
+    template = env.get_template("index.html")
+    return template.render(services=SERVICES, stripe_key=STRIPE_PUBLISHABLE_KEY)
 
-# Acceso directo con código secreto
-@app.post("/access-secret")
-async def access_secret(apodo: str = Form(...), code: str = Form(...)):
-    if code.strip().upper() == SECRET_CODE_NAME:
-        OFFLINE_MEMORY[apodo] = {"active": True}
-        return JSONResponse({"success": True, "message": f"Acceso concedido para {apodo}. Ya puedes usar el Asistente Virtual Médico, Risoterapia y Horóscopo."})
-    return JSONResponse({"success": False, "message": "Código secreto incorrecto."})
+@app.post("/access")
+async def access_service(apodo: str = Form(...), code: str = Form("")):
+    if code == SECRET_CODE_NAME:
+        return JSONResponse({"status": "ok", "message": f"Acceso concedido para {apodo}. Ya puedes usar todos los servicios."})
+    return JSONResponse({"status": "fail", "message": "Código secreto incorrecto."})
 
-# Crear sesión de pago Stripe
 @app.post("/create-checkout-session")
-async def create_checkout_session(apodo: str = Form(...), servicio: str = Form(...)):
-    # Diccionario de precios
-    prices = {
-        "asistente_virtual": 500,  # en centavos
-        "risoterapia": 1200,
-        "horoscopo": 300
-    }
-    price = prices.get(servicio)
-    if not price:
-        return JSONResponse({"error": "Servicio inválido."})
-
+async def create_checkout_session(apodo: str = Form(...), service: str = Form(...)):
+    if service not in SERVICES:
+        return JSONResponse({"error": "Servicio no válido"})
+    product = SERVICES[service]
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
-                    'product_data': {'name': servicio},
-                    'unit_amount': price,
+                    'product_data': {'name': f"{product['name']} ({product['duration']} min)"},
+                    'unit_amount': int(product['price'] * 100),
                 },
-                'quantity': 1,
+                'quantity': 1
             }],
             mode='payment',
-            success_url=f"{os.environ.get('FRONTEND_URL')}?apodo={apodo}&servicio={servicio}",
-            cancel_url=f"{os.environ.get('FRONTEND_URL')}",
+            success_url=f"https://tu-dominio.com/success?apodo={apodo}&service={service}",
+            cancel_url=f"https://tu-dominio.com/cancel",
         )
         return JSONResponse({"url": session.url})
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
-# Chat con asistente (OpenAI + backup offline)
-@app.post("/chat")
-async def chat(apodo: str = Form(...), message: str = Form(...)):
-    if apodo not in OFFLINE_MEMORY or not OFFLINE_MEMORY[apodo].get("active"):
-        return JSONResponse({"respuesta": "Debes usar el código secreto o pagar para acceder al servicio."})
-
-    # Intentar OpenAI
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    endpoint_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
     try:
-        openai.api_key = os.environ.get("OPENAI_API_KEY")
-        completion = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Eres Asistente Virtual Médico, Risoterapia y Horóscopo, basado en técnicas de vida de May Roga LLC."},
-                {"role": "user", "content": message}
-            ],
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            # Aquí llamas al servicio: iniciar Asistente/Risoterapia/Horóscopo
+            apodo = session["metadata"]["apodo"] if "metadata" in session else "Usuario"
+            # Log o iniciar servicio real
+            print(f"Acceso concedido vía pago para {apodo}")
+        return JSONResponse({"status": "success"})
+    except Exception as e:
+        return JSONResponse({"status": "fail", "error": str(e)})
+
+@app.post("/send-message")
+async def send_message(apodo: str = Form(...), message: str = Form(...), service: str = Form(...)):
+    # Llamada a OpenAI para respuesta inteligente
+    if not message.strip():
+        return JSONResponse({"response": "No se recibió mensaje."})
+    prompt = f"Servicio: {service}\nApodo: {apodo}\nMensaje: {message}\nRespuesta:"
+    try:
+        response = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=prompt,
+            max_tokens=200,
             temperature=0.7
         )
-        respuesta = completion.choices[0].message.content
-    except Exception:
-        # Backup offline simple
-        respuesta = f"Respuesta generada para '{apodo}': tu mensaje '{message}' ha sido recibido por Asistente Virtual Médico."
-
-    return JSONResponse({"respuesta": respuesta})
+        answer = response.choices[0].text.strip()
+        return JSONResponse({"response": answer})
+    except Exception as e:
+        return JSONResponse({"response": f"Error generando respuesta: {str(e)}"})
