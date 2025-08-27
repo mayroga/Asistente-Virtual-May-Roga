@@ -1,24 +1,104 @@
-# Médico Virtual May Roga
+# Medico Virtual + Risoterapia + Horóscopo - May Roga LLC
 
-## Descripción
-Médico Virtual May Roga es un asistente virtual de bienestar integral que ofrece los siguientes servicios:  
+Este proyecto implementa un **Medico Virtual 24/7**, con integración de **Risoterapia** (Técnicas de Vida), **Horóscopo** y **respaldo automático desde JSON**. También incluye **pago con Stripe**.
 
-- **Asistente Médico**: Informativo, proporciona guía sobre diagnóstico y tratamientos, incluyendo tratamientos económicos y opciones avanzadas.  
-- **Risoterapia y Bienestar Natural**: Basado en las Técnicas de Vida (Tvid) de Maykel Rodríguez García, fundador de May Roga LLC.  
-- **Horóscopo**: Lectura combinada con risoterapia y bienestar natural.  
-- **Respuestas Rápidas**: Servicio de corta duración (45 segundos), solo para risoterapia y horóscopo.  
+---
 
-⚠️ Aviso: Este servicio está enfocado en países en vías de desarrollo. No reemplaza la atención médica profesional. En caso de encontrarse en un país desarrollado o tener acceso inmediato a un sistema de salud, le recomendamos consultar directamente con un profesional médico.
+## 📂 Estructura mínima
 
-## Requisitos
-- Python 3.10 o superior
-- Librerías:
-  - fastapi
-  - uvicorn
-  - stripe
-  - starlette
+src/
+main.py # Código principal de FastAPI
+templates/
+index.html # Interfaz del chat
+static/
+css/
+style.css # Estilos
+js/
+images/
+data/
+behavior_guide.json # Respaldo general
+enfermedades.json # Respaldo de enfermedades
+urgencias.json # Respaldo de urgencias
+requirements.txt # Dependencias
+runtime.txt # Python version
+render.yaml # Configuración Render
+.env # Variables de entorno
 
-Instalación de dependencias:
 
-```bash
-pip install -r requirements.txt
+---
+
+## ⚡ Configuración rápida en Render
+
+1. Crear **nuevo servicio web** en Render.  
+2. Tipo: `Python`  
+3. Repositorio: tu repo con esta estructura  
+4. Comando de build:  
+5. Comando de start:  
+6. Variables de entorno:
+- `OPENAI_API_KEY` → tu clave OpenAI  
+- `STRIPE_API_KEY` → clave Stripe  
+- `SUCCESS_URL` → URL tras pago exitoso  
+- `CANCEL_URL` → URL si el pago se cancela  
+
+---
+
+## 🚀 Probar endpoints
+
+- **Ping:**  
+6. Variables de entorno:
+- `OPENAI_API_KEY` → tu clave OpenAI  
+- `STRIPE_API_KEY` → clave Stripe  
+- `SUCCESS_URL` → URL tras pago exitoso  
+- `CANCEL_URL` → URL si el pago se cancela  
+
+---
+
+## 🚀 Probar endpoints
+
+- **Ping:**  
+Debe devolver:  
+```json
+{"message":"Servidor activo 🚀"}
+POST /chat
+form-data: message="texto"
+Mensaje general → respaldo behavior_guide
+
+Contiene "enfermedad" → respaldo enfermedades
+
+Contiene "urgencia" → respaldo urgencias
+
+"horóscopo" o "risoterapia" → texto fijo
+
+Stripe pago:
+POST /create-checkout-session
+🔄 Respaldo automático
+
+Si OpenAI falla, el sistema usa los JSON de respaldo (behavior_guide.json, enfermedades.json, urgencias.json)
+
+Garantiza que siempre haya respuesta, incluso sin servicio externo.
+💡 Notas
+
+static/ y templates/ son obligatorios para que Render sirva la web.
+
+data/ contiene JSON de respaldo, debe existir.
+
+Se puede ampliar el chat agregando más respuestas en los JSON.
+
+Para producción Stripe, cambiar STRIPE_API_KEY a la clave real.
+Listo para deploy final en Render.
+Solo push al repo y Render instalará y desplegará automáticamente.
+
+---
+
+Con esto tienes:  
+
+- **Explicación completa de carpetas**  
+- **Instrucciones de Render**  
+- **Cómo probar chat + respaldo + Stripe**  
+- **Listo para producción**  
+
+---
+
+Si quieres, el siguiente paso es que haga **un mini checklist final de 5 minutos** para probar todo y asegurarte que el proyecto ya queda 100% operativo en Render.  
+
+¿Hacemos eso ahora?
