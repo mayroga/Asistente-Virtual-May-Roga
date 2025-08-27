@@ -8,15 +8,33 @@
 </head>
 <body>
     <header>
-        <h1>Bienvenido al Médico Virtual de May Roga LLC</h1>
-        <p>Risoterapia y Bienestar Natural con Técnicas de Vida (TVid)</p>
+        <h1>Médico Virtual - Risoterapia & Bienestar Natural</h1>
+        <p>Bienvenido al centro virtual de bienestar de May Roga LLC</p>
     </header>
 
     <main>
-        <section>
-            <h2>Tu espacio de salud y bienestar</h2>
-            <p>Accede a consultas de risoterapia, bienestar natural, médico virtual y horóscopo en un solo lugar.</p>
-            <button onclick="mostrarMensaje()">Probar ahora</button>
+        <section id="intro">
+            <h2>Tu espacio de salud y alegría</h2>
+            <p>Aquí puedes acceder a consultas virtuales de risoterapia, bienestar natural, horóscopo y médico virtual.</p>
+        </section>
+
+        <section id="services">
+            <h2>Servicios Disponibles</h2>
+            <ul>
+                <li>🌿 Risoterapia y Bienestar Natural</li>
+                <li>🧑‍⚕️ Médico Virtual</li>
+                <li>🔮 Horóscopo Diario</li>
+                <li>⚡ Respuestas Rápidas</li>
+            </ul>
+        </section>
+
+        <section id="app">
+            <h2>Asistente Virtual</h2>
+            <div id="chatbox">
+                <div id="messages"></div>
+                <input type="text" id="userInput" placeholder="Escribe tu consulta aquí...">
+                <button onclick="sendMessage()">Enviar</button>
+            </div>
         </section>
     </main>
 
