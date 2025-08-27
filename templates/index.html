@@ -8,7 +8,13 @@
   <h1>Medico Virtual 24/7</h1>
 
   <form id="chatForm">
+    <input type="text" id="usuario" placeholder="Tu apodo/nombre" required>
     <input type="text" id="message" placeholder="Escribe tu mensaje..." required>
+    <select id="pago" required>
+      <option value="">¿Pagaste?</option>
+      <option value="si">Sí</option>
+      <option value="no">No</option>
+    </select>
     <button type="submit">Enviar</button>
   </form>
 
@@ -20,13 +26,17 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const usuario = document.getElementById("usuario").value;
       const message = document.getElementById("message").value;
+      const pago = document.getElementById("pago").value;
+
       responseDiv.innerHTML = "Procesando...";
 
       const res = await fetch("/chat", {
         method: "POST",
-        body: new URLSearchParams({ message })
+        body: new URLSearchParams({ usuario, message, pago })
       });
+
       const data = await res.json();
       responseDiv.innerHTML = `<b>Respuesta:</b> ${data.respuesta}`;
       form.reset();
