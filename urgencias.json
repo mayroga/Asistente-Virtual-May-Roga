@@ -1,51 +1,14 @@
-[
+{
+  "urgencias": [
     {
-        "nombre": "Infarto agudo de miocardio",
-        "signos_sintomas": [
-            "Dolor torácico intenso",
-            "Sudoración",
-            "Náuseas"
-        ],
-        "acciones_inmediatas": [
-            "Llamar al 911",
-            "Administrar oxígeno",
-            "Aspirina si no hay contraindicación"
-        ],
-        "examenes_diagnosticos": [
-            "Electrocardiograma",
-            "Troponina"
-        ],
-        "tratamiento_hospitalario": [
-            "Angioplastia",
-            "Medicamentos trombolíticos"
-        ],
-        "contraindicaciones": [
-            "Aspirina en alergia",
-            "Reposo absoluto"
-        ]
+      "tipo": "Infarto",
+      "signos": ["Dolor en el pecho", "Dificultad para respirar", "Sudor frío"],
+      "accion": "Llamar a emergencias inmediatamente y administrar primeros auxilios si sabe cómo"
     },
     {
-        "nombre": "Accidente cerebrovascular (ACV)",
-        "signos_sintomas": [
-            "Debilidad súbita en un lado del cuerpo",
-            "Dificultad para hablar",
-            "Pérdida de visión"
-        ],
-        "acciones_inmediatas": [
-            "Llamar al 911",
-            "Mantener vía aérea despejada",
-            "No administrar comida o bebida"
-        ],
-        "examenes_diagnosticos": [
-            "Tomografía cerebral",
-            "Resonancia magnética"
-        ],
-        "tratamiento_hospitalario": [
-            "Trombolíticos si es isquémico",
-            "Cirugía si es hemorrágico"
-        ],
-        "contraindicaciones": [
-            "Medicamentos anticoagulantes en hemorragia"
-        ]
+      "tipo": "Accidente cerebrovascular",
+      "signos": ["Debilidad súbita", "Dificultad para hablar", "Parálisis facial"],
+      "accion": "Llamar a emergencias inmediatamente y mantener a la persona cómoda"
     }
-]
+  ]
+}
