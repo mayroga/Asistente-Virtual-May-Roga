@@ -1,14 +1,10 @@
-{
-  "urgencias": [
-    {
-      "tipo": "Infarto",
-      "signos": ["Dolor en el pecho", "Dificultad para respirar", "Sudor frío"],
-      "accion": "Llamar a emergencias inmediatamente y administrar primeros auxilios si sabe cómo"
-    },
-    {
-      "tipo": "Accidente cerebrovascular",
-      "signos": ["Debilidad súbita", "Dificultad para hablar", "Parálisis facial"],
-      "accion": "Llamar a emergencias inmediatamente y mantener a la persona cómoda"
-    }
-  ]
-}
+[
+  {
+    "tipo": "infarto",
+    "acciones": ["llamar al 911", "iniciar RCP si es necesario", "mantener calma al paciente"]
+  },
+  {
+    "tipo": "fractura",
+    "acciones": ["inmovilizar la extremidad", "aplicar hielo", "llevar a urgencias"]
+  }
+]
