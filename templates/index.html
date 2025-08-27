@@ -3,126 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asistente Virtual - May Roga</title>
+  <title>Medico Virtual May Roga</title>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; font-size: 18px; line-height: 1.5; }
+    body { font-family: Arial, sans-serif; font-size: 18px; padding: 20px; line-height: 1.5; }
     h1 { font-size: 28px; margin-bottom: 5px; }
-    .subtitulo { font-size: 14px; color: gray; margin-bottom: 15px; }
+    .subtitulo { font-size: 14px; color: gray; margin-bottom: 20px; }
     label { display: block; margin-top: 12px; font-weight: bold; }
-    input, select, button { width: 100%; padding: 12px; margin-top: 5px; font-size: 18px; }
-    button { background-color: #007BFF; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    input, select, button { width: 100%; padding: 12px; margin-top: 5px; font-size: 18px; border-radius: 6px; border: 1px solid #ccc; }
+    button { background-color: #007BFF; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #0056b3; }
-    #servicio-output, #response { margin-top: 20px; font-size: 18px; font-weight: bold; }
+    #response, #acceso-msg { margin-top: 15px; font-size: 18px; font-weight: bold; }
+    .container { max-width: 500px; margin: auto; }
   </style>
 </head>
 <body>
-  <h1>Asistente Virtual</h1>
-  <div class="subtitulo">Medico Virtual May Roga - Informativo</div>
+  <div class="container">
+    <h1>Asistente Virtual</h1>
+    <div class="subtitulo">Medico Virtual May Roga - Informativo</div>
+    <p>Ingresa tu apodo y usa el código secreto o paga para acceder al servicio.</p>
 
-  <p>Ingresa tu apodo y usa el código secreto o paga para acceder al servicio.</p>
+    <label for="apodo_secret">Tu Apodo:</label>
+    <input type="text" id="apodo_secret" placeholder="Ej: FVF">
 
-  <!-- ACCESO CON CÓDIGO SECRETO -->
-  <form id="secret-form">
-    <label>Tu Apodo:</label>
-    <input type="text" id="secret-apodo" required>
-    <label>Código Secreto:</label>
-    <input type="text" id="secret-code" placeholder="MKM991775" required>
-    <button type="submit">Acceso Directo</button>
-  </form>
+    <label for="code_secret">Código Secreto:</label>
+    <input type="text" id="code_secret" placeholder="MKM991775">
 
-  <div id="secret-output"></div>
+    <button id="access-btn">Acceso Directo</button>
+    <div id="acceso-msg"></div>
 
-  <hr>
+    <hr>
 
-  <!-- PAGO CON STRIPE -->
-  <form id="payment-form">
-    <label>Tu Apodo:</label>
-    <input type="text" id="pay-apodo" required>
-    <label>Selecciona Servicio:</label>
-    <select id="servicio" required>
+    <label for="apodo_pay">Tu Apodo:</label>
+    <input type="text" id="apodo_pay" placeholder="Ej: FVF">
+
+    <label for="servicio">Selecciona Servicio:</label>
+    <select id="servicio">
       <option value="asistente_virtual">Asistente Virtual (8 min, $5)</option>
       <option value="risoterapia">Risoterapia (10 min, $12)</option>
       <option value="horoscopo">Horóscopo (35 seg, $3)</option>
     </select>
-    <button type="submit">Pagar con Stripe</button>
-  </form>
 
-  <div id="servicio-output"></div>
+    <button id="pay-btn">Pagar con Stripe</button>
 
-  <!-- CHAT -->
-  <form id="chatForm" style="margin-top:20px;">
-    <label>Envía tu mensaje al asistente:</label>
-    <input type="text" id="message" placeholder="Escribe tu mensaje..." required>
-    <button type="submit">Enviar</button>
-  </form>
+    <hr>
 
-  <div id="response"></div>
+    <label for="message">Envía tu mensaje al asistente:</label>
+    <input type="text" id="message" placeholder="Escribe tu mensaje...">
+    <button id="send-btn">Enviar</button>
+    <div id="response"></div>
+  </div>
 
   <script>
-    const secretForm = document.getElementById("secret-form");
-    const secretOutput = document.getElementById("secret-output");
-    const paymentForm = document.getElementById("payment-form");
-    const servicioOutput = document.getElementById("servicio-output");
-    const chatForm = document.getElementById("chatForm");
+    const accessBtn = document.getElementById("access-btn");
+    const accesoMsg = document.getElementById("acceso-msg");
+    const payBtn = document.getElementById("pay-btn");
+    const sendBtn = document.getElementById("send-btn");
     const responseDiv = document.getElementById("response");
 
-    const SECRET_CODE_NAME = "MKM991775";
+    let currentApodo = "";
 
-    // ACCESO POR CÓDIGO SECRETO
-    secretForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const apodo = document.getElementById("secret-apodo").value.trim();
-      const code = document.getElementById("secret-code").value.trim().toUpperCase();
-      if(code === SECRET_CODE_NAME){
-        secretOutput.innerHTML = `Acceso concedido para ${apodo}. Ya puedes usar el Asistente Virtual Médico, Risoterapia y Horóscopo.`;
-        window.currentUser = apodo;
-      } else {
-        secretOutput.innerHTML = `Código incorrecto.`;
-      }
+    // Acceso directo con código secreto
+    accessBtn.addEventListener("click", async () => {
+      const apodo = document.getElementById("apodo_secret").value.trim();
+      const code = document.getElementById("code_secret").value.trim();
+      if(!apodo || !code) { accesoMsg.innerText = "Completa ambos campos."; return; }
+
+      const res = await fetch("/access-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ apodo, code })
+      });
+      const data = await res.json();
+      accesoMsg.innerText = data.message;
+      if(data.success) currentApodo = apodo;
     });
 
-    // PAGO CON STRIPE
-    paymentForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const apodo = document.getElementById("pay-apodo").value.trim();
+    // Pago Stripe
+    payBtn.addEventListener("click", async () => {
+      const apodo = document.getElementById("apodo_pay").value.trim();
       const servicio = document.getElementById("servicio").value;
+      if(!apodo) { alert("Ingresa tu apodo."); return; }
 
-      if(!apodo) return alert("Ingresa tu apodo.");
-
-      const response = await fetch("/create-checkout-session", {
+      const res = await fetch("/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ apodo, servicio })
       });
-
-      const data = await response.json();
-      if(data.url){
-        window.currentUser = apodo;
-        window.location.href = data.url;
-      } else {
-        alert("Error al generar el pago: " + data.error);
-      }
+      const data = await res.json();
+      if(data.url) window.location.href = data.url;
+      else alert("Error al generar el pago: " + data.error);
     });
 
-    // CHAT
-    chatForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    // Chat con asistente
+    sendBtn.addEventListener("click", async () => {
       const message = document.getElementById("message").value.trim();
-      if(!message) return;
+      if(!message || !currentApodo) { responseDiv.innerText = "Debes acceder primero con código secreto o pago."; return; }
 
-      const apodo = window.currentUser || "Usuario";
-
-      responseDiv.innerHTML = "Procesando...";
-
+      responseDiv.innerText = "Procesando...";
       const res = await fetch("/chat", {
         method: "POST",
-        body: new URLSearchParams({ apodo, message })
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ apodo: currentApodo, message })
       });
-
       const data = await res.json();
-      responseDiv.innerHTML = `<b>Respuesta:</b> ${data.respuesta}`;
-      chatForm.reset();
+      responseDiv.innerText = data.respuesta;
+      document.getElementById("message").value = "";
     });
   </script>
 </body>
