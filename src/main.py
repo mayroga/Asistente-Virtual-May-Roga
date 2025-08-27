@@ -14,11 +14,15 @@ from fastapi.templating import Jinja2Templates
 
 import openai
 
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI()
 
-# Configurar templates y estáticos
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+# Monta la carpeta estática única
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
+app = FastAPI()
 
 # Configura tu API Key (usa variable de entorno en producción)
 openai.api_key = "TU_API_KEY_AQUI"
