@@ -1,50 +1,37 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("chat-form");
-    const inputMessage = document.getElementById("message");
-    const chatBox = document.getElementById("chat-box");
-    const nickname = document.getElementById("nickname");
+const chatForm = document.getElementById('chat-form');
+const chatBox = document.getElementById('chat-box');
+const messageInput = document.getElementById('message');
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message) return;
 
-        if (!nickname.value.trim()) {
-            alert("Ingresa tu apodo primero.");
-            return;
-        }
+    // Mostrar mensaje del usuario
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'message user-message';
+    userMsgDiv.textContent = message;
+    chatBox.appendChild(userMsgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    messageInput.value = '';
 
-        const message = inputMessage.value.trim();
-        if (!message) return;
+    // Enviar al backend
+    try {
+        const response = await fetch('/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        const data = await response.json();
 
-        // Mostrar mensaje del usuario en la pantalla
-        const userMsg = document.createElement("div");
-        userMsg.className = "user-message";
-        userMsg.textContent = `Tú: ${message}`;
-        chatBox.appendChild(userMsg);
-
-        inputMessage.value = "";
+        // Mostrar mensaje del asistente
+        const assistantMsgDiv = document.createElement('div');
+        assistantMsgDiv.className = 'message assistant-message';
+        assistantMsgDiv.textContent = data.reply || "No hay respuesta.";
+        chatBox.appendChild(assistantMsgDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        // Enviar mensaje al backend
-        try {
-            const resp = await fetch("/api/message", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({nickname: nickname.value, message})
-            });
-            const data = await resp.json();
-
-            const replyMsg = document.createElement("div");
-            replyMsg.className = "bot-message";
-            replyMsg.textContent = data.reply ? `Asistente: ${data.reply}` : `Error: ${data.error}`;
-            chatBox.appendChild(replyMsg);
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-        } catch (err) {
-            console.error(err);
-            const errorMsg = document.createElement("div");
-            errorMsg.className = "bot-message";
-            errorMsg.textContent = "Error al enviar mensaje.";
-            chatBox.appendChild(errorMsg);
-        }
-    });
+    } catch (error) {
+        console.error('Error enviando mensaje:', error);
+    }
 });
