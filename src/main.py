@@ -7,6 +7,47 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+import openai
+
+app = FastAPI()
+
+# Configurar templates y estáticos
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# Configura tu API Key (usa variable de entorno en producción)
+openai.api_key = "TU_API_KEY_AQUI"
+
+@app.post("/api/message")
+async def send_message(request: Request):
+    data = await request.json()
+    user_message = data.get("message", "")
+
+    if not user_message.strip():
+        return JSONResponse({"reply": "Por favor escribe un mensaje."})
+
+    try:
+        # Llamada a OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Eres un asistente médico experto en risoterapia y bienestar natural."},
+                {"role": "user", "content": user_message}
+            ]
+        )
+        bot_reply = response["choices"][0]["message"]["content"]
+
+        return JSONResponse({"reply": bot_reply})
+
+    except Exception as e:
+        return JSONResponse({"reply": f"Error al conectar con el asistente: {str(e)}"})
+
+
 # =========================
 # Configuración y Stripe
 # =========================
