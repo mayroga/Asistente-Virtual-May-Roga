@@ -6,8 +6,8 @@ import openai
 
 app = FastAPI()
 
-# Configurar OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Tu clave secreta (solo para ti)
+MI_CLAVE_OPENAI = os.getenv("MKM991775")
 
 # Cargar JSON de respaldo
 def cargar_json(nombre):
@@ -29,7 +29,22 @@ async def index():
 
 # Endpoint chat
 @app.post("/chat")
-async def chat(message: str = Form(...)):
+async def chat(message: str = Form(...), usuario: str = Form(...), pago: str = Form(...)):
+    """
+    usuario: apodo/nombre del usuario
+    pago: 'si' si el usuario pagó, 'no' si no
+    """
+    # Acceso gratuito solo para ti
+    if usuario == "MKM991775":
+        api_key = MI_CLAVE_OPENAI
+        tiene_acceso = True
+    else:
+        api_key = None
+        tiene_acceso = (pago.lower() == "si")
+
+    if not tiene_acceso:
+        return JSONResponse({"respuesta": "Debe registrarse y pagar para acceder al servicio."})
+
     mensaje = message.lower()
     
     # Horóscopo
@@ -50,13 +65,17 @@ async def chat(message: str = Form(...)):
     
     # General / respaldo
     else:
-        try:
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": message}]
-            )
-            respuesta = completion.choices[0].message.content
-        except:
+        if api_key:
+            try:
+                openai.api_key = api_key
+                completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": message}]
+                )
+                respuesta = completion.choices[0].message.content
+            except:
+                respuesta = behavior_guide.get("respuestas", ["Lo siento, no puedo responder ahora."])[0]
+        else:
             respuesta = behavior_guide.get("respuestas", ["Lo siento, no puedo responder ahora."])[0]
 
     return JSONResponse({"respuesta": respuesta})
