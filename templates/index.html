@@ -109,3 +109,94 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medico Virtual May Roga</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 18px; padding: 20px; }
+    h1 { font-size: 28px; }
+    .subtitulo { font-size: 12px; color: gray; margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    select, input { width: 100%; padding: 8px; margin-top: 5px; font-size: 18px; }
+    button { margin-top: 15px; padding: 12px; font-size: 20px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 5px; }
+    button:hover { background-color: #0056b3; }
+    #servicio-output { margin-top: 25px; font-size: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Asistente Virtual</h1>
+  <div class="subtitulo">Medico Virtual May Roga - Informativo</div>
+  <p>Elige tu servicio, ingresa tu apodo y paga para comenzar.</p>
+
+  <form id="payment-form">
+    <label for="apodo">Tu Apodo:</label>
+    <input type="text" id="apodo" name="apodo" required>
+
+    <label for="servicio">Selecciona Servicio:</label>
+    <select id="servicio" name="servicio" required>
+      <option value="asistente_virtual">Asistente Virtual (8 min, $5)</option>
+      <option value="risoterapia">Risoterapia (10 min, $12)</option>
+      <option value="horoscopo">Horóscopo (35 seg, $3)</option>
+    </select>
+
+    <button type="submit">Pagar con Stripe</button>
+  </form>
+
+  <div id="servicio-output"></div>
+
+  <script>
+    const form = document.getElementById("payment-form");
+    const outputDiv = document.getElementById("servicio-output");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const apodo = document.getElementById("apodo").value;
+      const servicio = document.getElementById("servicio").value;
+
+      if(!apodo) {
+        alert("Por favor ingresa tu apodo");
+        return;
+      }
+
+      // Crear sesión de Stripe
+      const response = await fetch("/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ apodo, servicio })
+      });
+
+      const data = await response.json();
+      if(data.url){
+        // Redirige a Stripe
+        window.location.href = data.url;
+      } else {
+        alert("Error al generar el pago: " + data.error);
+      }
+    });
+
+    // Mostrar servicio después del pago
+    async function mostrarServicio(apodo, servicio) {
+      const res = await fetch("/get-service", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ apodo, servicio })
+      });
+
+      const data = await res.json();
+      outputDiv.innerHTML = `<b>Hola ${apodo}, tu servicio:</b><br>${data.resultado}`;
+    }
+
+    // Detecta query params de Stripe para mostrar servicio (ejemplo)
+    const urlParams = new URLSearchParams(window.location.search);
+    const apodo = urlParams.get("apodo");
+    const servicio = urlParams.get("servicio");
+    if(apodo && servicio) {
+      mostrarServicio(apodo, servicio);
+    }
+  </script>
+</body>
+</html>
