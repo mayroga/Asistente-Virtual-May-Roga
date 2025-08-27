@@ -1,66 +1,87 @@
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import stripe
+import os
+
+# Stripe key
+stripe.api_key = "TU_STRIPE_SECRET_KEY"
 
 app = FastAPI()
 
-# Configura tu clave secreta de Stripe
-stripe.api_key = "TU_STRIPE_SECRET_KEY"
-
-# Plantillas
+# Templates
 templates = Jinja2Templates(directory="templates")
 
+# No usamos StaticFiles para evitar errores de carpeta
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Código secreto válido
+CODIGO_SECRETO = "MKM991775"
+
 # Página principal
-@app.get("/", response_class=HTMLResponse)
-async def read_index(request: Request):
+@app.get("/")
+async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# Crear sesión de pago
+# Crear sesión de pago Stripe
 @app.post("/create-checkout-session")
-async def create_checkout_session(apodo: str = Form(...), servicio: str = Form(...)):
-    try:
-        # Precios de ejemplo
-        precios = {
-            "asistente_virtual": 500,  # $5.00
-            "risoterapia": 1200,       # $12.00
-            "horoscopo": 300           # $3.00
-        }
-        if servicio not in precios:
-            return JSONResponse({"error": "Servicio inválido"}, status_code=400)
+async def create_checkout_session(
+    request: Request,
+    apodo: str = Form(...),
+    servicio: str = Form(...)
+):
+    if not apodo:
+        return JSONResponse({"error": "Debes ingresar un apodo"})
+    
+    # Lógica de precios
+    precios = {
+        "asistente_virtual": 500,  # $5 en centavos
+        "risoterapia": 1200,       # $12
+        "horoscopo": 300           # $3
+    }
+    precio = precios.get(servicio, 0)
 
-        session = stripe.checkout.Session.create(
+    try:
+        checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": servicio},
-                    "unit_amount": precios[servicio],
+                    "unit_amount": precio,
                 },
                 "quantity": 1,
             }],
             mode="payment",
-            success_url=f"{request.url.scheme}://{request.url.hostname}/?apodo={apodo}&servicio={servicio}",
-            cancel_url=f"{request.url.scheme}://{request.url.hostname}/",
+            success_url=f"{request.url.scheme}://{request.url.hostname}?apodo={apodo}&servicio={servicio}",
+            cancel_url=f"{request.url.scheme}://{request.url.hostname}",
         )
-        return JSONResponse({"url": session.url})
+        return JSONResponse({"url": checkout_session.url})
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
-# Servicio después del pago
+# Obtener servicio después del pago
 @app.post("/get-service")
 async def get_service(apodo: str = Form(...), servicio: str = Form(...)):
-    mensajes = {
-        "asistente_virtual": "Accediste al Asistente Virtual Médico. Disfruta tu sesión.",
-        "risoterapia": "Bienvenido a tu sesión de Risoterapia y Bienestar Natural.",
-        "horoscopo": "Aquí está tu horóscopo personalizado."
+    mensajes_servicio = {
+        "asistente_virtual": "Acceso completo al Asistente Virtual Médico",
+        "risoterapia": "Sesión de Risoterapia y Bienestar Natural",
+        "horoscopo": "Tu Horóscopo personalizado"
     }
-    resultado = mensajes.get(servicio, "Servicio desconocido")
+    resultado = mensajes_servicio.get(servicio, "Servicio no encontrado")
     return JSONResponse({"resultado": resultado})
 
-# Chat con asistente
+# Chat con Asistente Virtual
 @app.post("/chat")
 async def chat(apodo: str = Form(...), message: str = Form(...)):
-    # Respuesta simple de ejemplo, puedes integrar GPT u otro motor aquí
-    respuesta = f"{apodo}, tu mensaje fue recibido: {message}"
+    # Aquí puedes integrar la lógica real de AI o respuestas predefinidas
+    respuesta = f"{apodo}, recibí tu mensaje: '{message}'. Pronto recibirás tu asistencia."
     return JSONResponse({"respuesta": respuesta})
+
+# Validación de código secreto al iniciar el servicio
+@app.post("/start-service")
+async def start_service(apodo: str = Form(...), codigo: str = Form(...), servicio: str = Form(...)):
+    if codigo.lower() != CODIGO_SECRETO.lower():
+        return JSONResponse({"error": "Código secreto incorrecto"})
+    return JSONResponse({"resultado": f"Bienvenido {apodo}, comenzando tu servicio: {servicio}"})
