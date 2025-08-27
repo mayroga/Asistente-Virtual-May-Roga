@@ -4,12 +4,28 @@
     <meta charset="UTF-8">
     <title>Medico Virtual May Roga LLC</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin:20px; }
+        h1 { text-align:center; }
+        #chat-container { max-width:600px; margin:auto; }
+        #messages { height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; background:#f9f9f9; }
+        .mensaje { margin:5px 0; padding:5px 10px; border-radius:5px; max-width:80%; }
+        .usuario { background:#d1e7dd; align-self:flex-end; }
+        .bot { background:#ffe5b4; align-self:flex-start; }
+        #chat-form { display:flex; margin-top:10px; }
+        #chat-form input { flex:1; padding:5px; }
+        #chat-form button { padding:5px 10px; margin-left:5px; }
+        #botones { display:flex; justify-content:space-around; margin-top:15px; flex-wrap:wrap; }
+        #botones button { padding:5px 10px; margin:5px; }
+        .error { color:red; font-weight:bold; }
+        #messages { display:flex; flex-direction:column; }
+    </style>
 </head>
 <body>
     <h1>Medico Virtual + Risoterapia + Horóscopo</h1>
 
     <div id="chat-container">
-        <div id="messages" style="height:300px; overflow-y:auto; border:1px solid #ccc; padding:5px;"></div>
+        <div id="messages"></div>
         <form id="chat-form">
             <input type="text" id="user-message" placeholder="Escribe tu mensaje..." required>
             <button type="submit">Enviar</button>
@@ -26,35 +42,43 @@
 
     <script>
         async function enviarMensaje(msg) {
-            const formData = new FormData();
-            formData.append("message", msg);
-
-            const res = await fetch("/chat", {method:"POST", body: formData});
-            const data = await res.json();
-            mostrarMensaje("Tú: " + msg);
-            mostrarMensaje("Bot: " + data.respuesta);
+            mostrarMensaje(msg, "usuario");
+            try {
+                const formData = new FormData();
+                formData.append("message", msg);
+                const res = await fetch("/chat", { method: "POST", body: formData });
+                const data = await res.json();
+                mostrarMensaje(data.respuesta, "bot");
+            } catch (e) {
+                mostrarMensaje("Error al procesar la solicitud", "bot error");
+            }
         }
 
-        function mostrarMensaje(texto) {
+        function mostrarMensaje(texto, tipo) {
             const messages = document.getElementById("messages");
             const p = document.createElement("p");
             p.textContent = texto;
+            p.className = "mensaje " + (tipo === "usuario" ? "usuario" : tipo === "bot" ? "bot" : "error");
             messages.appendChild(p);
             messages.scrollTop = messages.scrollHeight;
         }
 
         document.getElementById("chat-form").addEventListener("submit", function(e){
             e.preventDefault();
-            const msg = document.getElementById("user-message").value;
-            enviarMensaje(msg);
+            const msg = document.getElementById("user-message").value.trim();
+            if(msg) enviarMensaje(msg);
             document.getElementById("user-message").value = "";
         });
 
         document.getElementById("pago-btn").addEventListener("click", async () => {
-            const res = await fetch("/create-checkout-session", {method: "POST"});
-            const data = await res.json();
-            if (data.url) window.location.href = data.url;
-            else alert("Error al crear sesión de pago");
+            try {
+                const res = await fetch("/create-checkout-session", { method: "POST" });
+                const data = await res.json();
+                if (data.url) window.location.href = data.url;
+                else mostrarMensaje("Error al crear sesión de pago", "bot error");
+            } catch {
+                mostrarMensaje("Error al crear sesión de pago", "bot error");
+            }
         });
     </script>
 </body>
