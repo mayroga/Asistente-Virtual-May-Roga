@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asistente May Roga</title>
+  <title>Medico Virtual May Roga</title>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     body { font-family: Arial, sans-serif; font-size: 20px; padding: 20px; line-height: 1.6; }
@@ -20,7 +20,17 @@
 <body>
   <h1>Asistente Virtual</h1>
   <div class="subtitulo">Medico Virtual May Roga - Informativo</div>
-  <p>Elige tu servicio, ingresa tu apodo y paga para comenzar.</p>
+  <p>Elige tu servicio, ingresa tu apodo y paga o usa el código secreto para comenzar.</p>
+
+  <form id="secret-form">
+    <label for="apodo-secret">Tu Apodo:</label>
+    <input type="text" id="apodo-secret" name="apodo" placeholder="Escribe tu apodo">
+    <label for="code-secret">Código Secreto:</label>
+    <input type="text" id="code-secret" name="code" placeholder="Escribe tu código secreto">
+    <button type="submit">Acceso Directo</button>
+  </form>
+
+  <hr style="margin:30px 0">
 
   <form id="payment-form">
     <label for="apodo">Tu Apodo:</label>
@@ -48,52 +58,71 @@
 
   <script>
     const paymentForm = document.getElementById("payment-form");
+    const secretForm = document.getElementById("secret-form");
     const chatForm = document.getElementById("chatForm");
     const outputDiv = document.getElementById("servicio-output");
     const responseDiv = document.getElementById("response");
 
-    paymentForm.addEventListener("submit", async (e) => {
+    // Acceso con código secreto
+    secretForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const apodo = document.getElementById("apodo").value.trim();
-      const servicio = document.getElementById("servicio").value;
+      const apodo = document.getElementById("apodo-secret").value;
+      const code = document.getElementById("code-secret").value;
 
-      if(!apodo) { alert("Por favor ingresa tu apodo"); return; }
+      if(!apodo || !code) return alert("Ingresa apodo y código secreto");
 
-      try {
-        const response = await fetch("/create-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ apodo, servicio })
-        });
+      const res = await fetch("/secret-access", {
+        method: "POST",
+        body: new URLSearchParams({ apodo, code })
+      });
 
-        const data = await response.json();
-        if(data.url){ window.location.href = data.url; }
-        else { alert("Error al generar el pago: " + data.error); }
+      const data = await res.json();
+      if(data.error) return alert(data.error);
 
-      } catch(err){ alert("Error al procesar el pago: " + err); }
+      outputDiv.innerHTML = `<b>${data.mensaje}</b>`;
     });
 
-    async function mostrarServicio(apodo, servicio) {
-      const res = await fetch("/get-service", {
+    // Pago con Stripe
+    paymentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const apodo = document.getElementById("apodo").value;
+      const servicio = document.getElementById("servicio").value;
+
+      if(!apodo) return alert("Por favor ingresa tu apodo");
+
+      const response = await fetch("/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ apodo, servicio })
       });
-      const data = await res.json();
-      outputDiv.innerHTML = `<b>Hola ${apodo}, tu servicio:</b><br>${data.resultado}`;
+
+      const data = await response.json();
+      if(data.url){
+        window.location.href = data.url; // Redirige a Stripe
+      } else {
+        alert("Error al generar el pago: " + data.error);
+      }
+    });
+
+    // Mostrar servicio después del pago
+    async function mostrarServicio(apodo, servicio) {
+      outputDiv.innerHTML = `<b>Hola ${apodo}, tu servicio:</b><br>${servicio}`;
     }
 
     const urlParams = new URLSearchParams(window.location.search);
     const apodoParam = urlParams.get("apodo");
     const servicioParam = urlParams.get("servicio");
-    if(apodoParam && servicioParam){ mostrarServicio(apodoParam, servicioParam); }
+    if(apodoParam && servicioParam) {
+      mostrarServicio(apodoParam, servicioParam);
+    }
 
+    // Chat con asistente
     chatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const message = document.getElementById("message").value.trim();
+      const message = document.getElementById("message").value;
       if(!message) return;
 
       responseDiv.innerHTML = "Procesando...";
+
       const res = await fetch("/chat", {
         method: "POST",
         body: new URLSearchParams({ apodo: apodoParam, message })
