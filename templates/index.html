@@ -1,115 +1,93 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Medico Virtual May Roga</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 18px; padding: 20px; line-height: 1.5; }
-    h1 { font-size: 28px; margin-bottom: 5px; }
-    .subtitulo { font-size: 14px; color: gray; margin-bottom: 20px; }
-    label { display: block; margin-top: 12px; font-weight: bold; }
-    input, select, button { width: 100%; padding: 12px; margin-top: 5px; font-size: 18px; border-radius: 6px; border: 1px solid #ccc; }
-    button { background-color: #007BFF; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    #response, #acceso-msg { margin-top: 15px; font-size: 18px; font-weight: bold; }
-    .container { max-width: 500px; margin: auto; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Virtual - May Roga</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 10px; max-width: 600px; margin: auto; }
+        h1 { text-align: center; }
+        input, select, button, textarea { width: 100%; padding: 10px; margin: 5px 0; font-size: 1rem; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #chat { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; margin-top: 10px; }
+        .message { margin-bottom: 10px; }
+        .message.user { text-align: right; }
+        .message.bot { text-align: left; }
+    </style>
 </head>
 <body>
-  <div class="container">
     <h1>Asistente Virtual</h1>
-    <div class="subtitulo">Medico Virtual May Roga - Informativo</div>
+    <p>Medico Virtual May Roga - Informativo</p>
     <p>Ingresa tu apodo y usa el código secreto o paga para acceder al servicio.</p>
 
-    <label for="apodo_secret">Tu Apodo:</label>
-    <input type="text" id="apodo_secret" placeholder="Ej: FVF">
+    <input type="text" id="apodo" placeholder="Tu Apodo">
+    <input type="text" id="codigo" placeholder="Código Secreto">
+    <button onclick="accesoDirecto()">Acceso Directo</button>
 
-    <label for="code_secret">Código Secreto:</label>
-    <input type="text" id="code_secret" placeholder="MKM991775">
+    <p id="accesoMsg" style="color: green; font-weight: bold;"></p>
 
-    <button id="access-btn">Acceso Directo</button>
-    <div id="acceso-msg"></div>
-
-    <hr>
-
-    <label for="apodo_pay">Tu Apodo:</label>
-    <input type="text" id="apodo_pay" placeholder="Ej: FVF">
-
-    <label for="servicio">Selecciona Servicio:</label>
     <select id="servicio">
-      <option value="asistente_virtual">Asistente Virtual (8 min, $5)</option>
-      <option value="risoterapia">Risoterapia (10 min, $12)</option>
-      <option value="horoscopo">Horóscopo (35 seg, $3)</option>
+        {% for key, s in services.items() %}
+        <option value="{{ key }}">{{ s.name }} ({{ s.duration }} min, ${{ s.price }})</option>
+        {% endfor %}
     </select>
+    <button onclick="pagarStripe()">Pagar con Stripe</button>
 
-    <button id="pay-btn">Pagar con Stripe</button>
+    <div id="chat"></div>
+    <textarea id="mensaje" placeholder="Escribe tu mensaje..."></textarea>
+    <button onclick="enviarMensaje()">Enviar</button>
 
-    <hr>
+    <script>
+        async function accesoDirecto() {
+            const apodo = document.getElementById("apodo").value;
+            const codigo = document.getElementById("codigo").value;
+            if(!apodo || !codigo) { alert("Ingresa apodo y código"); return; }
 
-    <label for="message">Envía tu mensaje al asistente:</label>
-    <input type="text" id="message" placeholder="Escribe tu mensaje...">
-    <button id="send-btn">Enviar</button>
-    <div id="response"></div>
-  </div>
+            const res = await fetch("/access", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ apodo, code: codigo })
+            });
+            const data = await res.json();
+            document.getElementById("accesoMsg").innerText = data.message;
+        }
 
-  <script>
-    const accessBtn = document.getElementById("access-btn");
-    const accesoMsg = document.getElementById("acceso-msg");
-    const payBtn = document.getElementById("pay-btn");
-    const sendBtn = document.getElementById("send-btn");
-    const responseDiv = document.getElementById("response");
+        async function pagarStripe() {
+            const apodo = document.getElementById("apodo").value;
+            const servicio = document.getElementById("servicio").value;
+            if(!apodo) { alert("Ingresa tu apodo"); return; }
 
-    let currentApodo = "";
+            const res = await fetch("/create-checkout-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ apodo, service: servicio })
+            });
+            const data = await res.json();
+            if(data.url) { window.location = data.url; }
+            else { alert("Error: " + data.error); }
+        }
 
-    // Acceso directo con código secreto
-    accessBtn.addEventListener("click", async () => {
-      const apodo = document.getElementById("apodo_secret").value.trim();
-      const code = document.getElementById("code_secret").value.trim();
-      if(!apodo || !code) { accesoMsg.innerText = "Completa ambos campos."; return; }
+        async function enviarMensaje() {
+            const apodo = document.getElementById("apodo").value;
+            const mensaje = document.getElementById("mensaje").value;
+            const servicio = document.getElementById("servicio").value;
+            if(!mensaje || !apodo) { alert("Ingresa tu apodo y mensaje"); return; }
 
-      const res = await fetch("/access-secret", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ apodo, code })
-      });
-      const data = await res.json();
-      accesoMsg.innerText = data.message;
-      if(data.success) currentApodo = apodo;
-    });
-
-    // Pago Stripe
-    payBtn.addEventListener("click", async () => {
-      const apodo = document.getElementById("apodo_pay").value.trim();
-      const servicio = document.getElementById("servicio").value;
-      if(!apodo) { alert("Ingresa tu apodo."); return; }
-
-      const res = await fetch("/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ apodo, servicio })
-      });
-      const data = await res.json();
-      if(data.url) window.location.href = data.url;
-      else alert("Error al generar el pago: " + data.error);
-    });
-
-    // Chat con asistente
-    sendBtn.addEventListener("click", async () => {
-      const message = document.getElementById("message").value.trim();
-      if(!message || !currentApodo) { responseDiv.innerText = "Debes acceder primero con código secreto o pago."; return; }
-
-      responseDiv.innerText = "Procesando...";
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ apodo: currentApodo, message })
-      });
-      const data = await res.json();
-      responseDiv.innerText = data.respuesta;
-      document.getElementById("message").value = "";
-    });
-  </script>
+            const res = await fetch("/send-message", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ apodo, message: mensaje, service: servicio })
+            });
+            const data = await res.json();
+            const chat = document.getElementById("chat");
+            chat.innerHTML += `<div class="message user"><strong>${apodo}:</strong> ${mensaje}</div>`;
+            chat.innerHTML += `<div class="message bot"><strong>Asistente:</strong> ${data.response}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+            document.getElementById("mensaje").value = "";
+        }
+    </script>
 </body>
 </html>
