@@ -1,14 +1,5 @@
 [
-  {
-    "accion": "respirar",
-    "descripcion": "Respira profundo para calmarte"
-  },
-  {
-    "accion": "sonreir",
-    "descripcion": "Sonríe aunque sea pequeño, ayuda al bienestar"
-  },
-  {
-    "accion": "meditar",
-    "descripcion": "Meditar 5 minutos mejora concentración y calma"
-  }
+  { "id": 1, "accion": "respirar profundo", "descripcion": "Técnica para relajar cuerpo y mente." },
+  { "id": 2, "accion": "sonreir", "descripcion": "Ejercicio de risoterapia para mejorar el estado de ánimo." },
+  { "id": 3, "accion": "meditar", "descripcion": "Concentrarse en el momento presente y liberar tensiones." }
 ]
