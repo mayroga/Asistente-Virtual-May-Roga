@@ -1,18 +1,16 @@
-{
-  "enfermedades": [
-    {
-      "nombre": "Hipertensión",
-      "sintomas": ["Dolor de cabeza", "Mareos", "Fatiga"],
-      "tratamiento": "Control de presión, medicación según indicación médica",
-      "seguimiento": "Chequeo mensual",
-      "examenes": ["Presión arterial", "Análisis de sangre"]
-    },
-    {
-      "nombre": "Diabetes tipo 2",
-      "sintomas": ["Sed excesiva", "Orinar frecuentemente", "Fatiga"],
-      "tratamiento": "Dieta, ejercicio, medicación según indicación médica",
-      "seguimiento": "Chequeo trimestral",
-      "examenes": ["Glucosa en sangre", "Hemoglobina glicosilada"]
-    }
-  ]
-}
+[
+  {
+    "nombre": "gripe",
+    "sintomas": ["fiebre", "tos", "dolor de garganta"],
+    "tratamiento": "descanso y líquidos",
+    "examenes": ["prueba rápida de influenza", "hemograma"],
+    "valores_normales": ["temperatura < 37.5°C", "leucocitos 4-11 x10^9/L"]
+  },
+  {
+    "nombre": "diabetes tipo 2",
+    "sintomas": ["sed excesiva", "orinar frecuente", "fatiga"],
+    "tratamiento": "dieta, ejercicio, medicación según doctor",
+    "examenes": ["glucosa en ayunas", "HbA1c"],
+    "valores_normales": ["glucosa 70-99 mg/dL", "HbA1c < 5.7%"]
+  }
+]
