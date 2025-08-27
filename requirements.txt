@@ -1,9 +1,24 @@
-fastapi==0.111.2
-uvicorn[standard]==0.23.1
-jinja2==3.1.2
+# Framework principal
+fastapi==0.116.1
+
+# Servidor ASGI
+uvicorn[standard]==0.23.2
+
+# Para manejar peticiones HTTP
 requests==2.31.0
-stripe==7.16.0
-python-dotenv==1.0.1
-openai==1.29.0
-pydantic==2.7.0
-aiofiles==23.2.0
+
+# Para OpenAI
+openai==1.30.0
+
+# Manejo de formularios y uploads
+python-multipart==0.0.6
+
+# CORS (si necesitas para frontend)
+fastapi-cors==0.0.3
+
+# Dependencias opcionales de seguridad y autenticación
+python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Para trabajar con JSON y utilidades
+pydantic==1.10.11
