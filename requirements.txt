@@ -5,5 +5,5 @@ python-multipart==0.0.6
 aiofiles==23.1.0
 requests==2.31.0
 openai==0.28.0
-stripe==6.8.0
+stripe==12.5.0
 pydantic==1.10.9
