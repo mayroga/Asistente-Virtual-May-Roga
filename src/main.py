@@ -2,6 +2,7 @@ from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import os
+import json
 import openai
 import stripe
 from dotenv import load_dotenv
@@ -19,6 +20,22 @@ stripe.api_key = os.getenv("STRIPE_API_KEY")
 # Montar carpeta static correctamente
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../static")), name="static")
 
+# Cargar JSON de respaldo
+data_paths = {
+    "behavior_guide": os.path.join(os.path.dirname(__file__), "../data/behavior_guide.json"),
+    "enfermedades": os.path.join(os.path.dirname(__file__), "../data/enfermedades.json"),
+    "urgencias": os.path.join(os.path.dirname(__file__), "../data/urgencias.json")
+}
+
+backups = {}
+for key, path in data_paths.items():
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            backups[key] = json.load(f)
+    except Exception as e:
+        backups[key] = {"respuestas": [f"No se pudo cargar {key}"]}
+        print(f"Error cargando {key}: {e}")
+
 # Página principal
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -29,19 +46,37 @@ async def index():
 # Endpoint de chat
 @app.post("/chat")
 async def chat(message: str = Form(...)):
-    if "horóscopo" in message.lower():
-        respuesta = "Tu horóscopo para hoy: ¡Un día lleno de energía positiva!"
-    elif "risoterapia" in message.lower():
-        respuesta = "Realiza la Técnica del Bien (TDB): sonríe, respira profundo y piensa en algo positivo."
-    else:
-        # Respaldo simple usando JSON
-        import json
-        try:
-            with open(os.path.join(os.path.dirname(__file__), "../data/behavior_guide.json")) as f:
-                data = json.load(f)
-            respuesta = data["respuestas"][0]
-        except:
-            respuesta = "No se pudo generar respuesta. Intenta más tarde."
+    msg_lower = message.lower()
+    
+    # Respuestas por botones fijos
+    if "horóscopo" in msg_lower:
+        return JSONResponse({"respuesta": "Tu horóscopo para hoy: ¡Un día lleno de energía positiva!"})
+    elif "risoterapia" in msg_lower:
+        return JSONResponse({"respuesta": "Realiza la Técnica del Bien (TDB): sonríe, respira profundo y piensa en algo positivo."})
+    elif "emergencia" in msg_lower:
+        return JSONResponse({"respuesta": "Si es una emergencia médica real, llama al 911 inmediatamente."})
+    
+    # Intentar OpenAI
+    respuesta = None
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": message}]
+        )
+        respuesta = completion.choices[0].message.content
+    except Exception as e:
+        print(f"OpenAI no respondió: {e}")
+
+    # Si falla OpenAI, usar respaldo automático
+    if not respuesta or respuesta.strip() == "":
+        # Elegir respaldo según palabra clave
+        if "enfermedad" in msg_lower:
+            respuesta = backups["enfermedades"]["respuestas"][0]
+        elif "urgencia" in msg_lower:
+            respuesta = backups["urgencias"]["respuestas"][0]
+        else:
+            respuesta = backups["behavior_guide"]["respuestas"][0]
+
     return JSONResponse({"respuesta": respuesta})
 
 # Endpoint de pago simple
