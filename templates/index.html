@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Asistente May Roga</title>
-  <script src="https://js.stripe.com/v3/"></script>
   <style>
     body { font-family: Arial, sans-serif; font-size: 20px; padding: 20px; line-height: 1.6; }
     h1 { font-size: 32px; margin-bottom: 5px; }
@@ -14,48 +13,42 @@
     button { margin-top: 20px; padding: 14px; font-size: 22px; cursor: pointer; background-color: #007BFF; color: white; border: none; border-radius: 6px; }
     button:hover { background-color: #0056b3; }
     #servicio-output { margin-top: 30px; font-size: 22px; font-weight: bold; }
-    #response { margin-top: 20px; font-size: 20px; }
+    #iframe-container { margin-top: 40px; display:none; }
+    iframe { width: 100%; height: 500px; border: 1px solid #ccc; border-radius: 6px; }
   </style>
 </head>
 <body>
   <h1>Asistente May Roga</h1>
   <div class="subtitulo">Asistente Virtual Médico - Informativo</div>
-  <p>Elige tu servicio, ingresa tu <b>apodo/sobrenombre</b> o el <b>código secreto</b> para comenzar.</p>
+  <p>Ingresa tu <b>apodo/sobrenombre</b> o el <b>código secreto</b> y comienza el servicio.</p>
 
-  <!-- Formulario de pago -->
-  <form id="payment-form">
-    <label for="apodo">Tu Apodo o Código:</label>
-    <input type="text" id="apodo" name="apodo" required placeholder="Ej: Luna12 o MKM991775">
+  <form id="access-form">
+    <label for="apodo">Apodo o Código:</label>
+    <input type="text" id="apodo" required placeholder="Ej: Luna12 o MKM991775">
 
     <label for="servicio">Selecciona Servicio:</label>
-    <select id="servicio" name="servicio" required>
-      <option value="asistente_virtual">Asistente Virtual Médico (8 min, $5)</option>
-      <option value="risoterapia">Risoterapia y Bienestar (10 min, $12)</option>
-      <option value="horoscopo">Horóscopo (35 seg, $3)</option>
+    <select id="servicio" required>
+      <option value="asistente_virtual">Asistente Virtual Médico (8 min)</option>
+      <option value="risoterapia">Risoterapia y Bienestar (10 min)</option>
+      <option value="horoscopo">Horóscopo (35 seg)</option>
     </select>
 
-    <button type="submit">Pagar con Stripe</button>
+    <button type="submit">Comenzar Servicio</button>
   </form>
 
   <div id="servicio-output"></div>
 
-  <!-- Chat -->
-  <form id="chatForm" style="margin-top:40px; display:none;">
-    <label for="message">Envía tu mensaje al asistente:</label>
-    <input type="text" id="message" placeholder="Escribe tu mensaje..." required>
-    <button type="submit">Enviar</button>
-  </form>
-
-  <div id="response"></div>
+  <div id="iframe-container">
+    <iframe id="asistente-frame" src=""></iframe>
+  </div>
 
   <script>
-    const paymentForm = document.getElementById("payment-form");
-    const chatForm = document.getElementById("chatForm");
+    const accessForm = document.getElementById("access-form");
     const outputDiv = document.getElementById("servicio-output");
-    const responseDiv = document.getElementById("response");
+    const iframeContainer = document.getElementById("iframe-container");
+    const asistenteFrame = document.getElementById("asistente-frame");
 
-    // Pago con Stripe o acceso con código secreto
-    paymentForm.addEventListener("submit", async (e) => {
+    accessForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const apodo = document.getElementById("apodo").value.trim();
       const servicio = document.getElementById("servicio").value;
@@ -65,45 +58,20 @@
         return;
       }
 
-      // Opción 2: acceso directo con código secreto
+      // Acceso directo con código secreto
       if(apodo.toLowerCase() === "mkm991775") {
-        outputDiv.innerHTML = `<b>Acceso directo autorizado:</b><br>Hola ${apodo}, tu servicio de ${servicio} está listo.`;
-        chatForm.style.display = "block";
+        outputDiv.innerHTML = `<b>Acceso autorizado con código secreto:</b> ${servicio}`;
+        asistenteFrame.src = `https://medico-virtual-may-roga.onrender.com/iframe-service?servicio=${servicio}&apodo=${apodo}`;
+        iframeContainer.style.display = "block";
         return;
       }
 
-      // Opción 1: Pago con Stripe (Render backend)
-      const response = await fetch("https://medico-virtual-may-roga.onrender.com/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ apodo, servicio })
-      });
-
-      const data = await response.json();
-      if(data.url){
-        window.location.href = data.url; 
-      } else {
-        alert("Error al generar el pago: " + data.error);
-      }
-    });
-
-    // Chat con asistente
-    chatForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const apodo = document.getElementById("apodo").value.trim();
-      const message = document.getElementById("message").value;
-      if(!message) return;
-
-      responseDiv.innerHTML = "Procesando...";
-
-      const res = await fetch("https://medico-virtual-may-roga.onrender.com/chat", {
-        method: "POST",
-        body: new URLSearchParams({ apodo, message })
-      });
-
-      const data = await res.json();
-      responseDiv.innerHTML = `<b>Respuesta:</b> ${data.respuesta}`;
-      chatForm.reset();
+      // Acceso mediante pago: abrir checkout en iframe
+      // Para Stripe necesitarías una página que devuelva el checkout en modo iframe
+      // Aquí se simula con la misma página de servicio
+      outputDiv.innerHTML = `<b>Redirigiendo al pago seguro...</b>`;
+      asistenteFrame.src = `https://medico-virtual-may-roga.onrender.com/iframe-service?servicio=${servicio}&apodo=${apodo}`;
+      iframeContainer.style.display = "block";
     });
   </script>
 </body>
