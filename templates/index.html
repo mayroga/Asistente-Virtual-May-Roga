@@ -3,91 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual - May Roga</title>
+    <title>Médico Virtual - May Roga LLC</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://js.stripe.com/v3/"></script>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 10px; max-width: 600px; margin: auto; }
-        h1 { text-align: center; }
-        input, select, button, textarea { width: 100%; padding: 10px; margin: 5px 0; font-size: 1rem; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        #chat { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; margin-top: 10px; }
-        .message { margin-bottom: 10px; }
-        .message.user { text-align: right; }
-        .message.bot { text-align: left; }
-    </style>
 </head>
 <body>
-    <h1>Asistente Virtual</h1>
-    <p>Medico Virtual May Roga - Informativo</p>
-    <p>Ingresa tu apodo y usa el código secreto o paga para acceder al servicio.</p>
+    <header>
+        <h1>Bienvenido al Médico Virtual de May Roga LLC</h1>
+        <p>Risoterapia y Bienestar Natural con Técnicas de Vida (TVid)</p>
+    </header>
 
-    <input type="text" id="apodo" placeholder="Tu Apodo">
-    <input type="text" id="codigo" placeholder="Código Secreto">
-    <button onclick="accesoDirecto()">Acceso Directo</button>
+    <main>
+        <section>
+            <h2>Tu espacio de salud y bienestar</h2>
+            <p>Accede a consultas de risoterapia, bienestar natural, médico virtual y horóscopo en un solo lugar.</p>
+            <button onclick="mostrarMensaje()">Probar ahora</button>
+        </section>
+    </main>
 
-    <p id="accesoMsg" style="color: green; font-weight: bold;"></p>
+    <footer>
+        <p>&copy; 2025 May Roga LLC - Todos los derechos reservados</p>
+    </footer>
 
-    <select id="servicio">
-        {% for key, s in services.items() %}
-        <option value="{{ key }}">{{ s.name }} ({{ s.duration }} min, ${{ s.price }})</option>
-        {% endfor %}
-    </select>
-    <button onclick="pagarStripe()">Pagar con Stripe</button>
-
-    <div id="chat"></div>
-    <textarea id="mensaje" placeholder="Escribe tu mensaje..."></textarea>
-    <button onclick="enviarMensaje()">Enviar</button>
-
-    <script>
-        async function accesoDirecto() {
-            const apodo = document.getElementById("apodo").value;
-            const codigo = document.getElementById("codigo").value;
-            if(!apodo || !codigo) { alert("Ingresa apodo y código"); return; }
-
-            const res = await fetch("/access", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ apodo, code: codigo })
-            });
-            const data = await res.json();
-            document.getElementById("accesoMsg").innerText = data.message;
-        }
-
-        async function pagarStripe() {
-            const apodo = document.getElementById("apodo").value;
-            const servicio = document.getElementById("servicio").value;
-            if(!apodo) { alert("Ingresa tu apodo"); return; }
-
-            const res = await fetch("/create-checkout-session", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ apodo, service: servicio })
-            });
-            const data = await res.json();
-            if(data.url) { window.location = data.url; }
-            else { alert("Error: " + data.error); }
-        }
-
-        async function enviarMensaje() {
-            const apodo = document.getElementById("apodo").value;
-            const mensaje = document.getElementById("mensaje").value;
-            const servicio = document.getElementById("servicio").value;
-            if(!mensaje || !apodo) { alert("Ingresa tu apodo y mensaje"); return; }
-
-            const res = await fetch("/send-message", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ apodo, message: mensaje, service: servicio })
-            });
-            const data = await res.json();
-            const chat = document.getElementById("chat");
-            chat.innerHTML += `<div class="message user"><strong>${apodo}:</strong> ${mensaje}</div>`;
-            chat.innerHTML += `<div class="message bot"><strong>Asistente:</strong> ${data.response}</div>`;
-            chat.scrollTop = chat.scrollHeight;
-            document.getElementById("mensaje").value = "";
-        }
-    </script>
+    <script src="/static/js/script.js"></script>
 </body>
 </html>
