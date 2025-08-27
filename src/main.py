@@ -1,11 +1,12 @@
-# src/main.py
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import openai
 import stripe
-import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -13,62 +14,34 @@ app = FastAPI()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Configuración Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = os.getenv("STRIPE_API_KEY")
 
-# Archivos estáticos y templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Función de respaldo usando JSON
-def respaldo(tipo):
-    try:
-        if tipo == "medico":
-            archivo = "data/behavior_guide.json"
-        elif tipo == "enfermedades":
-            archivo = "data/enfermedades.json"
-        elif tipo == "urgencias":
-            archivo = "data/urgencias.json"
-        else:
-            archivo = "data/behavior_guide.json"
-        with open(archivo, "r", encoding="utf-8") as f:
-            datos = json.load(f)
-        return datos.get("respuesta", "Respuesta de respaldo genérica")
-    except:
-        return "Respuesta de respaldo genérica"
+# Montar carpeta static correctamente
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../static")), name="static")
 
 # Página principal
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    with open("templates/index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    with open(os.path.join(os.path.dirname(__file__), "../templates/index.html")) as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
 
-# Endpoint chat
+# Endpoint de chat
 @app.post("/chat")
 async def chat(message: str = Form(...)):
-    texto = message.lower()
-    try:
-        if "horóscopo" in texto:
-            respuesta = "Tu horóscopo para hoy: ¡Hoy es un día lleno de energía positiva! 🌞"
-        elif "risoterapia" in texto:
-            respuesta = "Técnica del Bien (TDB): sonríe, respira profundo y piensa en algo positivo."
-        elif "medico" in texto or "salud" in texto:
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": message}]
-            )
-            respuesta = completion.choices[0].message.content
-        elif "emergencia" in texto:
-            respuesta = respaldo("urgencias")
-        else:
-            respuesta = respaldo("medico")
-    except Exception:
-        if "horóscopo" in texto:
-            respuesta = respaldo("medico")
-        elif "risoterapia" in texto:
-            respuesta = respaldo("medico")
-        elif "emergencia" in texto:
-            respuesta = respaldo("urgencias")
-        else:
-            respuesta = respaldo("enfermedades")
+    if "horóscopo" in message.lower():
+        respuesta = "Tu horóscopo para hoy: ¡Un día lleno de energía positiva!"
+    elif "risoterapia" in message.lower():
+        respuesta = "Realiza la Técnica del Bien (TDB): sonríe, respira profundo y piensa en algo positivo."
+    else:
+        # Respaldo simple usando JSON
+        import json
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "../data/behavior_guide.json")) as f:
+                data = json.load(f)
+            respuesta = data["respuestas"][0]
+        except:
+            respuesta = "No se pudo generar respuesta. Intenta más tarde."
     return JSONResponse({"respuesta": respuesta})
 
 # Endpoint de pago simple
@@ -81,7 +54,7 @@ async def create_checkout():
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {'name': 'Servicio Medico Virtual 24/7'},
-                    'unit_amount': 500,  # $5.00
+                    'unit_amount': 500,
                 },
                 'quantity': 1,
             }],
@@ -93,7 +66,7 @@ async def create_checkout():
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
-# Ping rápido
+# Ping de prueba
 @app.get("/ping")
 async def ping():
     return {"message": "Servidor activo 🚀"}
