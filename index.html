@@ -1,0 +1,64 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Medico Virtual May Roga LLC</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>Medico Virtual + Risoterapia + Horóscopo</h1>
+
+    <div id="chat-container">
+        <div id="messages"></div>
+        <form id="chat-form">
+            <input type="text" id="user-message" placeholder="Escribe tu mensaje..." required>
+            <button type="submit">Enviar</button>
+        </form>
+    </div>
+
+    <div id="botones">
+        <button onclick="enviarMensaje('horóscopo')">Horóscopo</button>
+        <button onclick="enviarMensaje('risoterapia')">Risoterapia</button>
+        <button onclick="enviarMensaje('medico')">Médico Virtual</button>
+        <button id="pago-btn">Pagar $5</button>
+    </div>
+
+    <script>
+        async function enviarMensaje(msg) {
+            const formData = new FormData();
+            formData.append("message", msg);
+
+            const res = await fetch("/chat", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            mostrarMensaje("Tú: " + msg);
+            mostrarMensaje("Bot: " + data.respuesta);
+        }
+
+        function mostrarMensaje(texto) {
+            const messages = document.getElementById("messages");
+            const p = document.createElement("p");
+            p.textContent = texto;
+            messages.appendChild(p);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        document.getElementById("chat-form").addEventListener("submit", function(e){
+            e.preventDefault();
+            const msg = document.getElementById("user-message").value;
+            enviarMensaje(msg);
+            document.getElementById("user-message").value = "";
+        });
+
+        document.getElementById("pago-btn").addEventListener("click", async () => {
+            const res = await fetch("/create-checkout-session", {method: "POST"});
+            const data = await res.json();
+            if (data.url) window.location.href = data.url;
+            else alert("Error al crear sesión de pago");
+        });
+    </script>
+</body>
+</html>
