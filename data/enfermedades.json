@@ -1,3 +1,17 @@
 {
   "respuesta": "En caso de síntomas leves de enfermedades comunes, mantente hidratado, descansa y consulta a tu médico de confianza. Síntomas graves requieren atención inmediata."
 }
+{
+  "respuestas": [
+    "Para resfriado común: hidrátate, descansa y usa descongestionantes si es necesario. Consulta médico si fiebre alta o síntomas graves.",
+    "Para dolor de cabeza leve: hidrátate, descansa en lugar silencioso y evita estrés. Analgésicos comunes si persiste.",
+    "Para gripe: reposo, líquidos abundantes y control de fiebre. Acude a médico si dificultad respiratoria.",
+    "Para hipertensión leve: controla sal en la dieta, realiza ejercicio regular y monitorea presión arterial.",
+    "Para diabetes tipo 2: alimentación balanceada, control de azúcar, actividad física y seguimiento médico regular.",
+    "Para dolor muscular: estiramientos suaves, masajes, calor local y reposo moderado.",
+    "Para ansiedad leve: técnicas de respiración, meditación y mantener rutinas de sueño.",
+    "Para insomnio ocasional: evita cafeína tarde, mantén horarios regulares de sueño y habitación oscura y tranquila.",
+    "Para gastritis leve: dieta blanda, evita comidas irritantes y controla estrés. Consulta médico si persiste.",
+    "Para alergias leves: evita alérgenos, antihistamínicos según indicación y observa síntomas de empeoramiento."
+  ]
+}
