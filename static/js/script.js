@@ -1,60 +1,60 @@
-const payBtn = document.getElementById("pay");
-const nicknameInput = document.getElementById("nickname");
-const serviceSelect = document.getElementById("service");
-const chatContainer = document.getElementById("chat-container");
-const chatBox = document.getElementById("chat-box");
-const userInput = document.getElementById("user-input");
-const sendBtn = document.getElementById("send");
-const clearBtn = document.getElementById("clear");
+// static/js/script.js
 
-payBtn.addEventListener("click", async () => {
-    const nickname = nicknameInput.value.trim();
-    const service = serviceSelect.value;
-    if (!nickname) return alert("Debes ingresar un apodo");
+let apodoActual = "";
+let accesoGratisActivo = false;
 
-    try {
-        const formData = new FormData();
-        formData.append("nickname", nickname);
-        formData.append("service", service);
+function accesoGratis() {
+    const apodo = document.getElementById("free-apodo").value;
+    const code = document.getElementById("free-code").value;
+    if (!apodo || !code) {
+        alert("Apodo y código son obligatorios");
+        return;
+    }
+    apodoActual = apodo;
+    accesoGratisActivo = true;
+    document.getElementById("chat-apodo").innerText = apodoActual;
+    document.getElementById("chat-section").style.display = "block";
+    document.getElementById("free-status").innerText = "Acceso concedido para " + apodo;
+}
 
-        const res = await fetch("/create-checkout-session", {
-            method: "POST",
-            body: formData
-        });
-        const data = await res.json();
+function pagarStripe() {
+    const apodo = document.getElementById("paid-apodo").value;
+    const service = document.getElementById("service-select").value;
+    if (!apodo) { alert("Apodo obligatorio"); return; }
+    fetch("/create-checkout-session", {
+        method: "POST",
+        body: new URLSearchParams({ apodo: apodo, service: service })
+    })
+    .then(res => res.json())
+    .then(data => {
         if (data.url) {
             window.location.href = data.url;
         } else {
-            alert("Error creando sesión de pago: " + (data.error || "desconocido"));
+            alert("Error al crear sesión de pago");
         }
-    } catch (err) {
-        alert("Error en pago: " + err);
-    }
-});
+    });
+}
 
-sendBtn.addEventListener("click", async () => {
-    const message = userInput.value.trim();
-    if (!message) return;
-    const nickname = nicknameInput.value.trim();
-    const service = serviceSelect.value;
+function enviarMensaje() {
+    const mensaje = document.getElementById("chat-message").value;
+    if (!mensaje) return;
+    let payload = { apodo: apodoActual, mensaje: mensaje };
+    if (accesoGratisActivo) payload.access_code = document.getElementById("free-code").value;
+    fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        const log = document.getElementById("chat-log");
+        log.innerHTML += `<p>${apodoActual}: ${mensaje}</p>`;
+        log.innerHTML += `<p>Asistente: ${data.respuesta}</p>`;
+        log.scrollTop = log.scrollHeight;
+        document.getElementById("chat-message").value = "";
+    });
+}
 
-    chatBox.innerHTML += `<p><strong>${nickname}:</strong> ${message}</p>`;
-    userInput.value = "";
-
-    try {
-        const res = await fetch("/chat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({message, nickname, service})
-        });
-        const data = await res.json();
-        chatBox.innerHTML += `<p><strong>Asistente:</strong> ${data.reply}</p>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-    } catch (err) {
-        chatBox.innerHTML += `<p style="color:red;">Error: ${err}</p>`;
-    }
-});
-
-clearBtn.addEventListener("click", () => {
-    chatBox.innerHTML = "";
-});
+function limpiarChat() {
+    document.getElementById("chat-log").innerHTML = "";
+}
