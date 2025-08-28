@@ -2,12 +2,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asistente Virtual May Roga</title>
+    <title>Agente de Respuesta Rápida May Roga</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <h1>Asistente Virtual May Roga</h1>
-    <p>Servicio informativo. No sustituye consulta presencial.</p>
+    <h1>Agente de Respuesta Rápida May Roga</h1>
+    <p>Servicio educativo. No sustituye consulta médica presencial.</p>
 
     <div id="acceso">
         <h2>Acceso por código (gratis)</h2>
@@ -24,9 +24,9 @@
         <input type="text" id="apodo-pago">
         <label>Selecciona servicio:</label>
         <select id="servicio">
-            <option value="medico">Asistente Virtual Médico — $5 — 8 min</option>
-            <option value="risoterapia">Risoterapia y Bienestar Natural — $12 — 10 min</option>
-            <option value="horoscopo">Horóscopo — $3 — 1.5 min</option>
+            <option value="agente_rapido">Agente de Respuesta Rápida — 55 seg — $1</option>
+            <option value="risoterapia">Risoterapia y Bienestar Natural — 10 min — $12</option>
+            <option value="horoscopo">Horóscopo — 1 min 30 seg — $3</option>
         </select>
         <button id="pagar-stripe">Pagar con Stripe</button>
         <input type="hidden" id="pago-confirmado" value="false">
@@ -35,18 +35,18 @@
     <hr>
 
     <div id="chat">
-        <h2>Chat con Asistente</h2>
+        <h2>Chat con Agente</h2>
         <div id="chat-messages" style="height:300px; overflow-y:scroll; border:1px solid #ccc; padding:10px;"></div>
         <form id="chat-form">
             <label>Tu mensaje:</label>
-            <input type="text" id="mensaje" required placeholder="Escribe tu consulta (síntomas, tiempo, etc.)">
+            <input type="text" id="mensaje" required placeholder="Escribe tu consulta">
             <button type="submit">Enviar</button>
             <button type="button" id="limpiar-chat">Limpiar chat</button>
         </form>
     </div>
 
-    <p>Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.</p>
-    <footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
+    <p>Consejo: pregunta con detalles para respuestas más útiles.</p>
+    <footer>© May Roga LLC — Apodos obligatorios. Pagos por Stripe o código secreto.</footer>
 
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/static/js/script.js"></script>
