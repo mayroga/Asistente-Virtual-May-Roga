@@ -2,20 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Agente de Respuesta Rápida - May Roga</title>
+    <title>Agente de Respuesta Rápida</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <h1>Agente de Respuesta Rápida - May Roga LLC</h1>
     <p>Servicio educativo e informativo. No sustituye consulta presencial.</p>
 
     <div id="acceso">
-        <h2>Acceso por código secreto (gratis)</h2>
-        <label>Apodo (obligatorio):</label>
+        <h2>Acceso gratis por código</h2>
+        <label>Apodo:</label>
         <input type="text" id="apodo" required>
         <label>Código secreto:</label>
         <input type="password" id="code" placeholder="•••••••••">
-        <button id="acceso-directo">Acceder</button>
+        <button id="acceso-directo">Acceso directo</button>
     </div>
 
     <div id="pago">
@@ -24,9 +25,9 @@
         <input type="text" id="apodo-pago">
         <label>Selecciona servicio:</label>
         <select id="servicio">
-            <option value="agente_rapido">Agente de Respuesta Rápida — $1 — 55s</option>
-            <option value="risoterapia">Risoterapia y Bienestar Natural — $12 — 10 min</option>
-            <option value="horoscopo">Horóscopo — $3 — 1 min 30 s</option>
+            <option value="respuesta_rapida">Agente de Respuesta Rápida — $1</option>
+            <option value="risoterapia">Risoterapia y Bienestar Natural — $12</option>
+            <option value="horoscopo">Horóscopo — $3</option>
         </select>
         <button id="pagar-stripe">Pagar con Stripe</button>
     </div>
@@ -44,8 +45,8 @@
         </form>
     </div>
 
-    <footer>© May Roga LLC — Apodos obligatorios. Pagos por Stripe.</footer>
-    <script src="https://js.stripe.com/v3/"></script>
+    <footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
+
     <script src="/static/js/script.js"></script>
 </body>
 </html>
