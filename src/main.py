@@ -1,73 +1,77 @@
-# src/main.py
+# main.py
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import stripe
 import os
 import openai
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Configuración API keys
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
-# Static y Templates
+# Archivos estáticos y templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Servicios disponibles
+# Configuración Stripe y OpenAI
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "tu_clave_secreta_stripe")
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "tu_clave_publica_stripe")
+stripe.api_key = STRIPE_SECRET_KEY
+openai.api_key = os.getenv("OPENAI_API_KEY", "tu_clave_openai")
+
+# Servicios disponibles y precios en USD
 SERVICES = {
-    "asistente": {"name": "Asistente Virtual Médico", "price": 5, "time": 8},
-    "risoterapia": {"name": "Sesión de Risoterapia", "price": 7, "time": 10},
-    "horoscopo": {"name": "Horóscopo Personalizado", "price": 3, "time": 5},
+    "medico": 5,
+    "risoterapia": 7,
+    "horoscopo": 3
 }
 
-@app.get("/")
-def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "services": SERVICES, "stripe_public_key": STRIPE_PUBLIC_KEY}
+    )
 
-@app.post("/create-payment-intent")
-async def create_payment_intent(
-    amount: int = Form(...),
-    currency: str = Form("usd")
-):
+@app.post("/create-checkout-session")
+async def create_checkout_session(service: str = Form(...), nickname: str = Form(...)):
+    if service not in SERVICES:
+        return JSONResponse({"error": "Servicio no válido"}, status_code=400)
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=int(amount * 100),  # USD a centavos
-            currency=currency
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": int(SERVICES[service]*100),
+                    "product_data": {"name": f"{service} - {nickname}"}
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"https://medico-virtual-may-roga.onrender.com/?success=true&nickname={nickname}&service={service}",
+            cancel_url="https://medico-virtual-may-roga.onrender.com/?canceled=true"
         )
-        return JSONResponse({"client_secret": intent.client_secret})
+        return JSONResponse({"url": checkout_session.url})
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/chat")
-async def chat(request: Request):
-    data = await request.json()
-    user_msg = data.get("message", "")
-    apodo = data.get("nickname", "Usuario")
-    service = data.get("service", "asistente")
+async def chat_endpoint(data: dict):
+    message = data.get("message")
+    nickname = data.get("nickname")
+    service = data.get("service")
 
-    if service not in SERVICES:
-        return JSONResponse({"reply": "Servicio no válido."})
+    if not message or not nickname or not service:
+        return JSONResponse({"reply": "Falta información para procesar tu solicitud."})
 
-    prompt = f"Servicio: {SERVICES[service]['name']}\nUsuario ({apodo}): {user_msg}\nRespuesta:"
-    
     try:
-        # OpenAI nueva sintaxis >=1.0.0
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Eres un asistente virtual médico, risoterapia y horóscopo. Responde con claridad y de forma amigable."},
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": f"Servicio: {service}, Apodo: {nickname}, Mensaje: {message}"}]
         )
-        answer = response.choices[0].message.content.strip()
+        reply = response.choices[0].message.content
     except Exception as e:
-        answer = f"Error en la respuesta del asistente: {str(e)}"
+        reply = "Error generando respuesta: " + str(e)
 
-    return JSONResponse({"reply": answer})
+    return JSONResponse({"reply": reply})
