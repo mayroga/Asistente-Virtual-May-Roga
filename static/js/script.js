@@ -1,75 +1,56 @@
-const apodoInput = document.getElementById("apodo");
-const codeInput = document.getElementById("code");
-const accesoBtn = document.getElementById("acceso-directo");
-
-const apodoPagoInput = document.getElementById("apodo-pago");
-const servicioSelect = document.getElementById("servicio");
-const pagarBtn = document.getElementById("pagar-stripe");
-
 const chatForm = document.getElementById("chat-form");
-const mensajeInput = document.getElementById("mensaje");
 const chatMessages = document.getElementById("chat-messages");
+const limpiarBtn = document.getElementById("limpiar-chat");
+const accesoBtn = document.getElementById("acceso-directo");
+const pagarBtn = document.getElementById("pagar-stripe");
+const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3uNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 
-let usuarioActual = null;
-let servicioActual = null;
-let accesoValido = false;
+let usuario = "";
+let servicioActivo = "";
 
-// Acceso por código secreto
+// Acceso directo gratis
 accesoBtn.addEventListener("click", () => {
-    const apodo = apodoInput.value.trim();
-    const code = codeInput.value.trim();
-    if (!apodo || !code) { alert("Apodo y código obligatorios"); return; }
-    usuarioActual = apodo;
-    servicioActual = "agente_rapido";
-    accesoValido = true;
-    alert(`Acceso concedido para ${apodo}`);
+    const apodo = document.getElementById("apodo").value;
+    const code = document.getElementById("code").value;
+    if(apodo && code){
+        usuario = apodo;
+        servicioActivo = "respuesta_rapida";
+        alert(`Acceso concedido para ${usuario}`);
+    } else {
+        alert("Apodo y código obligatorios.");
+    }
 });
 
-// Acceso por pago (Stripe)
+// Pago Stripe
 pagarBtn.addEventListener("click", async () => {
-    const apodo = apodoPagoInput.value.trim();
-    const servicio = servicioSelect.value;
-    if (!apodo) { alert("Apodo obligatorio"); return; }
-    try {
-        const res = await fetch("/crear-checkout-session", {
-            method: "POST",
-            body: new URLSearchParams({ apodo, servicio })
-        });
-        const data = await res.json();
-        window.location.href = data.url;
-    } catch (err) {
-        console.error(err);
-        alert("Error al crear sesión de pago");
-    }
+    const apodo = document.getElementById("apodo-pago").value;
+    const servicio = document.getElementById("servicio").value;
+    if(!apodo){ alert("Ingresa tu apodo"); return; }
+    usuario = apodo;
+    servicioActivo = servicio;
+
+    const res = await fetch("/create-checkout-session", {
+        method: "POST",
+        body: new URLSearchParams({apodo, service: servicio})
+    });
+    const data = await res.json();
+    stripe.redirectToCheckout({sessionId: data.id});
 });
 
 // Enviar mensaje
 chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!usuarioActual || !servicioActual) { alert("Acceso no autorizado"); return; }
-    const mensaje = mensajeInput.value.trim();
-    if (!mensaje) return;
-    chatMessages.innerHTML += `<p><b>${usuarioActual}:</b> ${mensaje}</p>`;
-    mensajeInput.value = "";
+    const mensaje = document.getElementById("mensaje").value;
+    if(!usuario || !servicioActivo){ alert("Primero accede o paga el servicio"); return; }
 
-    try {
-        const formData = new URLSearchParams();
-        formData.append("apodo", usuarioActual);
-        formData.append("servicio", servicioActual);
-        formData.append("mensaje", mensaje);
-        if (codeInput.value) formData.append("code", codeInput.value);
-
-        const res = await fetch("/chat", { method: "POST", body: formData });
-        const data = await res.json();
-        chatMessages.innerHTML += `<p><b>Agente:</b> ${data.respuesta}</p>`;
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    } catch (err) {
-        console.error(err);
-        chatMessages.innerHTML += `<p><b>Agente:</b> Error al procesar la consulta</p>`;
-    }
+    chatMessages.innerHTML += `<b>${usuario}:</b> ${mensaje}<br>`;
+    const formData = new URLSearchParams({apodo: usuario, service: servicioActivo, message: mensaje});
+    const res = await fetch("/chat", {method:"POST", body: formData});
+    const data = await res.json();
+    chatMessages.innerHTML += `<b>Agente:</b> ${data.reply}<br>`;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    document.getElementById("mensaje").value = "";
 });
 
 // Limpiar chat
-document.getElementById("limpiar-chat").addEventListener("click", () => {
-    chatMessages.innerHTML = "";
-});
+limpiarBtn.addEventListener("click", () => chatMessages.innerHTML = "");
