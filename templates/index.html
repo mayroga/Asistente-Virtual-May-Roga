@@ -6,48 +6,14 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-<h1>Asistente Virtual May Roga</h1>
-<p>Servicio informativo. No sustituye consulta presencial.</p>
+    <h1>Asistente Virtual May Roga</h1>
+    <p>Servicio informativo. No sustituye consulta presencial.</p>
 
-<div id="acceso">
-    <h2>Acceso por código (gratis)</h2>
-    <label>Apodo (obligatorio):</label>
-    <input type="text" id="apodo" required>
-    <label>Código secreto:</label>
-    <input type="password" id="codigo" placeholder="•••••••••">
-    <button id="acceso-directo">Acceso directo</button>
-</div>
-
-<div id="pago">
-    <h2>Acceso por pago (Stripe)</h2>
-    <label>Apodo:</label>
-    <input type="text" id="apodo-pago">
-    <label>Selecciona servicio:</label>
-    <select id="servicio">
-        <option value="medico">Asistente Médico — $5</option>
-        <option value="risoterapia">Risoterapia y Bienestar Natural — $12</option>
-        <option value="horoscopo">Horóscopo — $3</option>
-    </select>
-    <button id="pagar-stripe">Pagar con Stripe</button>
-    <input type="hidden" id="pago-confirmado" value="false">
-</div>
-
-<hr>
-
-<div id="chat">
-    <h2>Chat con Asistente</h2>
-    <div id="chat-mensajes" style="height:300px; overflow-y:scroll; border:1px solid #ccc; padding:10px;"></div>
-    <form id="chat-form">
-        <label>Tu mensaje:</label>
-        <input type="text" id="mensaje" required placeholder="Escribe tu consulta (síntomas, tiempo, etc.)">
-        <button type="submit">Enviar</button>
-        <button type="button" id="limpiar-chat">Limpiar chat</button>
-    </form>
-</div>
-
-<p>Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.</p>
-<footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
-
-<script src="/static/js/script.js"></script>
-</body>
-</html>
+    <div id="acceso">
+        <h2>Acceso por código (gratis)</h2>
+        <label>Apodo (obligatorio):</label>
+        <input type="text" id="apodo" required>
+        <label>Código secreto:</label>
+        <input type="password" id="code" placeholder="•••••••••">
+        <button id="acceso-directo">Acceso directo</button>
+    </div
