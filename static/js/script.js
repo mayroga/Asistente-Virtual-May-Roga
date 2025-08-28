@@ -1,74 +1,68 @@
-const chatForm = document.getElementById("chat-form");
-const chatMessages = document.getElementById("chat-messages");
+let pagoConfirmado = false;
+const stripePublicKey = "pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3uNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz";
+const stripe = Stripe(stripePublicKey);
 
-const accesoDirecto = document.getElementById("acceso-directo");
-const pagarStripe = document.getElementById("pagar-stripe");
-
-let apodo = "";
-let servicio = "";
-let acceso = false;
-
-accesoDirecto.addEventListener("click", () => {
-    const inputApodo = document.getElementById("apodo").value;
+document.getElementById("acceso-directo").addEventListener("click", () => {
+    const apodo = document.getElementById("apodo").value;
     const code = document.getElementById("code").value;
-    if (!inputApodo || !code) return alert("Ingresa apodo y código");
-
-    fetch("/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: `apodo=${inputApodo}&servicio=medico&mensaje=Hola&code=${code}`
-    }).then(res => res.json()).then(data => {
-        if (data.respuesta.includes("Acceso denegado")) alert(data.respuesta);
-        else {
-            apodo = inputApodo;
-            servicio = "medico";
-            acceso = true;
-            alert("Acceso concedido!");
-        }
-    });
+    if (!apodo || !code) { alert("Llena apodo y código"); return; }
+    pagoConfirmado = true;
+    document.getElementById("pago-confirmado").value = "true";
+    alert(`Acceso concedido para ${apodo}`);
 });
 
-pagarStripe.addEventListener("click", async () => {
-    const inputApodo = document.getElementById("apodo-pago").value;
-    const selServicio = document.getElementById("servicio").value;
-    if (!inputApodo) return alert("Ingresa tu apodo");
+document.getElementById("pagar-stripe").addEventListener("click", async () => {
+    const apodo = document.getElementById("apodo-pago").value;
+    const service = document.getElementById("servicio").value;
+    if (!apodo) { alert("Escribe tu apodo"); return; }
 
-    const res = await fetch("/crear-sesion-stripe", {
-        method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: `apodo=${inputApodo}&servicio=${selServicio}`
-    });
-    const data = await res.json();
-    if (data.error) return alert(data.error);
+    let price = 0;
+    if (service === "agente_rapido") price = 100; // $1 en centavos
+    else if (service === "risoterapia") price = 1200;
+    else if (service === "horoscopo") price = 300;
 
-    const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
-    stripe.redirectToCheckout({ sessionId: data.id });
+    try {
+        const res = await fetch("/create-checkout-session", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({price, service, apodo})
+        });
+        const data = await res.json();
+        const result = await stripe.redirectToCheckout({ sessionId: data.id });
+        if (result.error) alert(result.error.message);
+    } catch(e) { alert(e); }
 });
 
-chatForm.addEventListener("submit", async e => {
+document.getElementById("chat-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!acceso) return alert("Debes pagar o usar un código válido");
+    const apodo = document.getElementById("apodo").value || document.getElementById("apodo-pago").value;
+    const service = document.getElementById("servicio").value;
+    const message = document.getElementById("mensaje").value;
+    if (!apodo || !message) return;
 
-    const mensaje = document.getElementById("mensaje").value;
-    if (!mensaje) return;
-
-    chatMessages.innerHTML += `<b>${apodo}:</b> ${mensaje}<br>`;
-
-    const formData = new URLSearchParams();
-    formData.append("apodo", apodo);
-    formData.append("servicio", servicio);
-    formData.append("mensaje", mensaje);
-
-    const res = await fetch("/chat", {
-        method: "POST",
-        body: formData
-    });
-    const data = await res.json();
-    chatMessages.innerHTML += `<b>Asistente:</b> ${data.respuesta}<br>`;
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    const responseDiv = document.getElementById("chat-messages");
+    responseDiv.innerHTML += `<b>${apodo}:</b> ${message}<br>`;
     document.getElementById("mensaje").value = "";
+
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            body: new URLSearchParams({
+                apodo,
+                service,
+                message,
+                pago_confirmado: pagoConfirmado ? "true" : "false",
+                code: document.getElementById("code").value
+            })
+        });
+        const data = await res.json();
+        responseDiv.innerHTML += `<b>Agente:</b> ${data.response}<br>`;
+        responseDiv.scrollTop = responseDiv.scrollHeight;
+    } catch(e) {
+        responseDiv.innerHTML += `<b>Agente:</b> Error: ${e}<br>`;
+    }
 });
 
 document.getElementById("limpiar-chat").addEventListener("click", () => {
-    chatMessages.innerHTML = "";
+    document.getElementById("chat-messages").innerHTML = "";
 });
