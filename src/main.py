@@ -1,86 +1,100 @@
-import os
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-import stripe
+from fastapi.templating import Jinja2Templates
 import openai
+import stripe
+import os
 
-# Config
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-FREE_ACCESS_CODE = os.getenv("FREE_ACCESS_CODE")  # tu código secreto
-
-stripe.api_key = STRIPE_SECRET_KEY
-openai.api_key = OPENAI_API_KEY
+# Cargar claves de entorno
+openai.api_key = os.getenv("OPENAI_API_KEY")
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu clave secreta real
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-SERVICES = {
-    "medico": {"name": "Asistente Virtual Médico", "price": 500, "duration": 8},
-    "risoterapia": {"name": "Risoterapia y Bienestar Natural", "price": 1200, "duration": 10},
-    "horoscopo": {"name": "Horóscopo", "price": 300, "duration": 1.5},
+# Código secreto para acceso gratuito
+FREE_CODE = "MKM991775"
+
+# Precios y duración de servicios
+SERVICIOS = {
+    "medico": {"precio": 5, "duracion": 8, "nombre": "Asistente Virtual Médico"},
+    "risoterapia": {"precio": 12, "duracion": 10, "nombre": "Risoterapia y Bienestar Natural"},
+    "horoscopo": {"precio": 3, "duracion": 1.5, "nombre": "Horóscopo"}
 }
 
-paid_users = set()
-free_access_users = set()
+# Pagos activos
+pagos_confirmados = {}
 
 @app.get("/")
-def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
+def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "servicios": SERVICIOS})
 
 @app.post("/chat")
 async def chat(
     apodo: str = Form(...),
     servicio: str = Form(...),
     mensaje: str = Form(...),
+    pago: str = Form(None),
+    code: str = Form(None)
 ):
-    if apodo not in paid_users and apodo not in free_access_users:
-        return JSONResponse({"respuesta": "Acceso denegado. Realiza el pago o ingresa código secreto."})
-    
-    system_msg = f"Eres un asistente de {SERVICES[servicio]['name']} de May Roga LLC."
-    
-    if servicio == "medico":
-        prompt = f"Como médico informativo, responde de manera profesional al paciente: {mensaje}"
-    elif servicio == "risoterapia":
-        prompt = f"Como experto en risoterapia y bienestar natural según Técnicas de Vida, responde con ejercicios y ejemplos prácticos: {mensaje}"
-    else:
-        prompt = f"Como horóscopo, responde según signo y fecha de nacimiento: {mensaje}"
+    acceso = False
+    if pago == "true":
+        acceso = True
+    if code == FREE_CODE:
+        acceso = True
 
-    response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=300,
-    )
+    if not acceso:
+        return JSONResponse({"respuesta": "Acceso denegado. Debes pagar o usar un código válido."})
 
-    reply = response.choices[0].message.content
-    return JSONResponse({"respuesta": reply})
+    if servicio not in SERVICIOS:
+        return JSONResponse({"respuesta": "Servicio no válido."})
 
-@app.post("/acceso-gratis")
-async def acceso_gratis(apodo: str = Form(...), code: str = Form(...)):
-    if code == FREE_ACCESS_CODE:
-        free_access_users.add(apodo)
-        return JSONResponse({"status": "ok", "mensaje": f"Acceso concedido para {apodo} (gratis)."})
-    return JSONResponse({"status": "error", "mensaje": "Código incorrecto."})
+    try:
+        # Chat inteligente según servicio
+        system_prompt = ""
+        if servicio == "medico":
+            system_prompt = "Eres un asistente médico profesional. Responde con precisión y cuidado."
+        elif servicio == "risoterapia":
+            system_prompt = "Eres un instructor de risoterapia basado en las Técnicas de Vida (Tvid) de May Roga. Incluye ejercicios prácticos."
+        elif servicio == "horoscopo":
+            system_prompt = "Eres un astrólogo profesional. Da horóscopos breves y precisos."
 
-@app.post("/create-payment-intent")
-async def create_payment_intent(servicio: str = Form(...), apodo: str = Form(...)):
-    service = SERVICES.get(servicio)
-    if not service:
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": mensaje}
+            ],
+            max_tokens=400
+        )
+        respuesta_texto = response.choices[0].message.content.strip()
+        return JSONResponse({"respuesta": respuesta_texto})
+
+    except Exception as e:
+        return JSONResponse({"respuesta": f"Error: {str(e)}"})
+
+@app.post("/crear-sesion-stripe")
+async def crear_sesion_stripe(servicio: str = Form(...), apodo: str = Form(...)):
+    if servicio not in SERVICIOS:
         return JSONResponse({"error": "Servicio inválido"})
-    intent = stripe.PaymentIntent.create(
-        amount=service["price"],
-        currency="usd",
-        metadata={"apodo": apodo, "servicio": servicio},
-    )
-    return JSONResponse({"client_secret": intent.client_secret})
-
-@app.post("/confirm-payment")
-async def confirm_payment(apodo: str = Form(...)):
-    paid_users.add(apodo)
-    return JSONResponse({"status": "ok", "mensaje": f"Pago confirmado para {apodo}"})
+    precio = SERVICIOS[servicio]["precio"] * 100  # en centavos
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": SERVICIOS[servicio]["nombre"]},
+                    "unit_amount": precio
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"https://TU_DOMINIO/render.com?apodo={apodo}&servicio={servicio}&pago=true",
+            cancel_url=f"https://TU_DOMINIO/render.com"
+        )
+        return JSONResponse({"id": session.id})
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
