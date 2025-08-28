@@ -1,49 +1,58 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
     const chatForm = document.getElementById("chat-form");
-    const chatMessages = document.getElementById("chat-messages");
+    const chatMensajes = document.getElementById("chat-mensajes");
+    const limpiarChat = document.getElementById("limpiar-chat");
 
-    chatForm.addEventListener("submit", async function (e) {
-        e.preventDefault();
+    const accesoDirecto = document.getElementById("acceso-directo");
+    const pagarStripe = document.getElementById("pagar-stripe");
 
-        const apodo = document.getElementById("apodo").value;
-        const mensaje = document.getElementById("mensaje").value;
+    let apodoGlobal = "";
+    let pagoConfirmado = false;
+    let servicioSeleccionado = "";
+
+    accesoDirecto.addEventListener("click", () => {
+        const apodo = document.getElementById("apodo").value.trim();
+        const codigo = document.getElementById("codigo").value.trim();
+        if (!apodo || !codigo) { alert("Ingresa apodo y código."); return; }
+        apodoGlobal = apodo;
+        pagoConfirmado = false;
+        servicioSeleccionado = "medico";  // default para acceso directo
+        alert("Acceso concedido para " + apodoGlobal);
+    });
+
+    pagarStripe.addEventListener("click", () => {
+        const apodo = document.getElementById("apodo-pago").value.trim();
         const servicio = document.getElementById("servicio").value;
-        const code = document.getElementById("code").value;
-        const pagoConfirmado = document.getElementById("pago-confirmado")?.checked || false;
+        if (!apodo) { alert("Ingresa tu apodo."); return; }
+        apodoGlobal = apodo;
+        servicioSeleccionado = servicio;
+        pagoConfirmado = true;
+        document.getElementById("pago-confirmado").value = "true";
+        alert("Pago simulado confirmado para " + apodoGlobal);
+    });
 
-        if (!apodo || !mensaje) return;
+    chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const mensaje = document.getElementById("mensaje").value.trim();
+        if (!mensaje || !apodoGlobal) { alert("Debes estar autenticado."); return; }
 
-        // Mostrar mensaje del usuario
-        const userDiv = document.createElement("div");
-        userDiv.classList.add("mensaje-usuario");
-        userDiv.textContent = `${apodo}: ${mensaje}`;
-        chatMessages.appendChild(userDiv);
-
-        // Enviar a backend
         const formData = new FormData();
-        formData.append("apodo", apodo);
+        formData.append("apodo", apodoGlobal);
         formData.append("mensaje", mensaje);
-        formData.append("servicio", servicio);
-        formData.append("code", code);
-        formData.append("pago_confirmado", pagoConfirmado);
+        formData.append("servicio", servicioSeleccionado);
+        formData.append("pago_confirmado", pagoConfirmado ? "true" : "false");
+        formData.append("codigo", document.getElementById("codigo").value.trim());
 
-        const response = await fetch("/chat", {
-            method: "POST",
-            body: formData
-        });
-
+        const response = await fetch("/chat", { method: "POST", body: formData });
         const data = await response.json();
 
-        const respDiv = document.createElement("div");
-        respDiv.classList.add("mensaje-asistente");
-        if (data.error) {
-            respDiv.textContent = `Error: ${data.error}`;
-        } else {
-            respDiv.textContent = data.respuesta;
-        }
-        chatMessages.appendChild(respDiv);
+        const div = document.createElement("div");
+        div.innerHTML = `<b>${apodoGlobal}:</b> ${mensaje}<br><b>Asistente:</b> ${data.respuesta}`;
+        chatMensajes.appendChild(div);
+        chatMensajes.scrollTop = chatMensajes.scrollHeight;
 
-        chatMessages.scrollTop = chatMessages.scrollHeight;
         document.getElementById("mensaje").value = "";
     });
+
+    limpiarChat.addEventListener("click", () => { chatMensajes.innerHTML = ""; });
 });
