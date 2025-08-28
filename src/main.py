@@ -1,85 +1,68 @@
+import os
+import stripe
+import openai
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import os
-import openai
-import stripe
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = FastAPI()
-
-# Configuración de Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-# Configuración OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# Carpeta de templates y static
-templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-# Código secreto para acceso gratuito
-FREE_CODE = os.getenv("FREE_CODE", "MKM991775")
+# Claves
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = STRIPE_SECRET_KEY
+CODE_SECRET = os.getenv("CODE_SECRET")  # tu código secreto
 
-# Servicios disponibles
-SERVICES = {
-    "medico": "Asistente Virtual Médico",
-    "risoterapia": "Risoterapia y Bienestar Natural",
-    "horoscopo": "Horóscopo"
+# Servicios
+SERVICIOS = {
+    "medico": {"precio": 5.0, "duracion": 8},
+    "risoterapia": {"precio": 12.0, "duracion": 10},
+    "horoscopo": {"precio": 3.0, "duracion": 1.5},
 }
 
 @app.get("/")
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "servicios": SERVICIOS})
 
 @app.post("/chat")
 async def chat(
-    request: Request,
     apodo: str = Form(...),
-    servicio: str = Form(...),
     mensaje: str = Form(...),
-    code: str = Form(None),
-    pago_confirmado: bool = Form(False)
+    servicio: str = Form(...),
+    pago_confirmado: str = Form(...),
+    codigo: str = Form(None)
 ):
-    # Verificar acceso
-    if not pago_confirmado and code != FREE_CODE:
-        return JSONResponse({"error": "Acceso no autorizado. Paga o usa código secreto."})
+    acceso_gratis = codigo == CODE_SECRET
+    acceso_pago = pago_confirmado == "true"
 
-    # Mensaje para OpenAI según servicio
+    if not (acceso_gratis or acceso_pago):
+        return JSONResponse({"respuesta": "Acceso denegado. Debes pagar o usar un código secreto."})
+
+    prompt = ""
     if servicio == "medico":
-        system_prompt = "Eres un médico virtual, responde de manera profesional y segura. Si hay urgencia, indica atención presencial."
+        prompt = f"(ASISTENTE MÉDICO) Responde profesionalmente al paciente '{apodo}': {mensaje}"
     elif servicio == "risoterapia":
-        system_prompt = "Eres un experto en risoterapia y bienestar natural. Proporciona consejos útiles y positivos."
+        prompt = f"(RISOTERAPIA) Basado en las Técnicas de Vida de May Roga LLC, responde al participante '{apodo}': {mensaje}"
     elif servicio == "horoscopo":
-        system_prompt = "Eres un astrólogo que da horóscopos y consejos de bienestar diario."
+        prompt = f"(HORÓSCOPO) Genera un horóscopo profesional breve para '{apodo}': {mensaje}"
     else:
-        system_prompt = "Eres un asistente virtual que da respuestas informativas."
+        prompt = f"Responde profesionalmente a '{apodo}': {mensaje}"
 
-    # Crear respuesta con OpenAI Chat API nueva
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{apodo}: {mensaje}"}
-        ],
-        temperature=0.7,
-        max_tokens=300
-    )
-
-    answer = response.choices[0].message["content"]
-
-    return JSONResponse({"respuesta": answer})
-
-@app.post("/create-payment-intent")
-async def create_payment_intent(amount: int = Form(...)):
+    openai.api_key = OPENAI_API_KEY
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=amount,
-            currency="usd"
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
         )
-        return JSONResponse({"client_secret": intent.client_secret})
+        respuesta_texto = response.choices[0].message.content.strip()
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        respuesta_texto = f"Error al generar respuesta: {str(e)}"
+
+    return JSONResponse({"respuesta": respuesta_texto})
