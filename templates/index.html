@@ -1,36 +1,30 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Asistente Virtual Médico</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="/static/js/script.js" defer></script>
+<meta charset="UTF-8">
+<title>Medico Virtual May Roga</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-    <h1>Medico Virtual May Roga — informativo</h1>
-    <p>No sustituye consulta presencial.</p>
+<h1>Medico Virtual May Roga — informativo</h1>
+<p>Apodo obligatorio para acceder:</p>
+<input type="text" id="nickname" placeholder="Tu apodo">
+<p>Selecciona servicio:</p>
+<select id="service">
+  {% for key, price in services.items() %}
+    <option value="{{ key }}">{{ key }} — ${{ price }}</option>
+  {% endfor %}
+</select>
+<button id="pay">Pagar con Stripe</button>
 
-    <div id="access">
-        <label>Apodo (obligatorio):</label>
-        <input type="text" id="nickname" placeholder="Tu apodo">
-        <label>Selecciona servicio:</label>
-        <select id="service">
-            {% for key, s in services.items() %}
-            <option value="{{ key }}">{{ s.name }} — {{ s.time }} min — ${{ s.price }}</option>
-            {% endfor %}
-        </select>
-        <button id="start">Iniciar Chat</button>
-    </div>
+<div id="chat-container" style="display:none; margin-top:20px;">
+    <div id="chat-box" style="height:300px; overflow-y:scroll; border:1px solid #ccc; padding:10px;"></div>
+    <input type="text" id="user-input" placeholder="Escribe tu mensaje...">
+    <button id="send">Enviar</button>
+    <button id="clear">Limpiar chat</button>
+</div>
 
-    <div id="chat-container" style="display:none;">
-        <div id="chat-box"></div>
-        <input type="text" id="user-input" placeholder="Escribe tu consulta...">
-        <button id="send">Enviar</button>
-        <button id="clear">Limpiar chat</button>
-        <div id="payment-section">
-            <button id="pay">Pagar con Stripe</button>
-        </div>
-    </div>
+<script src="/static/js/script.js"></script>
 </body>
 </html>
