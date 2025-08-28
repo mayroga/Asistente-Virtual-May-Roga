@@ -1,94 +1,85 @@
-# main.py
-import os
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import stripe
+import os
 import openai
+import stripe
+from dotenv import load_dotenv
 
-# -----------------------------
-# Configuración de claves
-# -----------------------------
-os.environ["OPENAI_API_KEY"] = "TU_OPENAI_API_KEY"  # Tu API Key de OpenAI
-SECRET_ACCESS_CODE = "MKM991775"  # Código secreto para acceso gratis
+load_dotenv()
 
-stripe.api_key = "TU_STRIPE_SECRET_KEY"  # Tu clave privada Stripe
-
-# -----------------------------
-# Inicialización FastAPI
-# -----------------------------
 app = FastAPI()
+
+# Configuración de Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+# Configuración OpenAI
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Carpeta de templates y static
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# -----------------------------
+# Código secreto para acceso gratuito
+FREE_CODE = os.getenv("FREE_CODE", "MKM991775")
+
 # Servicios disponibles
-# -----------------------------
-services = {
-    "medico_virtual": {"name": "Asistente Virtual Médico", "price": 5},
-    "risoterapia": {"name": "Risoterapia y Bienestar Natural", "price": 5},
-    "horoscopo": {"name": "Horóscopo y Bienestar Natural", "price": 3},
+SERVICES = {
+    "medico": "Asistente Virtual Médico",
+    "risoterapia": "Risoterapia y Bienestar Natural",
+    "horoscopo": "Horóscopo"
 }
 
-# -----------------------------
-# Rutas principales
-# -----------------------------
 @app.get("/")
-def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "services": services})
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
 
-# -----------------------------
-# Cobro con Stripe
-# -----------------------------
-@app.post("/create-checkout-session")
-async def create_checkout_session(apodo: str = Form(...), service: str = Form(...)):
-    if service not in services:
-        return JSONResponse({"error": "Servicio no válido"}, status_code=400)
-    
-    price = int(services[service]["price"] * 100)  # en centavos
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": services[service]["name"]},
-                    "unit_amount": price,
-                },
-                "quantity": 1,
-            }],
-            mode="payment",
-            success_url="https://TU_DOMINIO/success",
-            cancel_url="https://TU_DOMINIO/cancel",
-            metadata={"apodo": apodo, "service": service},
-        )
-        return {"url": session.url}
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-# -----------------------------
-# Chat con OpenAI
-# -----------------------------
 @app.post("/chat")
-async def chat(request: Request):
-    data = await request.json()
-    apodo = data.get("apodo")
-    mensaje = data.get("mensaje")
-    access_code = data.get("access_code", "")
+async def chat(
+    request: Request,
+    apodo: str = Form(...),
+    servicio: str = Form(...),
+    mensaje: str = Form(...),
+    code: str = Form(None),
+    pago_confirmado: bool = Form(False)
+):
+    # Verificar acceso
+    if not pago_confirmado and code != FREE_CODE:
+        return JSONResponse({"error": "Acceso no autorizado. Paga o usa código secreto."})
 
-    # Validación: pago o código secreto
-    if access_code != SECRET_ACCESS_CODE and not data.get("paid", False):
-        return JSONResponse({"respuesta": "Acceso denegado. Pago o código secreto requerido."})
+    # Mensaje para OpenAI según servicio
+    if servicio == "medico":
+        system_prompt = "Eres un médico virtual, responde de manera profesional y segura. Si hay urgencia, indica atención presencial."
+    elif servicio == "risoterapia":
+        system_prompt = "Eres un experto en risoterapia y bienestar natural. Proporciona consejos útiles y positivos."
+    elif servicio == "horoscopo":
+        system_prompt = "Eres un astrólogo que da horóscopos y consejos de bienestar diario."
+    else:
+        system_prompt = "Eres un asistente virtual que da respuestas informativas."
 
-    # Generar respuesta básica (puedes mejorar con GPT)
+    # Crear respuesta con OpenAI Chat API nueva
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{apodo}: {mensaje}"}
+        ],
+        temperature=0.7,
+        max_tokens=300
+    )
+
+    answer = response.choices[0].message["content"]
+
+    return JSONResponse({"respuesta": answer})
+
+@app.post("/create-payment-intent")
+async def create_payment_intent(amount: int = Form(...)):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": mensaje}]
+        intent = stripe.PaymentIntent.create(
+            amount=amount,
+            currency="usd"
         )
-        respuesta = response.choices[0].message.content
-    except Exception:
-        respuesta = f"(ASISTENTE_VIRTUAL) Respuesta para '{apodo}': recibí tu mensaje: '{mensaje}'. Por ahora respondo en modo básico. Si hay urgencia, atención presencial."
-    
-    return {"respuesta": respuesta}
+        return JSONResponse({"client_secret": intent.client_secret})
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
