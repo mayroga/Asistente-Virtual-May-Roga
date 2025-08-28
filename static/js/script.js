@@ -1,60 +1,49 @@
-// static/js/script.js
+document.addEventListener("DOMContentLoaded", function () {
+    const chatForm = document.getElementById("chat-form");
+    const chatMessages = document.getElementById("chat-messages");
 
-let apodoActual = "";
-let accesoGratisActivo = false;
+    chatForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
 
-function accesoGratis() {
-    const apodo = document.getElementById("free-apodo").value;
-    const code = document.getElementById("free-code").value;
-    if (!apodo || !code) {
-        alert("Apodo y código son obligatorios");
-        return;
-    }
-    apodoActual = apodo;
-    accesoGratisActivo = true;
-    document.getElementById("chat-apodo").innerText = apodoActual;
-    document.getElementById("chat-section").style.display = "block";
-    document.getElementById("free-status").innerText = "Acceso concedido para " + apodo;
-}
+        const apodo = document.getElementById("apodo").value;
+        const mensaje = document.getElementById("mensaje").value;
+        const servicio = document.getElementById("servicio").value;
+        const code = document.getElementById("code").value;
+        const pagoConfirmado = document.getElementById("pago-confirmado")?.checked || false;
 
-function pagarStripe() {
-    const apodo = document.getElementById("paid-apodo").value;
-    const service = document.getElementById("service-select").value;
-    if (!apodo) { alert("Apodo obligatorio"); return; }
-    fetch("/create-checkout-session", {
-        method: "POST",
-        body: new URLSearchParams({ apodo: apodo, service: service })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.url) {
-            window.location.href = data.url;
+        if (!apodo || !mensaje) return;
+
+        // Mostrar mensaje del usuario
+        const userDiv = document.createElement("div");
+        userDiv.classList.add("mensaje-usuario");
+        userDiv.textContent = `${apodo}: ${mensaje}`;
+        chatMessages.appendChild(userDiv);
+
+        // Enviar a backend
+        const formData = new FormData();
+        formData.append("apodo", apodo);
+        formData.append("mensaje", mensaje);
+        formData.append("servicio", servicio);
+        formData.append("code", code);
+        formData.append("pago_confirmado", pagoConfirmado);
+
+        const response = await fetch("/chat", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        const respDiv = document.createElement("div");
+        respDiv.classList.add("mensaje-asistente");
+        if (data.error) {
+            respDiv.textContent = `Error: ${data.error}`;
         } else {
-            alert("Error al crear sesión de pago");
+            respDiv.textContent = data.respuesta;
         }
-    });
-}
+        chatMessages.appendChild(respDiv);
 
-function enviarMensaje() {
-    const mensaje = document.getElementById("chat-message").value;
-    if (!mensaje) return;
-    let payload = { apodo: apodoActual, mensaje: mensaje };
-    if (accesoGratisActivo) payload.access_code = document.getElementById("free-code").value;
-    fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(data => {
-        const log = document.getElementById("chat-log");
-        log.innerHTML += `<p>${apodoActual}: ${mensaje}</p>`;
-        log.innerHTML += `<p>Asistente: ${data.respuesta}</p>`;
-        log.scrollTop = log.scrollHeight;
-        document.getElementById("chat-message").value = "";
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        document.getElementById("mensaje").value = "";
     });
-}
-
-function limpiarChat() {
-    document.getElementById("chat-log").innerHTML = "";
-}
+});
