@@ -11,12 +11,11 @@
 
     <div id="acceso">
         <h2>Acceso por código (gratis)</h2>
-        <label>Apodo:</label>
+        <label>Apodo (obligatorio):</label>
         <input type="text" id="apodo" required>
         <label>Código secreto:</label>
         <input type="password" id="code" placeholder="•••••••••">
         <button id="acceso-directo">Acceso directo</button>
-        <p id="acceso-mensaje"></p>
     </div>
 
     <div id="pago">
@@ -25,12 +24,12 @@
         <input type="text" id="apodo-pago">
         <label>Selecciona servicio:</label>
         <select id="servicio">
-            {% for key, s in services.items() %}
-            <option value="{{key}}">{{s.name}} — ${{'%.2f'%(s.price/100)}}</option>
-            {% endfor %}
+            <option value="medico">Asistente Virtual Médico — $5 — 8 min</option>
+            <option value="risoterapia">Risoterapia y Bienestar Natural — $12 — 10 min</option>
+            <option value="horoscopo">Horóscopo — $3 — 1.5 min</option>
         </select>
         <button id="pagar-stripe">Pagar con Stripe</button>
-        <p id="pago-mensaje"></p>
+        <input type="hidden" id="pago-confirmado" value="false">
     </div>
 
     <hr>
@@ -46,6 +45,7 @@
         </form>
     </div>
 
+    <p>Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.</p>
     <footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
 
     <script src="https://js.stripe.com/v3/"></script>
