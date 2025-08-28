@@ -2,20 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Agente de Respuesta Rápida May Roga</title>
+    <title>Agente de Respuesta Rápida - May Roga</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <h1>Agente de Respuesta Rápida May Roga</h1>
-    <p>Servicio educativo. No sustituye consulta médica presencial.</p>
+    <h1>Agente de Respuesta Rápida - May Roga LLC</h1>
+    <p>Servicio educativo e informativo. No sustituye consulta presencial.</p>
 
     <div id="acceso">
-        <h2>Acceso por código (gratis)</h2>
+        <h2>Acceso por código secreto (gratis)</h2>
         <label>Apodo (obligatorio):</label>
         <input type="text" id="apodo" required>
         <label>Código secreto:</label>
         <input type="password" id="code" placeholder="•••••••••">
-        <button id="acceso-directo">Acceso directo</button>
+        <button id="acceso-directo">Acceder</button>
     </div>
 
     <div id="pago">
@@ -24,12 +24,11 @@
         <input type="text" id="apodo-pago">
         <label>Selecciona servicio:</label>
         <select id="servicio">
-            <option value="agente_rapido">Agente de Respuesta Rápida — 55 seg — $1</option>
-            <option value="risoterapia">Risoterapia y Bienestar Natural — 10 min — $12</option>
-            <option value="horoscopo">Horóscopo — 1 min 30 seg — $3</option>
+            <option value="agente_rapido">Agente de Respuesta Rápida — $1 — 55s</option>
+            <option value="risoterapia">Risoterapia y Bienestar Natural — $12 — 10 min</option>
+            <option value="horoscopo">Horóscopo — $3 — 1 min 30 s</option>
         </select>
         <button id="pagar-stripe">Pagar con Stripe</button>
-        <input type="hidden" id="pago-confirmado" value="false">
     </div>
 
     <hr>
@@ -45,9 +44,7 @@
         </form>
     </div>
 
-    <p>Consejo: pregunta con detalles para respuestas más útiles.</p>
-    <footer>© May Roga LLC — Apodos obligatorios. Pagos por Stripe o código secreto.</footer>
-
+    <footer>© May Roga LLC — Apodos obligatorios. Pagos por Stripe.</footer>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/static/js/script.js"></script>
 </body>
