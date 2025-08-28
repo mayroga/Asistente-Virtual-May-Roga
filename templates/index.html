@@ -1,176 +1,44 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Asistente Virtual - May Roga</title>
-  <style>
-    :root{--bg:#f6f7fb;--card:#fff;--accent:#0b74ff;--muted:#666}
-    body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#111}
-    .wrap{max-width:720px;margin:18px auto;padding:16px}
-    header h1{margin:0;font-size:22px}
-    .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
-    .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(10,10,20,.06)}
-    input,select,textarea,button{width:100%;padding:12px;border-radius:8px;border:1px solid #e3e6ee;margin-top:8px;box-sizing:border-box}
-    button{background:var(--accent);color:#fff;border:none;font-weight:600}
-    .row{display:flex;gap:10px}
-    @media(max-width:520px){.row{flex-direction:column}}
-    #chat{height:300px;overflow:auto;padding:8px;background:#fcfdff;border-radius:8px;border:1px solid #eef2ff;margin-top:10px}
-    .msg{margin:8px 0;padding:8px;border-radius:8px}
-    .msg.user{text-align:right;background:#e6f0ff}
-    .msg.bot{text-align:left;background:#fff}
-    .small{font-size:13px;color:var(--muted)}
-  </style>
+    <meta charset="UTF-8">
+    <title>Asistente Virtual May Roga</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Asistente Virtual Médico</h1>
-      <div class="sub small">Medico Virtual May Roga — informativo. No sustituye consulta presencial.</div>
-    </header>
-
-    <section class="card" aria-labelledby="access">
-      <strong id="access" class="small">Acceso (elige una opción):</strong>
-
-      <!-- ACCESO DIRECTO (CÓDIGO SECRETO) -->
-      <div style="margin-top:10px">
-        <label class="small">Apodo (obligatorio, no nombre real)</label>
-        <input id="apodo_secret" placeholder="Tu apodo (ej: FVF)">
-        <label class="small">Código secreto</label>
-        <input id="code_secret" placeholder="MKM991775">
-        <button id="btn_secret">Acceso directo</button>
-        <div id="msg_secret" class="small" style="margin-top:8px;color:green"></div>
-      </div>
-
-      <hr style="margin:12px 0">
-
-      <!-- PAGO -->
-      <div>
-        <label class="small">Apodo para pago</label>
-        <input id="apodo_pay" placeholder="Tu apodo (ej: FVF)">
-        <label class="small">Selecciona servicio</label>
-        <select id="service_select">
-          {% for key, s in services.items() %}
-            <option value="{{ key }}">{{ s.name }} — {{ s.time }} — ${{ s.price }}</option>
-          {% endfor %}
+    <h1>Asistente Virtual May Roga</h1>
+    <form id="accessForm">
+        <label>Apodo (obligatorio):</label>
+        <input type="text" id="apodo" name="apodo" required>
+        <label>Selecciona servicio:</label>
+        <select id="service_id" name="service_id" required>
+            {% for key, s in services.items() %}
+            <option value="{{key}}">{{s.name}} - ${{'%.2f' % (s.price/100)}}</option>
+            {% endfor %}
         </select>
-        <button id="btn_pay">Pagar con Stripe</button>
-        <div id="msg_pay" class="small" style="margin-top:8px;color:green"></div>
-      </div>
-    </section>
+        <button type="submit">Pagar y acceder</button>
+    </form>
 
-    <section class="card" style="margin-top:12px">
-      <strong class="small">Chat con Asistente</strong>
-      <div id="chat" aria-live="polite"></div>
-
-      <div style="margin-top:10px">
-        <input id="message" placeholder="Escribe tu consulta (ej: dolor de cabeza...)">
-        <div class="row" style="margin-top:8px">
-          <button id="btn_send">Enviar</button>
-          <button id="btn_clear" style="background:#ccc;color:#000">Limpiar chat</button>
-        </div>
-        <div class="small" style="margin-top:6px;color:#666">
-          Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.
-        </div>
-      </div>
-    </section>
-
-    <footer style="margin-top:12px;text-align:center;color:#888;font-size:13px">
-      © May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.
-    </footer>
-  </div>
-
-  <script>
-    // FRONTEND JS - maneja acceso directo, pago y chat
-    const FRONTEND_URL = "{{ frontend_url }}";
-    let currentApodo = null;
-
-    // Acceso directo
-    document.getElementById("btn_secret").onclick = async () => {
-      const apodo = document.getElementById("apodo_secret").value.trim();
-      const code = document.getElementById("code_secret").value.trim();
-      if(!apodo || !code){ alert("Apodo y código obligatorios"); return; }
-      const res = await fetch("/access-secret", {
-        method: "POST",
-        headers: {"Content-Type":"application/x-www-form-urlencoded"},
-        body: new URLSearchParams({apodo, code})
-      });
-      const data = await res.json();
-      document.getElementById("msg_secret").innerText = data.message || data.error || "Respuesta desconocida";
-      if(data.success){ currentApodo = apodo; }
-    };
-
-    // Pago con Stripe (inicia checkout)
-    document.getElementById("btn_pay").onclick = async () => {
-      const apodo = document.getElementById("apodo_pay").value.trim();
-      const servicio = document.getElementById("service_select").value;
-      if(!apodo){ alert("Apodo obligatorio para pago"); return; }
-      const res = await fetch("/create-checkout-session", {
-        method: "POST",
-        headers: {"Content-Type":"application/x-www-form-urlencoded"},
-        body: new URLSearchParams({apodo, servicio})
-      });
-      const data = await res.json();
-      if(data.url){
-        // Guardamos apodo temporalmente para chat después del pago
-        currentApodo = apodo;
-        window.location = data.url;
-      } else {
-        alert("Error creando pago: " + (data.error || "desconocido"));
-      }
-    };
-
-    // Cuando vuelves desde Stripe success (apodo y servicio en query params)
-    (function checkUrlParams(){
-      const qp = new URLSearchParams(window.location.search);
-      const ap = qp.get("apodo");
-      const serv = qp.get("servicio");
-      if(ap && serv){
-        // Indicar al usuario que el servicio está listo (webhook debe activar también)
-        currentApodo = ap;
-        const chat = document.getElementById("chat");
-        chat.innerHTML += `<div class="msg bot"><em>Pago recibido. Servicio ${serv} activado para ${ap}.</em></div>`;
-      }
-    })();
-
-    // Enviar mensaje
-    document.getElementById("btn_send").onclick = async () => {
-      const msg = document.getElementById("message").value.trim();
-      const chat = document.getElementById("chat");
-      const servicio = document.getElementById("service_select").value;
-      if(!msg){ alert("Escribe tu consulta"); return; }
-      if(!currentApodo){ alert("Debes acceder por código secreto o pagar antes."); return; }
-
-      // Mostrar en UI
-      chat.innerHTML += `<div class="msg user"><strong>${currentApodo}:</strong> ${msg}</div>`;
-      document.getElementById("message").value = "";
-
-      // Llamada al backend
-      try{
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: {"Content-Type":"application/x-www-form-urlencoded"},
-          body: new URLSearchParams({apodo: currentApodo, message: msg, servicio})
+    <script>
+    const form = document.getElementById("accessForm");
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const apodo = document.getElementById("apodo").value;
+        const service_id = document.getElementById("service_id").value;
+        
+        const res = await fetch("/create-checkout-session", {
+            method: "POST",
+            body: new URLSearchParams({apodo, service_id})
         });
         const data = await res.json();
-        if(data.respuesta){
-          chat.innerHTML += `<div class="msg bot"><strong>Asistente:</strong> ${data.respuesta}</div>`;
-        } else if(data.error){
-          chat.innerHTML += `<div class="msg bot"><em>Error: ${data.error}</em></div>`;
+        if (data.id) {
+            const stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
+            stripe.redirectToCheckout({ sessionId: data.id });
         } else {
-          chat.innerHTML += `<div class="msg bot"><em>Sin respuesta.</em></div>`;
+            alert("Error al crear sesión de pago");
         }
-        chat.scrollTop = chat.scrollHeight;
-      } catch(err){
-        chat.innerHTML += `<div class="msg bot"><em>Error al conectar con servidor.</em></div>`;
-      }
-    };
-
-    // Limpiar chat
-    document.getElementById("btn_clear").onclick = () => {
-      document.getElementById("chat").innerHTML = "";
-    };
-  </script>
+    });
+    </script>
 </body>
 </html>
