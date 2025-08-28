@@ -1,49 +1,48 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Medico Virtual May Roga</title>
+    <title>Asistente Virtual May Roga</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <h1>Asistente Virtual Médico</h1>
-    <p>Medico Virtual May Roga — informativo. No sustituye consulta presencial.</p>
+    <h1>Asistente Virtual May Roga</h1>
+    <p>Servicio informativo. No sustituye consulta presencial.</p>
 
-    <!-- Acceso con código secreto -->
-    <div>
-        <h3>Acceso por código (gratis)</h3>
+    <div id="acceso">
+        <h2>Acceso por código (gratis)</h2>
         <label>Apodo (obligatorio):</label>
-        <input type="text" id="free-apodo">
+        <input type="text" id="apodo" required>
         <label>Código secreto:</label>
-        <input type="password" id="free-code">
-        <button onclick="accesoGratis()">Acceso directo</button>
-        <p id="free-status"></p>
+        <input type="password" id="code" placeholder="•••••••••">
+        <button id="acceso-directo">Acceso directo</button>
     </div>
 
-    <!-- Acceso con pago -->
-    <div>
-        <h3>Acceso por pago (Stripe)</h3>
+    <div id="pago">
+        <h2>Acceso por pago (Stripe)</h2>
         <label>Apodo:</label>
-        <input type="text" id="paid-apodo">
+        <input type="text" id="apodo-pago">
         <label>Selecciona servicio:</label>
-        <select id="service-select">
-            {% for key, s in services.items() %}
-            <option value="{{ key }}">{{ s.name }} — ${{ s.price }}</option>
-            {% endfor %}
+        <select id="servicio">
+            <option value="medico">Asistente Virtual Médico — $5</option>
+            <option value="risoterapia">Risoterapia y Bienestar Natural — $5</option>
+            <option value="horoscopo">Horóscopo — $5</option>
         </select>
-        <button onclick="pagarStripe()">Pagar con Stripe</button>
+        <button id="pagar-stripe">Pagar con Stripe</button>
+        <input type="hidden" id="pago-confirmado" value="false">
     </div>
 
-    <!-- Chat -->
-    <div id="chat-section" style="display:none;">
-        <h3>Chat con Asistente</h3>
-        <p>Apodo: <span id="chat-apodo"></span></p>
-        <label>Tu mensaje:</label>
-        <input type="text" id="chat-message">
-        <button onclick="enviarMensaje()">Enviar</button>
-        <button onclick="limpiarChat()">Limpiar chat</button>
-        <div id="chat-log" style="border:1px solid #ccc; padding:10px; height:200px; overflow:auto;"></div>
+    <hr>
+
+    <div id="chat">
+        <h2>Chat con Asistente</h2>
+        <div id="chat-messages" style="height:300px; overflow-y:scroll; border:1px solid #ccc; padding:10px;"></div>
+        <form id="chat-form">
+            <label>Tu mensaje:</label>
+            <input type="text" id="mensaje" required placeholder="Escribe tu consulta (síntomas, tiempo, etc.)">
+            <button type="submit">Enviar</button>
+            <button type="button" id="limpiar-chat">Limpiar chat</button>
+        </form>
     </div>
 
     <p>Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.</p>
