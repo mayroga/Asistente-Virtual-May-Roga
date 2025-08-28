@@ -1,44 +1,36 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Asistente Virtual May Roga</title>
+    <title>Asistente Virtual Médico</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/static/js/script.js" defer></script>
 </head>
 <body>
-    <h1>Asistente Virtual May Roga</h1>
-    <form id="accessForm">
+    <h1>Medico Virtual May Roga — informativo</h1>
+    <p>No sustituye consulta presencial.</p>
+
+    <div id="access">
         <label>Apodo (obligatorio):</label>
-        <input type="text" id="apodo" name="apodo" required>
+        <input type="text" id="nickname" placeholder="Tu apodo">
         <label>Selecciona servicio:</label>
-        <select id="service_id" name="service_id" required>
+        <select id="service">
             {% for key, s in services.items() %}
-            <option value="{{key}}">{{s.name}} - ${{'%.2f' % (s.price/100)}}</option>
+            <option value="{{ key }}">{{ s.name }} — {{ s.time }} min — ${{ s.price }}</option>
             {% endfor %}
         </select>
-        <button type="submit">Pagar y acceder</button>
-    </form>
+        <button id="start">Iniciar Chat</button>
+    </div>
 
-    <script>
-    const form = document.getElementById("accessForm");
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const apodo = document.getElementById("apodo").value;
-        const service_id = document.getElementById("service_id").value;
-        
-        const res = await fetch("/create-checkout-session", {
-            method: "POST",
-            body: new URLSearchParams({apodo, service_id})
-        });
-        const data = await res.json();
-        if (data.id) {
-            const stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
-            stripe.redirectToCheckout({ sessionId: data.id });
-        } else {
-            alert("Error al crear sesión de pago");
-        }
-    });
-    </script>
+    <div id="chat-container" style="display:none;">
+        <div id="chat-box"></div>
+        <input type="text" id="user-input" placeholder="Escribe tu consulta...">
+        <button id="send">Enviar</button>
+        <button id="clear">Limpiar chat</button>
+        <div id="payment-section">
+            <button id="pay">Pagar con Stripe</button>
+        </div>
+    </div>
 </body>
 </html>
