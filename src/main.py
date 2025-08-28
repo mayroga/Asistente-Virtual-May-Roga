@@ -20,16 +20,16 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
+# Definiciones de los servicios
 SERVICES = {
     "respuesta_rapida": {"name": "Agente de Respuesta Rápida", "price": 1, "time": 55},
     "risoterapia": {"name": "Risoterapia y Bienestar Natural", "price": 12, "time": 10*60},
     "horoscopo": {"name": "Horóscopo", "price": 3, "time": 90}
 }
 
-ACCESS_CODES = os.getenv("ACCESS_CODES", "MKM991775").split(",")
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Función para cargar y guardar el estado de los usuarios
 def load_users():
     try:
         with open("users.json", "r") as f:
@@ -45,6 +45,11 @@ def save_users(users_data):
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
 
+@app.get("/config")
+async def get_config():
+    """Expone la clave pública de Stripe de forma segura."""
+    return JSONResponse({"publicKey": os.getenv("STRIPE_PUBLISHABLE_KEY")})
+
 # Función para generar el prompt y el modelo
 def get_prompt_details(service, message, lang):
     """Genera el prompt según el servicio y el idioma."""
@@ -54,7 +59,6 @@ def get_prompt_details(service, message, lang):
         prompt = f"Eres un Agente de Respuesta Rápida educativo y profesional. Hablas en {lang}. Responde en menos de 55 segundos. Mensaje del usuario: {message}"
         api_to_use = "gemini"
     elif service == "risoterapia":
-        # Se usarán las 7 TVid y los 5 ejercicios por cada una
         prompt = f"""
         Eres un especialista en Risoterapia y Bienestar Natural basado en las exclusivas Técnicas de Vida (TVid) de Maykel Rodríguez García. Hablas en {lang}. Tu misión es guiar al usuario en un ejercicio de risoterapia de 10 minutos de forma divertida, motivacional y segura. No ofrezcas diagnósticos.
 
@@ -106,7 +110,6 @@ def get_prompt_details(service, message, lang):
         """
         api_to_use = "openai"
     elif service == "horoscopo":
-        # Se combina el horóscopo con las TVid
         prompt = f"Eres un astrólogo profesional y educativo. Proporcionas una lectura motivacional de 1 minuto 30 segundos. Hablas en {lang}. Incluyes una recomendación de una Técnica de Vida (TVid) de Maykel Rodríguez García. No ofrezcas predicciones esotéricas ni diagnósticos. Mensaje del usuario: {message}"
         api_to_use = "openai"
     
@@ -170,12 +173,29 @@ async def create_checkout_session(service: str = Form(...), apodo: str = Form(..
             payment_method_types=["card"],
             line_items=[{"price_data": {"currency": "usd", "product_data": {"name": SERVICES[service]["name"]}, "unit_amount": price}, "quantity": 1}],
             mode="payment",
-            success_url=f"{os.getenv('DOMAIN')}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}",
-            cancel_url=f"{os.getenv('DOMAIN')}/?canceled=true",
+            success_url=f"{os.getenv('URL_SITE')}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}",
+            cancel_url=f"{os.getenv('URL_SITE')}/?canceled=true",
         )
         return JSONResponse({"id": session.id})
     except Exception as e:
         return JSONResponse({"error": f"Error al crear sesión de Stripe: {str(e)}"}, status_code=500)
+
+@app.post("/access-code")
+async def access_code(apodo: str = Form(...), code: str = Form(...), service: str = Form(...)):
+    if code != os.getenv("SECRET_CODE_NAME"):
+        return JSONResponse({"error": "Código de acceso incorrecto."}, status_code=403)
+
+    users = load_users()
+    if apodo not in users:
+        users[apodo] = {"servicios": {}}
+    if service not in users[apodo]["servicios"]:
+        users[apodo]["servicios"][service] = {"sesiones_restantes": 0}
+
+    # Aumentar las sesiones (por ejemplo, 10 sesiones gratis con el código)
+    users[apodo]["servicios"][service]["sesiones_restantes"] += 10
+    save_users(users)
+
+    return JSONResponse({"message": "Acceso concedido.", "apodo": apodo, "service": service})
 
 @app.get("/success")
 async def success(request: Request, session_id: str, apodo: str, service: str):
