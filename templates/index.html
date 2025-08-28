@@ -11,9 +11,44 @@
 
     <div id="acceso">
         <h2>Acceso por código (gratis)</h2>
-        <label>Apodo (obligatorio):</label>
+        <label>Apodo:</label>
         <input type="text" id="apodo" required>
         <label>Código secreto:</label>
         <input type="password" id="code" placeholder="•••••••••">
         <button id="acceso-directo">Acceso directo</button>
-    </div
+        <p id="acceso-mensaje"></p>
+    </div>
+
+    <div id="pago">
+        <h2>Acceso por pago (Stripe)</h2>
+        <label>Apodo:</label>
+        <input type="text" id="apodo-pago">
+        <label>Selecciona servicio:</label>
+        <select id="servicio">
+            {% for key, s in services.items() %}
+            <option value="{{key}}">{{s.name}} — ${{'%.2f'%(s.price/100)}}</option>
+            {% endfor %}
+        </select>
+        <button id="pagar-stripe">Pagar con Stripe</button>
+        <p id="pago-mensaje"></p>
+    </div>
+
+    <hr>
+
+    <div id="chat">
+        <h2>Chat con Asistente</h2>
+        <div id="chat-messages" style="height:300px; overflow-y:scroll; border:1px solid #ccc; padding:10px;"></div>
+        <form id="chat-form">
+            <label>Tu mensaje:</label>
+            <input type="text" id="mensaje" required placeholder="Escribe tu consulta (síntomas, tiempo, etc.)">
+            <button type="submit">Enviar</button>
+            <button type="button" id="limpiar-chat">Limpiar chat</button>
+        </form>
+    </div>
+
+    <footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
