@@ -1,40 +1,37 @@
 body {
     font-family: Arial, sans-serif;
+    margin: 20px;
     background-color: #f7f7f7;
-    margin: 0;
-    padding: 0;
+    color: #333;
 }
 
-.container {
-    max-width: 600px;
-    margin: 50px auto;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+h1 {
+    color: #2c3e50;
 }
 
-input, button {
-    padding: 10px;
+input, select, button {
+    padding: 8px;
     margin: 5px 0;
-    width: 100%;
-    box-sizing: border-box;
+    font-size: 16px;
 }
 
 button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
     cursor: pointer;
+    background-color: #3498db;
+    border: none;
+    color: white;
+    border-radius: 4px;
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #2980b9;
 }
 
-.response {
-    margin-top: 20px;
-    padding: 10px;
-    background-color: #e7f3fe;
-    border-left: 4px solid #2196F3;
+#chat-box p {
+    margin: 5px 0;
+}
+
+#chat-box {
+    background-color: white;
+    border-radius: 4px;
 }
