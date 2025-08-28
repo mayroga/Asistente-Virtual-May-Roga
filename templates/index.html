@@ -1,122 +1,54 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Asistente Virtual Médico — May Roga</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f7f7fb;color:#222}
-    .container{max-width:940px;margin:0 auto;padding:16px}
-    header{padding:16px 0}
-    h1{margin:0 0 6px 0;font-size:22px}
-    .muted{color:#666;font-size:13px}
-    .card{background:#fff;border:1px solid #e6e6ef;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-    label{display:block;font-weight:600;margin:10px 0 6px}
-    input,select,button,textarea{width:100%;padding:12px;border:1px solid #dadce0;border-radius:10px;font-size:16px}
-    button{background:#0366d6;color:#fff;border:none;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .grid{display:grid;gap:12px}
-    @media(min-width:860px){.grid-3{grid-template-columns:1fr 1fr 1fr}}
-    @media(min-width:860px){.grid-2{grid-template-columns:1fr 1fr}}
-    .pill{display:inline-block;background:#eef5ff;color:#18499b;border:1px solid #cfe2ff;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
-    .ok{color:#0a7d28}
-    .warn{color:#b54708}
-    .footer{margin:18px 0 28px;color:#666;font-size:12px}
-  </style>
+    <meta charset="UTF-8">
+    <title>Medico Virtual May Roga</title>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Asistente Virtual Médico</h1>
-      <div class="muted">Medico Virtual May Roga — informativo. No sustituye consulta presencial.</div>
-    </header>
+    <h1>Asistente Virtual Médico</h1>
+    <p>Medico Virtual May Roga — informativo. No sustituye consulta presencial.</p>
 
-    <!-- ACCESO POR CODIGO -->
-    {% if secret_enabled %}
-    <div class="card">
-      <div class="pill">Acceso por código (gratis)</div>
-      <form id="secret-form" class="grid grid-3" autocomplete="off">
-        <div>
-          <label>Apodo (obligatorio, no nombre real)</label>
-          <input id="apodo_secret" type="text" maxlength="40" placeholder="Tu apodo (ej: FVF)" />
-        </div>
-        <div>
-          <label>Código secreto</label>
-          <input id="codigo_secret" type="password" placeholder="Código secreto" />
-        </div>
-        <div style="align-self:end">
-          <button type="submit">Acceso directo</button>
-        </div>
-      </form>
-      <div id="access-status" class="ok" style="margin-top:8px;"></div>
+    <!-- Acceso con código secreto -->
+    <div>
+        <h3>Acceso por código (gratis)</h3>
+        <label>Apodo (obligatorio):</label>
+        <input type="text" id="free-apodo">
+        <label>Código secreto:</label>
+        <input type="password" id="free-code">
+        <button onclick="accesoGratis()">Acceso directo</button>
+        <p id="free-status"></p>
     </div>
-    {% endif %}
 
-    <!-- PAGO STRIPE -->
-    <div class="card">
-      <div class="pill">Acceso por pago (Stripe)</div>
-      <form id="pay-form" class="grid grid-3">
-        <div>
-          <label>Apodo para pago</label>
-          <input id="apodo_pay" type="text" maxlength="40" placeholder="Tu apodo (ej: FVF)" value="{{ apodo or '' }}" />
-        </div>
-        <div>
-          <label>Selecciona servicio</label>
-          <select id="servicio">
+    <!-- Acceso con pago -->
+    <div>
+        <h3>Acceso por pago (Stripe)</h3>
+        <label>Apodo:</label>
+        <input type="text" id="paid-apodo">
+        <label>Selecciona servicio:</label>
+        <select id="service-select">
             {% for key, s in services.items() %}
-              <option value="{{ key }}">{{ s.titulo }} — {{ s.minutos }} min — ${{ '%.2f' % (s.cents/100) }}</option>
+            <option value="{{ key }}">{{ s.name }} — ${{ s.price }}</option>
             {% endfor %}
-          </select>
-        </div>
-        <div style="align-self:end">
-          <button type="submit">Pagar con Stripe</button>
-        </div>
-      </form>
-      {% if success %}
-        <div class="ok" style="margin-top:8px;">Pago confirmado para {{ apodo }} — servicio {{ servicio }}. Acceso concedido.</div>
-      {% endif %}
+        </select>
+        <button onclick="pagarStripe()">Pagar con Stripe</button>
     </div>
 
-    <!-- CHAT -->
-    <div class="card">
-      <div class="pill">Chat con Asistente</div>
-      <form id="chat-form" class="grid grid-3" autocomplete="off">
-        <div>
-          <label>Apodo</label>
-          <input id="apodo_chat" type="text" maxlength="40" placeholder="Tu apodo" value="{{ apodo or '' }}" />
-        </div>
-        <div>
-          <label>Servicio a consultar</label>
-          <select id="servicio_chat">
-            <option value="asistente_virtual">Asistente Virtual Médico</option>
-            <option value="risoterapia">Risoterapia y Bienestar Natural</option>
-            <option value="horoscopo">Horóscopo</option>
-          </select>
-        </div>
-        <div>
-          <label>Tu mensaje</label>
-          <input id="message" type="text" placeholder="Escribe tu consulta (síntomas, tiempo, etc.)" />
-        </div>
-        <div style="grid-column:1 / -1; display:flex; gap:8px; align-items:center;">
-          <button id="sendBtn" type="submit" style="max-width:200px">Enviar</button>
-          <button id="clearBtn" type="button" style="max-width:200px;background:#666">Limpiar chat</button>
-        </div>
-      </form>
-      <div style="margin-top:10px">
-        <label>Conversación</label>
-        <textarea id="chat-box" rows="10" readonly placeholder="Aquí verás la conversación..."></textarea>
-      </div>
-      <div class="muted" style="margin-top:6px;">
-        Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.
-      </div>
+    <!-- Chat -->
+    <div id="chat-section" style="display:none;">
+        <h3>Chat con Asistente</h3>
+        <p>Apodo: <span id="chat-apodo"></span></p>
+        <label>Tu mensaje:</label>
+        <input type="text" id="chat-message">
+        <button onclick="enviarMensaje()">Enviar</button>
+        <button onclick="limpiarChat()">Limpiar chat</button>
+        <div id="chat-log" style="border:1px solid #ccc; padding:10px; height:200px; overflow:auto;"></div>
     </div>
 
-    <div class="footer">
-      © May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.
-    </div>
-  </div>
+    <p>Consejo: pregunta con detalles (síntomas, tiempo, medicamentos actuales) para respuestas más útiles.</p>
+    <footer>© May Roga LLC — Servicio informativo. Apodos obligatorios. Pagos por Stripe.</footer>
 
-  <!-- JS servido por FastAPI (sin /static) -->
-  <script src="/script.js"></script>
+    <script src="/static/js/script.js"></script>
 </body>
 </html>
