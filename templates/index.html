@@ -1,92 +1,89 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual May Roga</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="/static/js/script.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Virtual May Roga</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/static/js/script.js" defer></script>
 </head>
 <body>
-    <header class="header">
-        <h1 class="logo">Asistente Virtual May Roga</h1>
-        <p class="tagline">Bienvenido a tu Asistente Virtual</p>
-    </header>
+    <header class="header">
+        <h1 class="logo">Asistente Virtual May Roga</h1>
+        <p class="tagline">Bienvenido a tu Asistente Virtual</p>
+    </header>
 
-    <main class="container">
-        <!-- Sección de Servicios y Bienvenida -->
-        <section class="info-section">
-            <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
-            <div class="service-cards">
-                <div class="card">
-                    <h3>Agente de Respuesta Rápida</h3>
-                    <p>Orientación de salud general, nutrición y ejercicio en segundos.</p>
-                    <p class="price">$1 USD</p>
-                    <p class="duration">Duración: 55 segundos</p>
-                </div>
-                <div class="card">
-                    <h3>Risoterapia y Bienestar Natural</h3>
-                    <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
-                    <p class="price">$12 USD</p>
-                    <p class="duration">Duración: 10 minutos</p>
-                </div>
-                <div class="card">
-                    <h3>Horóscopo Motivacional</h3>
-                    <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
-                    <p class="price">$3 USD</p>
-                    <p class="duration">Duración: 90 segundos</p>
-                </div>
-            </div>
-            <p class="disclaimer">Recuerda: Este servicio es educativo e informativo, no sustituye una consulta médica profesional.</p>
-        </section>
+    <main class="container">
+                <section class="info-section">
+            <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
+            <div class="service-cards">
+                <div class="card">
+                    <h3>Agente de Respuesta Rápida</h3>
+                    <p>Orientación de salud general, nutrición y ejercicio en segundos.</p>
+                    <p class="price">$1 USD</p>
+                    <p class="duration">Duración: 55 segundos</p>
+                </div>
+                <div class="card">
+                    <h3>Risoterapia y Bienestar Natural</h3>
+                    <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
+                    <p class="price">$12 USD</p>
+                    <p class="duration">Duración: 10 minutos</p>
+                </div>
+                <div class="card">
+                    <h3>Horóscopo Motivacional</h3>
+                    <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
+                    <p class="price">$3 USD</p>
+                </div>
+            </div>
+            <p class="disclaimer">Recuerda: Este servicio es educativo e informativo, no sustituye una consulta médica profesional.</p>
+        </section>
 
-        <hr class="divider">
+        <hr class="divider">
 
-        <!-- Sección de Acceso y Chat -->
-        <section class="chat-section">
-            <h2 class="section-title">Acceso y Chat</h2>
-            <div class="form-container">
-                <div class="input-group">
-                    <label for="apodo">Tu Apodo (obligatorio):</label>
-                    <input type="text" id="apodo" placeholder="Ej: Maykel" required>
-                </div>
+                <section class="chat-section">
+            <h2 class="section-title">Acceso y Chat</h2>
+            <div class="form-container">
+                <div class="input-group">
+                    <label for="apodo">Tu Apodo (obligatorio):</label>
+                    <input type="text" id="apodo" placeholder="Ej: Maykel" required>
+                </div>
 
-                <div class="service-select">
-                    <label for="service-selector">Elige un Servicio:</label>
-                    <select id="service-selector">
-                        <option value="respuesta_rapida">Agente de Respuesta Rápida ($1)</option>
-                        <option value="risoterapia">Risoterapia ($12)</option>
-                        <option value="horoscopo">Horóscopo ($3)</option>
-                    </select>
-                </div>
+                <div class="service-select">
+                    <label for="service-selector">Elige un Servicio:</label>
+                    <select id="service-selector">
+                        <option value="respuesta_rapida">Agente de Respuesta Rápida ($1)</option>
+                        <option value="risoterapia">Risoterapia ($12)</option>
+                        <option value="horoscopo">Horóscopo ($3)</option>
+                    </select>
+                </div>
 
-                <div class="button-group">
-                    <input type="password" id="access-code" placeholder="Código de acceso">
-                    <button id="btn-access-code" class="btn btn-secondary">Acceder con código</button>
-                    <button id="btn-pay-stripe" class="btn btn-primary">Pagar con Stripe</button>
-                </div>
-            </div>
+                <div class="button-group">
+                    <input type="password" id="access-code" placeholder="Código de acceso">
+                    <button id="btn-access-code" class="btn btn-secondary">Acceder con código</button>
+                    <button id="btn-pay-stripe" class="btn btn-primary">Pagar con Stripe</button>
+                </div>
+            </div>
 
-            <div id="chat-wrapper" class="chat-wrapper hidden">
-                <div id="chat-output" class="chat-output">
-                    <p class="assistant-message">Hola, soy tu asistente de bienestar. Elige un servicio y comienza a chatear.</p>
-                </div>
-                <form id="chat-form" class="chat-form">
-                    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." required>
-                    <button type="submit" class="btn btn-secondary">Enviar</button>
-                    <div id="loading-message" class="loading-message hidden">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </form>
-            </div>
-        </section>
-    </main>
+            <div id="chat-wrapper" class="chat-wrapper hidden">
+                <div id="chat-output" class="chat-output">
+                    <p class="assistant-message">Hola, soy tu asistente de bienestar. Elige un servicio y comienza a chatear.</p>
+                </div>
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." required>
+                    <button type="submit" class="btn btn-secondary">Enviar</button>
+                    <div id="loading-message" class="loading-message hidden">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
 
-    <footer class="footer">
-        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
-    </footer>
+    <footer class="footer">
+        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
+    </footer>
 </body>
 </html>
