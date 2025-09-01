@@ -63,8 +63,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (accessCodeButton) {
         accessCodeButton.addEventListener('click', () => {
             const accessCode = document.getElementById('access-code').value;
-            // El código de acceso correcto es "MAYROGA" en mayúsculas
-            if (accessCode === 'MAYROGA') {
+            // El código de acceso correcto es "MAYROGA2024" en mayúsculas
+            if (accessCode === 'MAYROGA2024') {
                 toggleChat(true);
             } else {
                 alert('Código de acceso incorrecto.');
