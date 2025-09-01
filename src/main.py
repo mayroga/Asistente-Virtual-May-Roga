@@ -199,6 +199,11 @@ async def create_checkout_session(service: str = Form(...), mode: str = Form(...
     
     price_key = f"price_{mode}"
     price = SERVICES[service][price_key]
+    site_url = os.getenv('URL_SITE')
+    
+    # Asegurarse de que la URL de Stripe tenga un esquema explícito
+    if site_url and not site_url.startswith(('http://', 'https://')):
+        site_url = 'https://' + site_url
     
     try:
         session = stripe.checkout.Session.create(
@@ -212,8 +217,8 @@ async def create_checkout_session(service: str = Form(...), mode: str = Form(...
                 "quantity": 1,
             }],
             mode="payment",
-            success_url=f"{os.getenv('URL_SITE')}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}&mode={mode}",
-            cancel_url=f"{os.getenv('URL_SITE')}/?canceled=true",
+            success_url=f"{site_url}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}&mode={mode}",
+            cancel_url=f"{site_url}/?canceled=true",
         )
         return JSONResponse({"id": session.id})
     except Exception as e:
