@@ -1,5 +1,0 @@
-[
-  { "id": 1, "nombre": "Hipertensión", "sintomas": ["dolor de cabeza", "mareo"], "tratamiento": "medicación, dieta baja en sal" },
-  { "id": 2, "nombre": "Diabetes tipo 2", "sintomas": ["sed excesiva", "micción frecuente"], "tratamiento": "insulina, dieta y ejercicio" },
-  { "id": 3, "nombre": "Resfriado común", "sintomas": ["congestión", "estornudos"], "tratamiento": "reposo, líquidos, medicación sintomática" }
-]
