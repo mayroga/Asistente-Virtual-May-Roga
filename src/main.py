@@ -2,12 +2,12 @@ import os
 import json
 import stripe
 import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import auth
+from firebase_admin import credentials, auth, firestore
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from google.generativeai import GenerativeModel
 from openai import OpenAI
+import time
 
 # Cargar variables de entorno desde el archivo .env (solo para desarrollo local)
 load_dotenv()
@@ -33,12 +33,11 @@ try:
         creds_dict = json.loads(firebase_creds_json)
         firebase_creds = credentials.Certificate(creds_dict)
     else:
-        # Fallback para desarrollo local
         firebase_creds = credentials.Certificate("firebase_credentials.json")
     firebase_admin.initialize_app(firebase_creds)
+    db = firestore.client()
 except Exception as e:
     print(f"Error al inicializar Firebase: {e}")
-    # Considera manejar este error de forma más robusta en producción
 
 # Códigos secretos
 ACCESO_GRATIS_CODE = os.getenv("SECRET_CODE_NAME")
@@ -58,11 +57,9 @@ SERVICE_MAP = {
 }
 
 # --- ENDPOINTS ---
-
 @app.route('/')
 def serve_index():
-    # Sirve el archivo HTML principal
-    return send_from_directory('.', 'index.html')
+    return render_template('index.html')
 
 @app.route('/create-payment-intent', methods=['POST'])
 def create_payment():
@@ -72,7 +69,7 @@ def create_payment():
     
     # Validar el código de acceso secreto
     if access_code == ACCESO_GRATIS_CODE:
-        return jsonify({"client_secret": "free_access"})
+        return jsonify({"client_secret": "free_access", "service": service_name})
 
     service = SERVICES.get(service_name)
     if not service:
@@ -84,7 +81,7 @@ def create_payment():
             currency='usd',
             payment_method_types=['card']
         )
-        return jsonify({"client_secret": payment_intent.client_secret})
+        return jsonify({"client_secret": payment_intent.client_secret, "service": service_name})
     except Exception as e:
         return jsonify(error=str(e)), 500
 
@@ -92,10 +89,9 @@ def create_payment():
 def chat():
     data = request.json
     user_input = data.get('text')
+    service_name = data.get('service')
     
-    service_mode = data.get('mode')
-    
-    system_prompt = """
+    system_prompt = f"""
     Tu rol es Asistente May Roga, asistente virtual creado por Maykel Rodríguez García. Tu misión es curar el espíritu y guiar al bienestar personal y colectivo. Tu objetivo es transformar cualquier situación en crecimiento, bienestar y alegría, aplicando la TVid y la dualidad positiva/negativa. Escucha sin juzgar y responde siempre con lo mejor y más positivo. Debes generar adicción a lo positivo. Evita dar consejos médicos directos; solo brinda educación general y hábitos saludables. Siempre debes aplicar una de las siguientes técnicas de vida:
     - Técnica del Bien: Potencia hábitos, pensamientos y acciones que generan bienestar.
     - Técnica del Mal: Transforma lo negativo en aprendizaje y bienestar.
@@ -111,10 +107,12 @@ def chat():
     """
 
     try:
-        if "Risoterapia" in data.get('service', ''):
-            response = gemini_model.generate_content(user_input, stream=False)
+        if service_name == "Risoterapia":
+            # Usar Gemini para Risoterapia
+            response = gemini_model.generate_content(system_prompt + "\n" + user_input)
             ai_response = response.text
         else:
+            # Usar OpenAI para los demás servicios
             completion = openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
