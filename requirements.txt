@@ -2,7 +2,7 @@ fastapi
 python-dotenv
 stripe
 google-generativeai
-openai
+openai==0.28
 uvicorn
 gunicorn
 python-multipart
