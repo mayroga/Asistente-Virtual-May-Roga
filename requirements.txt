@@ -3,4 +3,10 @@ python-dotenv
 stripe
 google-generativeai
 openai
+uvicorn
 gunicorn
+python-multipart
+itsdangerous
+Jinja2
+Flask
+Flask-CORS
