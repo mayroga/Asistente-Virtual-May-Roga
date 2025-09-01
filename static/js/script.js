@@ -3,6 +3,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const apodoInput = document.getElementById('apodo');
     const serviceSelector = document.getElementById('service-selector');
+    const accessCodeInput = document.getElementById('access-code');
+    const btnAccessCode = document.getElementById('btn-access-code');
     const btnPayStripe = document.getElementById('btn-pay-stripe');
     const chatWrapper = document.getElementById('chat-wrapper');
     const chatForm = document.getElementById('chat-form');
@@ -12,19 +14,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let stripe;
 
-    // Inicializar Stripe una vez el DOM esté listo
-    fetch('/config') // Esta ruta debería devolver tu clave pública de Stripe
+    // Inicializar Stripe con la clave pública del backend
+    fetch('/config')
         .then((response) => response.json())
         .then((data) => {
-            stripe = Stripe(data.publicKey);
+            if (data.publicKey) {
+                stripe = Stripe(data.publicKey);
+            } else {
+                console.error("No se pudo obtener la clave pública de Stripe.");
+            }
         });
+
+    btnAccessCode.addEventListener('click', async () => {
+        const apodo = apodoInput.value.trim();
+        const service = serviceSelector.value;
+        const code = accessCodeInput.value.trim();
+
+        if (!apodo) {
+            alert('Por favor, ingresa tu apodo.');
+            return;
+        }
+        if (!code) {
+            alert('Por favor, ingresa el código de acceso.');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('apodo', apodo);
+            formData.append('code', code);
+            formData.append('service', service);
+
+            const response = await fetch('/access-code', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                chatWrapper.classList.remove('hidden');
+                alert(data.message);
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al conectar con el servidor. Inténtalo de nuevo.');
+        }
+    });
 
     btnPayStripe.addEventListener('click', async () => {
         const apodo = apodoInput.value.trim();
         const service = serviceSelector.value;
 
         if (!apodo) {
-            alert('Por favor, ingresa tu apodo para continuar.');
+            alert('Por favor, ingresa tu apodo.');
             return;
         }
 
@@ -63,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!message) return;
 
-        // Añadir mensaje del usuario al chat
         const userMessageDiv = document.createElement('div');
         userMessageDiv.className = 'user-message';
         userMessageDiv.textContent = message;
@@ -73,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadingMessage.classList.remove('hidden');
 
-        // Detección de idioma básica
         const lang = detectLanguage(message);
 
         try {
@@ -97,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const audio = new Audio(audioUrl);
                 audio.play();
                 
-                // Mostrar un mensaje de que el audio se está reproduciendo
                 const assistantMessageDiv = document.createElement('div');
                 assistantMessageDiv.className = 'assistant-message';
                 assistantMessageDiv.textContent = 'Asistente: Escuchando la respuesta...';
@@ -123,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Función para una detección de idioma básica (es, en)
     function detectLanguage(text) {
         const spanishKeywords = ['hola', 'gracias', 'salud', 'risoterapia', 'ayuda'];
         const englishKeywords = ['hello', 'thanks', 'health', 'risotherapy', 'help'];
@@ -139,10 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (englishCount > spanishCount) {
             return 'en';
         }
-        return 'es'; // Por defecto, español
+        return 'es';
     }
 
-    // Mostrar el chat después de un pago exitoso
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('apodo') && urlParams.get('service')) {
         const apodo = urlParams.get('apodo');
