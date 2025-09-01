@@ -3,89 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Médico Virtual May Roga - Risoterapia y Bienestar Natural</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Aplicación de Pago Global</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://js.stripe.com/v3/"></script>
-    <script src="/static/js/script.js" defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
+            width: 90%;
+            margin: auto;
+            padding: 2.5rem;
+        }
+        .btn-primary {
+            background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+    </style>
 </head>
-<body>
-    <header class="header">
-        <h1 class="logo">May Roga LLC</h1>
-        <p class="tagline">Médico Virtual & Bienestar Natural</p>
-    </header>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <main class="container">
-        <!-- Sección de Servicios y Bienvenida -->
-        <section class="info-section">
-            <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
-            <div class="service-cards">
-                <div class="card">
-                    <h3>Agente de Respuesta Rápida</h3>
-                    <p>Orientación de salud general, nutrición y ejercicio en segundos.</p>
-                    <p class="price">$1 USD</p>
-                    <p class="duration">Duración: 55 segundos</p>
-                </div>
-                <div class="card">
-                    <h3>Risoterapia y Bienestar Natural</h3>
-                    <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
-                    <p class="price">$12 USD</p>
-                    <p class="duration">Duración: 10 minutos</p>
-                </div>
-                <div class="card">
-                    <h3>Horóscopo Motivacional</h3>
-                    <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
-                    <p class="price">$3 USD</p>
-                    <p class="duration">Duración: 90 segundos</p>
-                </div>
-            </div>
-            <p class="disclaimer">Recuerda: Este servicio es educativo e informativo, no sustituye una consulta médica profesional.</p>
-        </section>
+    <div class="container-card text-center space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">Servicio de Pago Global</h1>
+        <p class="text-lg text-gray-600">Introduce un mensaje para generar una factura.</p>
+        
+        <div class="space-y-4">
+            <textarea id="messageInput" placeholder="Escribe tu mensaje aquí..."
+                      class="w-full h-32 p-4 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition duration-300"></textarea>
+            
+            <button id="checkoutButton"
+                    class="btn-primary text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 w-full">
+                Crear Factura
+            </button>
+        </div>
+        
+        <div id="statusMessage" class="text-sm font-medium text-gray-700"></div>
+    </div>
 
-        <hr class="divider">
+    <script>
+        // Configuración para conectarse al backend y a Stripe
+        // ESTA ES LA CLAVE DE PRUEBA DE STRIPE
+        const STRIPE_PUBLISHABLE_KEY = 'pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtEn00pgJNQaxz';
+        
+        // Esta es la URL de tu servidor en Render
+        const BACKEND_URL = 'https://medico-virtual-may-roga.onrender.com'; 
 
-        <!-- Sección de Chat y Acceso -->
-        <section class="chat-section">
-            <h2 class="section-title">Acceso y Chat</h2>
-            <div class="form-container">
-                <div class="input-group">
-                    <label for="apodo">Tu Apodo:</label>
-                    <input type="text" id="apodo" placeholder="Ej: Maykel" required>
-                </div>
+        const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+        const checkoutButton = document.getElementById('checkoutButton');
+        const messageInput = document.getElementById('messageInput');
+        const statusMessage = document.getElementById('statusMessage');
 
-                <div class="service-select">
-                    <label for="service-selector">Elige un Servicio:</label>
-                    <select id="service-selector">
-                        <option value="respuesta_rapida">Agente de Respuesta Rápida ($1)</option>
-                        <option value="risoterapia">Risoterapia ($12)</option>
-                        <option value="horoscopo">Horóscopo ($3)</option>
-                    </select>
-                </div>
+        checkoutButton.addEventListener('click', async () => {
+            const message = messageInput.value.trim();
 
-                <div class="button-group">
-                    <button id="btn-pay-stripe" class="btn btn-primary">Pagar con Stripe</button>
-                    <!-- Puedes agregar el campo y botón para el código de acceso si lo deseas -->
-                </div>
-            </div>
+            if (!message) {
+                statusMessage.textContent = 'Por favor, escribe un mensaje.';
+                statusMessage.style.color = 'red';
+                return;
+            }
 
-            <div id="chat-wrapper" class="chat-wrapper hidden">
-                <div id="chat-output" class="chat-output">
-                    <p class="assistant-message">Hola, soy tu asistente de bienestar. Elige un servicio y comienza a chatear.</p>
-                </div>
-                <form id="chat-form" class="chat-form">
-                    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." required>
-                    <button type="submit" class="btn btn-secondary">Enviar</button>
-                    <div id="loading-message" class="loading-message hidden">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </form>
-            </div>
-        </section>
-    </main>
+            // Cambia el estado del botón y el mensaje
+            checkoutButton.disabled = true;
+            checkoutButton.textContent = 'Procesando...';
+            statusMessage.textContent = 'Creando sesión de pago...';
+            statusMessage.style.color = '#4b5563';
 
-    <footer class="footer">
-        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
-    </footer>
+            try {
+                // Llama a tu backend para crear una sesión de pago de Stripe
+                const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al crear la sesión de pago.');
+                }
+
+                const data = await response.json();
+                const sessionId = data.sessionId;
+
+                // Redirige al cliente a la página de pago de Stripe
+                const { error } = await stripe.redirectToCheckout({
+                    sessionId: sessionId,
+                });
+
+                if (error) {
+                    // Muestra un error si la redirección falla
+                    statusMessage.textContent = error.message;
+                    statusMessage.style.color = 'red';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.style.color = 'red';
+            } finally {
+                // Restablece el estado del botón
+                checkoutButton.disabled = false;
+                checkoutButton.textContent = 'Crear Factura';
+            }
+        });
+    </script>
 </body>
 </html>
