@@ -1,8 +1,0 @@
-Flask
-gunicorn
-stripe
-openai
-google-generativeai
-python-dotenv
-firebase-admin
-uvicorn
