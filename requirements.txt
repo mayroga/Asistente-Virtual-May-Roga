@@ -1,6 +1,8 @@
 Flask
-python-dotenv
+gunicorn
 stripe
-google-generativeai
 openai
+google-generativeai
+python-dotenv
 firebase-admin
+uvicorn
