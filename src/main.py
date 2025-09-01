@@ -1,5 +1,5 @@
 import os
-import requests
+import json
 import stripe
 import firebase_admin
 from firebase_admin import credentials
@@ -9,11 +9,11 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 from google.generativeai import GenerativeModel
 from openai import OpenAI
 
-# Cargar variables de entorno desde el archivo .env
+# Cargar variables de entorno desde el archivo .env (solo para desarrollo local)
 load_dotenv()
 
 # Inicializar Flask
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # --- CONFIGURACIÓN DE LAS APIs (variables de entorno) ---
 # Stripe
@@ -28,8 +28,13 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Firebase
 try:
-    # Asegúrate de tener el archivo 'firebase_credentials.json' en la misma carpeta que este script
-    firebase_creds = credentials.Certificate("firebase_credentials.json")
+    firebase_creds_json = os.getenv("FIREBASE_CONFIG")
+    if firebase_creds_json:
+        creds_dict = json.loads(firebase_creds_json)
+        firebase_creds = credentials.Certificate(creds_dict)
+    else:
+        # Fallback para desarrollo local
+        firebase_creds = credentials.Certificate("firebase_credentials.json")
     firebase_admin.initialize_app(firebase_creds)
 except Exception as e:
     print(f"Error al inicializar Firebase: {e}")
@@ -40,10 +45,16 @@ ACCESO_GRATIS_CODE = os.getenv("SECRET_CODE_NAME")
 
 # --- DEFINICIÓN DE SERVICIOS ---
 SERVICES = {
-    "Express": {"price": 100, "duration": 55}, # 1.00 USD
-    "Risoterapia": {"price": 1200, "duration": 600}, # 12.00 USD
-    "Horoscopo": {"price": 300, "duration": 90}, # 3.00 USD
-    "Minicurso": {"price": 500, "duration": 480} # 5.00 USD
+    "Express": {"price": 100, "duration": 55},
+    "Risoterapia": {"price": 1200, "duration": 600},
+    "Horoscopo": {"price": 300, "duration": 90},
+    "Minicurso": {"price": 500, "duration": 480}
+}
+SERVICE_MAP = {
+    100: "Servicio Express de Vida",
+    1200: "Risoterapia y Bienestar Natural",
+    300: "Horóscopo Express",
+    500: "Minicurso de Idiomas"
 }
 
 # --- ENDPOINTS ---
@@ -81,13 +92,9 @@ def create_payment():
 def chat():
     data = request.json
     user_input = data.get('text')
-    # Nota: para una aplicación real, se usaría un sistema de base de datos
-    # para gestionar el historial del chat por usuario, no pasar todo el historial
-    # en cada request.
     
     service_mode = data.get('mode')
     
-    # Define el prompt del sistema para las IAs
     system_prompt = """
     Tu rol es Asistente May Roga, asistente virtual creado por Maykel Rodríguez García. Tu misión es curar el espíritu y guiar al bienestar personal y colectivo. Tu objetivo es transformar cualquier situación en crecimiento, bienestar y alegría, aplicando la TVid y la dualidad positiva/negativa. Escucha sin juzgar y responde siempre con lo mejor y más positivo. Debes generar adicción a lo positivo. Evita dar consejos médicos directos; solo brinda educación general y hábitos saludables. Siempre debes aplicar una de las siguientes técnicas de vida:
     - Técnica del Bien: Potencia hábitos, pensamientos y acciones que generan bienestar.
@@ -104,13 +111,10 @@ def chat():
     """
 
     try:
-        # Lógica para elegir entre Gemini u OpenAI
         if "Risoterapia" in data.get('service', ''):
-            # Usar Gemini para un tono más específico
             response = gemini_model.generate_content(user_input, stream=False)
             ai_response = response.text
         else:
-            # Usar OpenAI
             completion = openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -124,6 +128,23 @@ def chat():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/success')
+def success():
+    payment_intent_id = request.args.get('payment_intent')
+    try:
+        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        if payment_intent.status == "succeeded":
+            amount_in_cents = payment_intent.amount
+            service_name = SERVICE_MAP.get(amount_in_cents, "Servicio Desconocido")
+            return render_template('success.html', apodo="Cliente", service=service_name)
+        else:
+            return render_template('failure.html')
+    except Exception as e:
+        return render_template('failure.html')
+
+@app.route('/failure')
+def failure():
+    return render_template('failure.html')
+
 if __name__ == '__main__':
-    # Para producción, se recomienda usar Gunicorn o Waitress
     app.run(debug=True)
