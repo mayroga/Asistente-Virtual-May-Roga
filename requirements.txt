@@ -1,1 +1,7 @@
-
+Flask
+gunicorn
+stripe
+openai
+google-generativeai
+python-dotenv
+uvicorn
