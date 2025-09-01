@@ -1,5 +1,0 @@
-[
-  { "id": 1, "nombre": "Ataque cardíaco", "signos": ["dolor en el pecho", "sudoración", "mareo"], "accion": "Llamar a emergencias inmediatamente" },
-  { "id": 2, "nombre": "Accidente cerebrovascular", "signos": ["dificultad para hablar", "parálisis en un lado"], "accion": "Traslado inmediato a hospital" },
-  { "id": 3, "nombre": "Fractura ósea grave", "signos": ["dolor intenso", "deformidad"], "accion": "Inmovilizar y acudir a urgencias" }
-]
