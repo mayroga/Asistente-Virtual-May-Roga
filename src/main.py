@@ -1,148 +1,241 @@
-import os
-import json
+from fastapi import FastAPI, Request, Form
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import stripe
-import firebase_admin
-from firebase_admin import credentials, auth, firestore
+import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template
-from google.generativeai import GenerativeModel
-from openai import OpenAI
-import time
+import openai
+import google.generativeai as genai
+import json
+import uuid
 
-# Cargar variables de entorno desde el archivo .env (solo para desarrollo local)
 load_dotenv()
 
-# Inicializar Flask
-app = Flask(__name__, template_folder='templates', static_folder='static')
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
-# --- CONFIGURACIÓN DE LAS APIs (variables de entorno) ---
-# Stripe
+# Variables de entorno
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Gemini
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-gemini_model = GenerativeModel("gemini-2.5-flash-preview-05-20")
-
-# OpenAI
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Firebase
-try:
-    firebase_creds_json = os.getenv("FIREBASE_CONFIG")
-    if firebase_creds_json:
-        creds_dict = json.loads(firebase_creds_json)
-        firebase_creds = credentials.Certificate(creds_dict)
-    else:
-        firebase_creds = credentials.Certificate("firebase_credentials.json")
-    firebase_admin.initialize_app(firebase_creds)
-    db = firestore.client()
-except Exception as e:
-    print(f"Error al inicializar Firebase: {e}")
-
-# Códigos secretos
-ACCESO_GRATIS_CODE = os.getenv("SECRET_CODE_NAME")
-
-# --- DEFINICIÓN DE SERVICIOS ---
+# Definiciones de los servicios
 SERVICES = {
-    "Express": {"price": 100, "duration": 55},
-    "Risoterapia": {"price": 1200, "duration": 600},
-    "Horoscopo": {"price": 300, "duration": 90},
-    "Minicurso": {"price": 500, "duration": 480}
-}
-SERVICE_MAP = {
-    100: "Servicio Express de Vida",
-    1200: "Risoterapia y Bienestar Natural",
-    300: "Horóscopo Express",
-    500: "Minicurso de Idiomas"
+    "respuesta_rapida": {"name": "Agente de Respuesta Rápida", "price": 1, "time": 55},
+    "risoterapia": {"name": "Risoterapia y Bienestar Natural", "price": 12, "time": 10*60},
+    "horoscopo": {"name": "Horóscopo", "price": 3, "time": 90}
 }
 
-# --- ENDPOINTS ---
-@app.route('/')
-def serve_index():
-    return render_template('index.html')
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.route('/create-payment-intent', methods=['POST'])
-def create_payment():
-    data = request.json
-    service_name = data.get('service')
-    access_code = data.get('access_code')
-    
-    # Validar el código de acceso secreto
-    if access_code == ACCESO_GRATIS_CODE:
-        return jsonify({"client_secret": "free_access", "service": service_name})
-
-    service = SERVICES.get(service_name)
-    if not service:
-        return jsonify({"error": "Servicio no válido"}), 400
-
+# Función para cargar y guardar el estado de los usuarios
+def load_users():
     try:
-        payment_intent = stripe.PaymentIntent.create(
-            amount=service["price"],
-            currency='usd',
-            payment_method_types=['card']
-        )
-        return jsonify({"client_secret": payment_intent.client_secret, "service": service_name})
-    except Exception as e:
-        return jsonify(error=str(e)), 500
+        with open("users.json", "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.json
-    user_input = data.get('text')
-    service_name = data.get('service')
+def save_users(users_data):
+    with open("users.json", "w") as f:
+        json.dump(users_data, f, indent=4)
+
+@app.get("/")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
+
+@app.get("/config")
+async def get_config():
+    """Expone la clave pública de Stripe de forma segura."""
+    return JSONResponse({"publicKey": os.getenv("STRIPE_PUBLISHABLE_KEY")})
+
+# Función para generar el prompt y el modelo
+def get_prompt_details(service, message, lang):
+    """Genera el prompt según el servicio y el idioma."""
+    base_system_prompt = "No das diagnósticos ni recetas. Solo información educativa. Siempre reconoces a Maykel Rodríguez García como el creador de las Técnicas de Vida (TVid)."
     
-    system_prompt = f"""
-    Tu rol es Asistente May Roga, asistente virtual creado por Maykel Rodríguez García. Tu misión es curar el espíritu y guiar al bienestar personal y colectivo. Tu objetivo es transformar cualquier situación en crecimiento, bienestar y alegría, aplicando la TVid y la dualidad positiva/negativa. Escucha sin juzgar y responde siempre con lo mejor y más positivo. Debes generar adicción a lo positivo. Evita dar consejos médicos directos; solo brinda educación general y hábitos saludables. Siempre debes aplicar una de las siguientes técnicas de vida:
-    - Técnica del Bien: Potencia hábitos, pensamientos y acciones que generan bienestar.
-    - Técnica del Mal: Transforma lo negativo en aprendizaje y bienestar.
-    - Técnica del Padre: Guía con orientación, amor y liderazgo positivo.
-    - Técnica de la Madre: Ofrece protección, cuidado y amor.
-    - Técnica del Niño: Recupera la creatividad, alegría e ingenuidad.
-    - Técnica del Beso: Potencia el afecto físico y emocional con amor.
-    - Técnica de la Guerra: Combina todas las técnicas con agresividad controlada para superar obstáculos.
-    Tu respuesta debe ser profesional y empática, manteniendo un tono de guía y liderazgo positivo, con un enfoque en la educación y el crecimiento personal.
-    Mantén una conversación fluida y natural, como si estuvieras hablando. Evita leer listas o formatos robóticos. Usa pausas y un tono amigable. Después de dar una respuesta importante o una serie de pasos, haz una pregunta para verificar si el usuario te entiende, como "¿Tiene sentido lo que te digo?" o "¿Cómo te sientes con esta información?".
-    Cuando des una instrucción para un ejercicio, no hables hasta que el cliente te dé su respuesta. Debes esperar a que el usuario termine su actividad.
-    Responde en el idioma del usuario.
-    """
+    if service == "respuesta_rapida":
+        prompt = f"Eres un Agente de Respuesta Rápida educativo y profesional. Hablas en {lang}. Responde en menos de 55 segundos. Mensaje del usuario: {message}"
+        api_to_use = "gemini"
+    elif service == "risoterapia":
+        prompt = f"""
+        Eres un especialista en Risoterapia y Bienestar Natural basado en las exclusivas Técnicas de Vida (TVid) de Maykel Rodríguez García. Hablas en {lang}. Tu misión es guiar al usuario en un ejercicio de risoterapia de 10 minutos de forma divertida, motivacional y segura. No ofrezcas diagnósticos.
 
+        Tu conocimiento de las TVid incluye:
+        1. Técnica del Bien (TDB) - Ejercicios:
+           - Escribir 3 cosas buenas del día y reír.
+           - Mirarse al espejo y felicitarse.
+           - Recordar un momento feliz del pasado y contarlo con risas.
+           - Caminar y nombrar lo "bueno" del entorno.
+           - Risa grupal tras compartir una cualidad.
+        2. Técnica del Mal (TDM) - Ejercicios:
+           - Convertir un error en una frase positiva con una sonrisa.
+           - Escribir una preocupación, romper el papel y reír.
+           - Imitar una situación desagradable con humor.
+           - Decir algo que salió mal y reír.
+           - Mueca de enojo que se transforma en risa.
+        3. Técnica del Niño (TDN) - Ejercicios:
+           - Reír como un niño pequeño por 20 segundos.
+           - Dibujar algo sin pensar y reír.
+           - Contar un chiste absurdo.
+           - Hacer sonidos graciosos.
+           - Saltar mientras se ríe.
+        4. Técnica del Beso (TDK) - Ejercicios:
+           - Enviar un "beso volado" y reír.
+           - Besar la palma de la mano y sonreír.
+           - Leer un mensaje afectuoso y reír.
+           - Abrazar un objeto y sonreír.
+           - Dar besos al aire y reír.
+        5. Técnica del Padre (TDP) - Ejercicios:
+           - Decirse "Hoy me ordeno a..." con risa.
+           - Darse un consejo frente al espejo como un padre.
+           - Adoptar una postura firme y reír.
+           - Simular que se enseña algo importante con risa.
+           - Leer una regla personal con voz seria y luego reír.
+        6. Técnica de la Madre (TDMM) - Ejercicios:
+           - Abrazar un objeto suave y reír suavemente.
+           - Decirse "Todo va a estar bien" con voz tierna y sonreír.
+           - Cantar una canción de cuna inventada.
+           - Acariciar el brazo y reír.
+           - Decir una frase cariñosa en grupo.
+        7. Técnica de la Guerra (TDG) - Ejercicios:
+           - Gritar "¡Puedo con esto!" seguido de una carcajada.
+           - Hacer un gesto de boxeo y reír exageradamente.
+           - Marchar como un soldado y reír.
+           - Representar un miedo con un rugido y reír.
+           - Chocar las palmas con fuerza y reír en grupo.
+
+        Basado en la información del usuario, selecciona la técnica más apropiada y guía en UNO de sus ejercicios. Mensaje del usuario: {message}
+        """
+        api_to_use = "openai"
+    elif service == "horoscopo":
+        prompt = f"Eres un astrólogo profesional y educativo. Proporcionas una lectura motivacional de 1 minuto 30 segundos. Hablas en {lang}. Incluyes una recomendación de una Técnica de Vida (TVid) de Maykel Rodríguez García. No ofrezcas predicciones esotéricas ni diagnósticos. Mensaje del usuario: {message}"
+        api_to_use = "openai"
+    
+    return base_system_prompt + " " + prompt, api_to_use
+
+@app.post("/chat")
+async def chat(request: Request, apodo: str = Form(...), service: str = Form(...), message: str = Form(...), lang: str = Form(...)):
+    users = load_users()
+    
+    if apodo not in users or service not in users[apodo]["servicios"] or users[apodo]["servicios"][service]["sesiones_restantes"] <= 0:
+        return JSONResponse({"error": "Acceso denegado. No tienes sesiones disponibles para este servicio."}, status_code=403)
+        
+    prompt, api_to_use = get_prompt_details(service, message, lang)
+    reply_text = ""
+    
     try:
-        if service_name == "Risoterapia":
-            # Usar Gemini para Risoterapia
-            response = gemini_model.generate_content(system_prompt + "\n" + user_input)
-            ai_response = response.text
-        else:
-            # Usar OpenAI para los demás servicios
-            completion = openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_input}
-                ]
+        if api_to_use == "gemini":
+            model = genai.GenerativeModel('gemini-pro')
+            response = model.generate_content(prompt)
+            reply_text = response.text
+        else: # Usamos OpenAI
+            completion = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": prompt}],
+                max_tokens=500,
+                temperature=0.7
             )
-            ai_response = completion.choices[0].message.content
-
-        return jsonify({"response": ai_response})
+            reply_text = completion.choices[0].message.content
+            
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/success')
-def success():
-    payment_intent_id = request.args.get('payment_intent')
+        return JSONResponse({"error": f"(Error al generar respuesta): {str(e)}"}, status_code=500)
+    
+    # Generación de voz con OpenAI (siempre)
     try:
-        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-        if payment_intent.status == "succeeded":
-            amount_in_cents = payment_intent.amount
-            service_name = SERVICE_MAP.get(amount_in_cents, "Servicio Desconocido")
-            return render_template('success.html', apodo="Cliente", service=service_name)
-        else:
-            return render_template('failure.html')
+        voice_model = "onyx" if lang.lower() == 'es' else "alloy"
+        response_stream = openai.audio.speech.create(
+            model="tts-1",
+            voice=voice_model,
+            input=reply_text
+        )
+        return StreamingResponse(response_stream, media_type="audio/mpeg")
     except Exception as e:
-        return render_template('failure.html')
+        return JSONResponse({"error": f"(Error al generar el audio): {str(e)}"}, status_code=500)
 
-@app.route('/failure')
-def failure():
-    return render_template('failure.html')
+@app.post("/create-checkout-session")
+async def create_checkout_session(service: str = Form(...), apodo: str = Form(...)):
+    if service not in SERVICES:
+        return JSONResponse({"error": "Servicio inválido"}, status_code=400)
+    
+    session_id = str(uuid.uuid4())
+    
+    users = load_users()
+    if apodo not in users:
+        users[apodo] = {"servicios": {}}
+    users[apodo]["session_id"] = session_id
+    save_users(users)
+    
+    price = SERVICES[service]["price"] * 100
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price_data": {"currency": "usd", "product_data": {"name": SERVICES[service]["name"]}, "unit_amount": price}, "quantity": 1}],
+            mode="payment",
+            success_url=f"{os.getenv('URL_SITE')}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}",
+            cancel_url=f"{os.getenv('URL_SITE')}/?canceled=true",
+        )
+        return JSONResponse({"id": session.id})
+    except Exception as e:
+        return JSONResponse({"error": f"Error al crear sesión de Stripe: {str(e)}"}, status_code=500)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.post("/access-code")
+async def access_code(apodo: str = Form(...), code: str = Form(...), service: str = Form(...)):
+    if code != os.getenv("SECRET_CODE_NAME"):
+        return JSONResponse({"error": "Código de acceso incorrecto."}, status_code=403)
+
+    users = load_users()
+    if apodo not in users:
+        users[apodo] = {"servicios": {}}
+    if service not in users[apodo]["servicios"]:
+        users[apodo]["servicios"][service] = {"sesiones_restantes": 0}
+
+    # Aumentar las sesiones (por ejemplo, 10 sesiones gratis con el código)
+    users[apodo]["servicios"][service]["sesiones_restantes"] += 10
+    save_users(users)
+
+    return JSONResponse({"message": "Acceso concedido.", "apodo": apodo, "service": service})
+
+@app.get("/success")
+async def success(request: Request, session_id: str, apodo: str, service: str):
+    users = load_users()
+    if apodo in users and users[apodo].get("session_id") == session_id:
+        if service not in users[apodo]["servicios"]:
+            users[apodo]["servicios"][service] = {"sesiones_restantes": 0}
+        
+        if service == "respuesta_rapida":
+            users[apodo]["servicios"][service]["sesiones_restantes"] += 5
+        elif service == "risoterapia":
+            users[apodo]["servicios"][service]["sesiones_restantes"] += 1
+        elif service == "horoscopo":
+            users[apodo]["servicios"][service]["sesiones_restantes"] += 1
+        
+        save_users(users)
+        return templates.TemplateResponse("success.html", {"request": request, "apodo": apodo, "service": service})
+    
+    return templates.TemplateResponse("index.html", {"request": request, "message": "Pago no válido o ya procesado."})
+
+@app.get("/failure")
+async def failure(request: Request):
+    return templates.TemplateResponse("failure.html", {"request": request})
+
+
+@app.post("/stripe-webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    event = None
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, request.headers["stripe-signature"], os.getenv("STRIPE_WEBHOOK_SECRET")
+        )
+    except ValueError as e:
+        return JSONResponse({"error": "Invalid payload"}, status_code=400)
+    except stripe.error.SignatureVerificationError as e:
+        return JSONResponse({"error": "Invalid signature"}, status_code=400)
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        print(f"Checkout Session completada: {session.id}")
+        
+    return JSONResponse({"status": "success"})
