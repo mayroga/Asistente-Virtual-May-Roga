@@ -1,197 +1,165 @@
 import os
-import json
-from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_from_directory
 import stripe
+from flask import Flask, jsonify, request, send_from_directory
+from dotenv import load_dotenv
 import google.generativeai as genai
-import firebase_admin
-from firebase_admin import credentials, firestore
 from openai import OpenAI
+import time
 
-# Cargar las variables de entorno desde el archivo .env
+# Cargar variables de entorno
 load_dotenv()
 
-# --- Inicialización de la aplicación Flask ---
-app = Flask(__name__, static_folder='static')
-
-# --- Configuración de Stripe ---
+# Configurar claves de API de Stripe
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-stripe_public_key = os.getenv('STRIPE_PUBLIC_KEY')
 
-# --- Configuración de las APIs de IA ---
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Configurar API de Google Gemini (Flash)
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- Configuración de Firebase Firestore ---
-# NOTA: En un entorno de producción, la credencial se almacenaría como una variable de entorno.
-# Aquí se usa un archivo para la demostración.
-try:
-    cred = credentials.Certificate("firebase-service-account.json")
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-except Exception as e:
-    print(f"Error al inicializar Firebase: {e}")
-    db = None
+# Configurar API de OpenAI
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- Datos de los servicios y precios (para Stripe) ---
-# En un sistema real, esto se cargaría desde una base de datos.
-SERVICIOS = {
-    'respuesta_rapida': {
-        'price_id': os.getenv('STRIPE_PRICE_ID_RAPIDA'),
-        'name': 'Agente de Respuesta Rápida',
-        'cost': 1.00,
-        'ai_model': 'gemini'
-    },
-    'risoterapia': {
-        'price_id': os.getenv('STRIPE_PRICE_ID_RISOTERAPIA'),
-        'name': 'Risoterapia y Bienestar Natural',
-        'cost': 12.00,
-        'ai_model': 'openai'
-    },
-    'horoscopo': {
-        'price_id': os.getenv('STRIPE_PRICE_ID_HOROSCOPO'),
-        'name': 'Horóscopo Motivacional',
-        'cost': 3.00,
-        'ai_model': 'openai'
-    }
-}
+app = Flask(__name__, static_url_path='/static')
 
-# --- Rutas de la API (Endpoints) ---
+# --- Rutas de la API ---
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('static', 'index.html')
+
+@app.route('/static/css/<path:path>')
+def serve_css(path):
+    return send_from_directory('static/css', path)
+
+@app.route('/static/js/<path:path>')
+def serve_js(path):
+    return send_from_directory('static/js', path)
 
 @app.route('/config')
 def get_config():
-    """
-    Ruta para enviar la clave pública de Stripe al frontend.
-    """
-    return jsonify({'publicKey': stripe_public_key})
+    # Enviar la clave pública de Stripe al frontend
+    return jsonify({
+        'publicKey': os.getenv('STRIPE_PUBLIC_KEY')
+    })
+
+@app.route('/access-code', methods=['POST'])
+def check_access_code():
+    code = request.form.get('code')
+    if code == "MAYROGA2024":
+        return jsonify({'message': 'Acceso concedido. ¡Bienvenido a tu sesión!'})
+    else:
+        return jsonify({'error': 'Código de acceso incorrecto. Por favor, inténtalo de nuevo.'}), 401
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
-    """
-    Ruta para crear una sesión de pago con Stripe.
-    """
-    data = request.form
-    apodo = data.get('apodo')
-    servicio_id = data.get('service')
+    service = request.form.get('service')
+    apodo = request.form.get('apodo')
 
-    if not apodo or not servicio_id or servicio_id not in SERVICIOS:
-        return jsonify({'error': 'Datos de servicio o apodo no válidos.'}), 400
+    prices = {
+        'respuesta_rapida': 100,  # $1.00 USD en centavos
+        'risoterapia': 1200,      # $12.00 USD en centavos
+        'horoscopo': 300          # $3.00 USD en centavos
+    }
 
-    servicio = SERVICIOS[servicio_id]
-    
+    price = prices.get(service)
+    if not price:
+        return jsonify(error="Servicio no válido."), 400
+
     try:
         checkout_session = stripe.checkout.Session.create(
-            line_items=[{
-                'price': servicio['price_id'],
-                'quantity': 1,
-            }],
+            line_items=[
+                {
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': f'Servicio de {service.replace("_", " ").title()}',
+                        },
+                        'unit_amount': price,
+                    },
+                    'quantity': 1,
+                }
+            ],
             mode='payment',
-            success_url=request.url_root + f'/?apodo={apodo}&service={servicio_id}',
-            cancel_url=request.url_root,
+            success_url='http://127.0.0.1:5000/success',
+            cancel_url='http://127.0.0.1:5000/cancel',
         )
         return jsonify({'id': checkout_session.id})
     except Exception as e:
         return jsonify(error=str(e)), 500
 
-@app.route('/access-code', methods=['POST'])
-def access_with_code():
-    """
-    Ruta para verificar un código de acceso. (Simulada)
-    """
-    data = request.form
-    apodo = data.get('apodo')
-    code = data.get('code')
+# Endpoint para manejar eventos de webhook de Stripe
+@app.route('/stripe_webhook', methods=['POST'])
+def stripe_webhook():
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get('Stripe-Signature')
+    event = None
 
-    # Aquí iría la lógica para verificar el código en la base de datos
-    # Por ahora, simulamos un código válido.
-    if code == 'MAYROGA':
-        return jsonify({'message': 'Acceso concedido. ¡Bienvenido a tu sesión!'})
-    else:
-        return jsonify({'error': 'Código de acceso incorrecto.'}), 401
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, os.getenv('STRIPE_WEBHOOK_SECRET')
+        )
+    except ValueError as e:
+        # Invalid payload
+        return 'Invalid payload', 400
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        return 'Invalid signature', 400
+
+    # Manejar el evento
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        # Aquí puedes manejar la lógica de negocio después del pago
+        # Por ejemplo: actualizar tu base de datos, enviar un correo, etc.
+        print("Pago exitoso. ID de la sesión:", session.id)
+
+    return 'OK', 200
+
 
 @app.route('/chat', methods=['POST'])
-def chat_with_assistant():
-    """
-    Ruta principal para la interacción con el asistente de IA.
-    1. Recibe el mensaje.
-    2. Enruta a la IA correcta.
-    3. Genera la respuesta en texto.
-    4. Convierte la respuesta a voz.
-    5. Devuelve el audio al cliente.
-    """
-    data = request.form
-    message = data.get('message')
-    service = data.get('service')
-    lang = data.get('lang')
+def chat():
+    apodo = request.form.get('apodo')
+    service = request.form.get('service')
+    message = request.form.get('message')
+    lang = request.form.get('lang')
 
-    if not message or not service or not lang:
-        return jsonify({'error': 'Faltan datos en la solicitud.'}), 400
+    # Prompt base para el asistente
+    # Este prompt determina el comportamiento del asistente May Roga.
+    # Puede ser dinámico y basarse en el servicio.
+    base_prompt = """
+    Eres el Médico Virtual May Roga. Tu propósito es ayudar a las personas a encontrar bienestar a través del humor, la risa y un enfoque holístico. Tu tono es divertido, alegre, motivacional y ligeramente místico. Debes utilizar las "Técnicas de Vida (TVid)" en tus respuestas, como la Técnica del Niño (TDN), la Técnica del Bien (TDB) y la Técnica del Amor (TDA).
 
-    prompt_definitivo = f"""
-        Tu rol es Asistente May Roga, asistente virtual creado por Maykel Rodríguez García. Tu misión es curar el espíritu y guiar al bienestar personal.
-        Aplica siempre una de las Técnicas de Vida (TVid): del Bien, del Mal, del Padre, de la Madre, del Niño, del Beso o de la Guerra.
-        Mantén un tono profesional, empático y de guía. Transforma siempre lo negativo en positivo, con un enfoque en la educación en salud, bienestar, nutrición y ejercicio.
-        No des diagnósticos ni prescribas medicamentos. Siempre incluye un disclaimer al final de tu respuesta: "Este servicio es educativo, no sustituye la atención médica profesional."
-        El idioma de la respuesta debe ser: {lang}
-        El servicio actual es: {SERVICIOS[service]['name']}
-        Mensaje del usuario: {message}
+    Instrucciones específicas para cada servicio:
+    - Agente de Respuesta Rápida: Ofrece consejos breves y generales sobre salud, nutrición o ejercicio. Usa la Técnica del Bien (TDB) para fomentar hábitos positivos. Duración máxima: 55 segundos.
+    - Risoterapia y Bienestar Natural: Ofrece una respuesta más elaborada, con un enfoque en la risa y el humor. Usa la Técnica del Niño (TDN) para reconectar con la alegría interior. Duración máxima: 10 minutos.
+    - Horóscopo Motivacional: Da un consejo positivo y motivacional basado en el horóscopo (sin mencionar un signo específico). Usa la Técnica del Amor (TDA) para inspirar el autoconocimiento y la compasión. Duración máxima: 90 segundos.
+
+    No te refieras a ti mismo como una IA o modelo de lenguaje.
+    Mantén un tono positivo y esperanzador.
+    Responde en el mismo idioma que el usuario.
+    Tus respuestas son educativas e informativas, nunca sustituyen una consulta médica profesional. Recuérdalo al final de cada respuesta.
     """
 
-    ai_response = ""
+    full_prompt = f"{base_prompt}\n\nMensaje del usuario ({apodo}): {message}\n\nEn base al servicio '{service}', responde con el estilo de May Roga:"
+    
     try:
-        # Lógica de enrutamiento de la IA
-        if SERVICIOS[service]['ai_model'] == 'openai':
-            completion = openai_client.chat.completions.create(
-                model="gpt-4",  # O un modelo más económico como "gpt-3.5-turbo"
-                messages=[
-                    {"role": "system", "content": prompt_definitivo},
-                    {"role": "user", "content": message}
-                ]
-            )
-            ai_response = completion.choices[0].message.content
-        else: # Gemini
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt_definitivo, stream=False)
-            ai_response = response.text
-
-        # 2. Generar audio con Gemini TTS
-        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={os.getenv('GEMINI_API_KEY')}"
-        payload = {
-            "contents": [{"parts": [{"text": ai_response}]}],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": "Kore"}}
-                }
-            }
-        }
+        # Se podría implementar una lógica para elegir entre Gemini y OpenAI.
+        # Por ahora, se utiliza Gemini de forma predeterminada para el chat.
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(full_prompt)
+        text_response = response.text
         
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()
+        # Simular la generación de audio (TTS)
+        # En una aplicación real, se usaría un servicio de TTS.
+        # Por ejemplo, la API de Gemini TTS o un servicio externo.
+        # Aquí solo se simula la respuesta de texto.
+        
+        # Retraso para simular el procesamiento
+        time.sleep(1)
 
-        audio_data = response.json()['candidates'][0]['content']['parts'][0]['inlineData']['data']
-        # La lógica para convertir PCM a WAV se hará en el frontend
-        return jsonify({'text': ai_response, 'audioData': audio_data}), 200
+        # Retornar la respuesta como JSON
+        return jsonify({'text': text_response})
 
     except Exception as e:
-        print(f"Error en la IA o en el TTS: {e}")
-        return jsonify({'error': 'Lo siento, hubo un problema al procesar tu solicitud.'}), 500
+        return jsonify({'error': str(e)}), 500
 
-# --- Rutas para servir los archivos estáticos ---
-@app.route('/')
-def serve_index():
-    return send_from_directory('static', 'index.html')
-
-@app.route('/static/css/<path:filename>')
-def serve_css(filename):
-    return send_from_directory('static/css', filename)
-
-@app.route('/static/js/<path:filename>')
-def serve_js(filename):
-    return send_from_directory('static/js', filename)
-
-# --- Inicio del servidor ---
 if __name__ == '__main__':
-    # Para la demostración local, usamos debug=True. En producción, se usaría un servidor como Gunicorn.
     app.run(debug=True)
