@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import stripe
 import os
@@ -174,7 +174,7 @@ async def create_checkout_session(service: str = Form(...), apodo: str = Form(..
             line_items=[{"price_data": {"currency": "usd", "product_data": {"name": SERVICES[service]["name"]}, "unit_amount": price}, "quantity": 1}],
             mode="payment",
             success_url=f"{os.getenv('URL_SITE')}/success?session_id={{CHECKOUT_SESSION_ID}}&apodo={apodo}&service={service}",
-            cancel_url=f"{os.getenv('URL_SITE')}/?canceled=true",
+            cancel_url=f"{os.getenv('URL_SITE')}/failure", # Cambio: Ahora dirige a una página de error dedicada
         )
         return JSONResponse({"id": session.id})
     except Exception as e:
@@ -216,10 +216,10 @@ async def success(request: Request, session_id: str, apodo: str, service: str):
     
     return templates.TemplateResponse("index.html", {"request": request, "message": "Pago no válido o ya procesado."})
 
+# Nueva ruta para la página de pago fallido
 @app.get("/failure")
 async def failure(request: Request):
     return templates.TemplateResponse("failure.html", {"request": request})
-
 
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
