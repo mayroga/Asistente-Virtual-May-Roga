@@ -21,26 +21,26 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 
 class ChatRequest(BaseModel):
-    user_message: str
-    nickname: str
-    service: str
+    user_message: str
+    nickname: str
+    service: str
 
 class PaymentRequest(BaseModel):
-    service: str
-    nickname: str
+    service: str
+    nickname: str
 
 # Configuración de los servicios
 SERVICES = {
-    "respuesta_rapida": {"price": 100, "name": "Agente de Respuesta Rápida"},
-    "risoterapia": {"price": 1200, "name": "Risoterapia y Bienestar Natural"},
-    "horoscopo": {"price": 300, "name": "Horóscopo Motivacional"},
+    "respuesta_rapida": {"price": 100, "name": "Agente de Respuesta Rápida"},
+    "risoterapia": {"price": 1200, "name": "Risoterapia y Bienestar Natural"},
+    "horoscopo": {"price": 300, "name": "Horóscopo Motivacional"},
 }
 
 # --- Rutas de la aplicación ---
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/chat/", response_model=dict)
 async def chat_with_assistant(chat_request: ChatRequest):
@@ -59,27 +59,27 @@ async def chat_with_assistant(chat_request: ChatRequest):
 
 @app.post("/create-checkout-session/")
 async def create_checkout_session(payment_request: PaymentRequest):
-    service_info = SERVICES.get(payment_request.service)
-    if not service_info:
-        return {"error": "Servicio no válido"}
+    service_info = SERVICES.get(payment_request.service)
+    if not service_info:
+        return {"error": "Servicio no válido"}
 
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': service_info["name"],
-                    },
-                    'unit_amount': service_info["price"],
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url='https://asistente-virtual-may-roga.onrender.com/?success=true',
-            cancel_url='https://asistente-virtual-may-roga.onrender.com/?canceled=true',
-        )
-        return {"id": checkout_session.id}
-    except Exception as e:
-        return {"error": str(e)}
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': service_info["name"],
+                    },
+                    'unit_amount': service_info["price"],
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url='https://asistente-virtual-may-roga.onrender.com/?success=true',
+            cancel_url='https://asistente-virtual-may-roga.onrender.com/?canceled=true',
+        )
+        return {"url": checkout_session.url}
+    except Exception as e:
+        return {"error": str(e)}
