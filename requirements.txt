@@ -1,5 +1,4 @@
-Flask
-Flask-CORS
+fastapi
 python-dotenv
 stripe
 google-generativeai
