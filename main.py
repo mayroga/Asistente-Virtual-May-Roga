@@ -130,7 +130,6 @@ async def index(request: Request):
     """Ruta de la página de inicio."""
     return templates.TemplateResponse("index.html", {"request": request, "services": SERVICES})
 
-# --- ¡CAMBIO IMPORTANTE AQUÍ! ---
 @app.get("/config")
 async def get_config():
     """Expone las claves de configuración de forma segura."""
@@ -138,7 +137,6 @@ async def get_config():
         "publicKey": os.getenv("STRIPE_PUBLISHABLE_KEY"),
         "backendUrl": os.getenv("URL_SITE")
     })
-# -------------------------------
 
 @app.post("/chat")
 async def chat(request: Request, apodo: str = Form(...), service: str = Form(...), message: str = Form(...), lang: str = Form(...)):
