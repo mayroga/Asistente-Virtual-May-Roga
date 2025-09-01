@@ -75,8 +75,8 @@ async def create_checkout_session(data: Message):
                 'quantity': 1,
             }],
             mode='payment',
-            success_url="https://your-app-url.com/success",
-            cancel_url="https://your-app-url.com/cancel",
+            success_url="https://medico-virtual-may-roga.onrender.com/success",
+            cancel_url="https://medico-virtual-may-roga.onrender.com/cancel",
         )
         return {"sessionId": session.id}
     except Exception as e:
