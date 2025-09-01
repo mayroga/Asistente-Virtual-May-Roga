@@ -48,8 +48,7 @@ async def index(request: Request):
 @app.get("/config")
 async def get_config():
     """Expone la clave pública de Stripe de forma segura."""
-    # Se ha corregido la variable de entorno de 'STRIPE_PUBLISHABLE_KEY' a 'STRIPE_PUBLIC_KEY'.
-    return JSONResponse({"publicKey": os.getenv("STRIPE_PUBLIC_KEY")})
+    return JSONResponse({"publicKey": os.getenv("STRIPE_PUBLISHABLE_KEY")})
 
 # Función para generar el prompt y el modelo
 def get_prompt_details(service, message, lang):
@@ -183,8 +182,7 @@ async def create_checkout_session(service: str = Form(...), apodo: str = Form(..
 
 @app.post("/access-code")
 async def access_code(apodo: str = Form(...), code: str = Form(...), service: str = Form(...)):
-    # Se ha corregido la variable de entorno de 'SECRET_CODE_NAME' a 'MAYROGA_ACCESS_CODE'.
-    if code != os.getenv("MAYROGA_ACCESS_CODE"):
+    if code != os.getenv("SECRET_CODE_NAME"):
         return JSONResponse({"error": "Código de acceso incorrecto."}, status_code=403)
 
     users = load_users()
