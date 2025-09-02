@@ -1,107 +1,81 @@
 import os
-import stripe
 import json
-from flask import Flask, jsonify, request
-from firebase_admin import credentials, firestore
-import firebase_admin
+import stripe
+from flask import Flask, jsonify, request, redirect
+from flask_cors import CORS
 
-# Carga las variables de entorno para Firebase y Stripe
-# Las variables globales __firebase_config__ y __app_id__ se inyectan en el entorno de Render
-firebase_config = json.loads(os.environ.get('__firebase_config__'))
-app_id = os.environ.get('__app_id__')
+# Cargar variables de entorno y configuración
+try:
+    __firebase_config__ = os.environ.get('__firebase_config__')
+    if __firebase_config__:
+        firebase_config = json.loads(__firebase_config__)
+    else:
+        raise ValueError("FIREBASE_CONFIG environment variable is not set.")
+    
+    stripe_secret_key = os.environ.get('STRIPE_SECRET_KEY')
+    url_site = os.environ.get('URL_SITE')
 
-# La clave secreta de Stripe debe estar en las variables de entorno
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+    if not stripe_secret_key:
+        raise ValueError("STRIPE_SECRET_KEY environment variable is not set.")
+    if not url_site:
+        raise ValueError("URL_SITE environment variable is not set.")
 
-# Inicializa la aplicación Flask
+    stripe.api_key = stripe_secret_key
+
+except (ValueError, json.JSONDecodeError) as e:
+    print(f"Error en la configuración de las variables de entorno: {e}")
+    stripe_secret_key = "sk_test_..." 
+    url_site = "http://localhost:5000"
+    stripe.api_key = stripe_secret_key
+
 app = Flask(__name__)
+CORS(app)
 
-# Inicializa Firebase Admin SDK con la configuración de servicio
-cred = credentials.Certificate(firebase_config)
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+# Productos y precios
+PRODUCTS = {
+    'risoterapia': { 'price': 1200, 'name': 'Risoterapia' },
+    'rapida': { 'price': 200, 'name': 'Asesoría Rápida' },
+    'horoscopo': { 'price': 500, 'name': 'Horóscopo' },
+}
 
-@app.route("/create-checkout-session", methods=["POST"])
+@app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
-    """
-    Crea una sesión de pago en Stripe para un servicio.
-    """
     data = request.json
-    service_id = data.get("service")
-    user_id = data.get("userId")
-
-    # Define el precio del servicio
-    price_map = {
-        "rapida": 200,
-        "risoterapia": 1200,
-        "horoscopo": 500
-    }
-    price_in_cents = price_map.get(service_id)
-
-    if not price_in_cents:
-        return jsonify({"error": "Invalid service"}), 400
+    service = data.get('service')
+    
+    if service not in PRODUCTS:
+        return jsonify(error="Servicio no encontrado"), 404
+        
+    product_data = PRODUCTS[service]
 
     try:
         checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "unit_amount": price_in_cents,
-                    "product_data": {
-                        "name": f"Servicio de {service_id}",
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': product_data['name'],
                     },
+                    'unit_amount': product_data['price'],
                 },
-                "quantity": 1,
+                'quantity': 1,
             }],
-            mode="payment",
-            success_url=request.url_root + "?success=true",
-            cancel_url=request.url_root + "?canceled=true",
-            # Aquí se guarda el userId en los metadatos de la sesión
-            metadata={"user_id": user_id, "service_id": service_id}
+            mode='payment',
+            success_url=url_site + '/success',
+            cancel_url=url_site + '/cancel',
         )
-        return jsonify({"sessionId": checkout_session.id})
+        return jsonify({'sessionId': checkout_session.id})
+
     except Exception as e:
         return jsonify(error=str(e)), 500
 
-@app.route("/stripe-webhook", methods=["POST"])
-def stripe_webhook():
-    """
-    Maneja eventos de Stripe, como la confirmación de pagos.
-    """
-    payload = request.get_data(as_text=True)
-    sig_header = request.headers.get("Stripe-Signature")
-    event = None
+@app.route('/success')
+def success():
+    return "Pago Exitoso. Volver a la aplicación."
 
-    try:
-        # Aquí debes usar tu clave de webhook, no la clave secreta de la API
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, os.environ.get('STRIPE_WEBHOOK_SECRET')
-        )
-    except ValueError as e:
-        return jsonify({"error": "Invalid payload"}), 400
-    except stripe.error.SignatureVerificationError as e:
-        return jsonify({"error": "Invalid signature"}), 400
+@app.route('/cancel')
+def cancel():
+    return "Pago Cancelado. Volver a la aplicación."
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        # Obtiene los metadatos que guardamos anteriormente
-        user_id = session.get("metadata", {}).get("user_id")
-        service_id = session.get("metadata", {}).get("service_id")
-
-        if user_id and service_id:
-            try:
-                # La ruta de la base de datos se basa en el ID de la aplicación y el ID de usuario
-                user_doc_ref = db.collection("artifacts").document(app_id).collection("users").document(user_id)
-                
-                # Desbloquea el servicio en Firestore
-                user_doc_ref.set({
-                    "paid_services": {
-                        service_id: { "status": "unlocked", "timestamp": firestore.SERVER_TIMESTAMP }
-                    }
-                }, merge=True)
-                print(f"Servicio {service_id} desbloqueado para el usuario {user_id}")
-            except Exception as e:
-                print(f"Error al actualizar Firestore: {e}")
-
-    return jsonify({"success": True}), 200
+if __name__ == '__main__':
+    app.run(debug=True)
