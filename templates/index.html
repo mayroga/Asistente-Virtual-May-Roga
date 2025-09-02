@@ -10,7 +10,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
-            color: #343a40;
+            color: #343a0;
             margin: 0;
             padding: 0;
             display: flex;
@@ -76,6 +76,7 @@
             text-align: center;
             position: relative;
             transition: transform 0.3s ease-in-out;
+            cursor: pointer;
         }
 
         .card:hover {
@@ -144,8 +145,8 @@
             border-radius: 18px 18px 18px 4px;
             display: inline-block;
             max-width: 80%;
-            float: left;
-            clear: both;
+            align-self: flex-start;
+            margin-bottom: 0.5rem;
         }
         
         .user-message {
@@ -155,8 +156,8 @@
             border-radius: 18px 18px 4px 18px;
             display: inline-block;
             max-width: 80%;
-            float: right;
-            clear: both;
+            align-self: flex-end;
+            margin-bottom: 0.5rem;
         }
         
         .chat-form {
@@ -169,6 +170,25 @@
         .chat-form input {
             flex-grow: 1;
             margin-right: 0.5rem;
+            padding: 0.75rem;
+            border: 1px solid #cce5ff;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+
+        .chat-form button {
+            background-color: #007BFF;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .chat-form button:hover {
+            background-color: #0056b3;
         }
 
         .mic-btn {
@@ -189,6 +209,7 @@
             text-align: center;
             padding: 0.5rem;
             display: none;
+            align-self: center;
         }
         
         .loading-message span {
@@ -217,7 +238,9 @@
             font-size: 2.5rem;
             color: rgba(0, 0, 0, 0.4);
             pointer-events: none;
+            transition: opacity 0.3s;
         }
+
         .unlocked-message {
             position: absolute;
             bottom: 5px;
@@ -225,6 +248,7 @@
             font-size: 0.7rem;
             color: #28a745;
             font-weight: bold;
+            display: none;
         }
 
         .anonymous-profile-form {
@@ -250,6 +274,7 @@
             padding: 0.75rem;
             border: 1px solid #cce5ff;
             border-radius: 4px;
+            box-sizing: border-box;
         }
 
         .anonymous-profile-form button {
@@ -267,20 +292,34 @@
             background-color: #0056b3;
         }
 
+        .unlock-gate {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            display: none; /* Se oculta por defecto */
+        }
+
         .pay-section {
             text-align: center;
-            margin-top: 2rem;
         }
-        .pay-section select {
-            padding: 0.5rem;
+
+        .pay-section select,
+        .pay-section button {
+            padding: 0.75rem;
             border-radius: 4px;
             border: 1px solid #ccc;
             margin-right: 0.5rem;
         }
+
         .pay-btn {
             background-color: #6772e5;
             color: white;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             border: none;
             border-radius: 4px;
             cursor: pointer;
@@ -296,6 +335,68 @@
             background-color: #fff3cd;
             border-radius: 4px;
             display: none;
+            align-self: center;
+            margin-top: 1rem;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-align: center;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #007BFF;
+        }
+
+        .modal-content p {
+            font-size: 1rem;
+        }
+
+        .modal-content button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .secret-code-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .secret-code-form input {
+            padding: 0.75rem;
+            border: 1px solid #cce5ff;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
         }
     </style>
 </head>
@@ -309,44 +410,30 @@
         <section class="info-section">
             <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
             <div class="service-cards">
-                <div class="card" id="service-rapida">
+                <div class="card" id="service-rapida" data-service-id="rapida">
                     <span class="paid-lock">🔒</span>
                     <h3>Agente de Respuesta Rápida</h3>
                     <p>Consejos de bienestar, nutrición y ejercicio para tu vida diaria.</p>
                     <p class="price">$2 USD</p>
                     <p class="duration">Duración: 55 segundos</p>
+                    <span class="unlocked-message">Servicio Desbloqueado</span>
                 </div>
-                <div class="card" id="service-risoterapia">
+                <div class="card" id="service-risoterapia" data-service-id="risoterapia">
                     <span class="paid-lock">🔒</span>
                     <h3>Risoterapia y Bienestar Natural</h3>
                     <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
                     <p class="price">$12 USD</p>
                     <p class="duration">Duración: 10 minutos</p>
+                    <span class="unlocked-message">Servicio Desbloqueado</span>
                 </div>
-                <div class="card" id="service-horoscopo">
+                <div class="card" id="service-horoscopo" data-service-id="horoscopo">
                     <span class="paid-lock">🔒</span>
                     <h3>Horóscopo Motivacional</h3>
                     <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
                     <p class="price">$5 USD</p>
-                    <p class="duration">Duración: 1.5 minutos</p>
+                    <p class="duration">Duración: 1 minuto y 30 segundos</p>
+                    <span class="unlocked-message">Servicio Desbloqueado</span>
                 </div>
-            </div>
-            
-            <div class="pay-section">
-                <p>Elige un servicio para pagar:</p>
-                <select id="service-select">
-                    <option value="rapida">Respuesta Rápida ($2 USD)</option>
-                    <option value="risoterapia">Risoterapia ($12 USD)</option>
-                    <option value="horoscopo">Horóscopo ($5 USD)</option>
-                </select>
-                <button id="pay-btn" class="pay-btn">Pagar con Stripe</button>
-            </div>
-
-            <div id="payment-section" style="text-align: center; margin-top: 2rem;">
-                <p>O, para desbloquear los servicios con tu código secreto:</p>
-                <input type="text" id="secret-code-input" placeholder="Ingresa tu código aquí..." style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; width: 200px;">
-                <button id="unlock-btn" style="background-color: #28a745; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">Desbloquear</button>
-                <p id="payment-message" style="margin-top: 0.5rem;"></p>
             </div>
         </section>
 
@@ -369,8 +456,7 @@
                         <option value="">Selecciona</option>
                         <option value="hombre">Hombre</option>
                         <option value="mujer">Mujer</option>
-                        <option value="no-binario">No binario</option>
-                        <option value="prefiero-no-decir">Prefiero no decir</option>
+                        <option value="prefiero-no-decir">Prefiero no decirlo</option>
                     </select>
 
                     <label for="reason">Motivo de la visita:</label>
@@ -384,6 +470,31 @@
 
                     <button type="submit">Comenzar el chat</button>
                 </form>
+
+                <!-- Bloque de acceso con pago o código secreto -->
+                <div id="unlock-gate" class="unlock-gate">
+                    <div class="pay-section">
+                        <p>Elige un servicio para pagar y comenzar el chat:</p>
+                        <select id="service-select">
+                            <option value="rapida">Respuesta Rápida ($2 USD)</option>
+                            <option value="risoterapia">Risoterapia ($12 USD)</option>
+                            <option value="horoscopo">Horóscopo ($5 USD)</option>
+                        </select>
+                        <button id="pay-btn" class="pay-btn">Pagar con Stripe</button>
+                    </div>
+
+                    <div style="text-align: center; margin: 1rem 0;">
+                        <p>— O —</p>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <p>¿Tienes un código de acceso?</p>
+                        <form id="secret-code-form" class="secret-code-form">
+                            <input type="password" id="secret-code-input" placeholder="Ingresa tu código secreto" required>
+                            <button type="submit" class="pay-btn">Desbloquear todo</button>
+                        </form>
+                    </div>
+                </div>
 
                 <form id="chat-form" class="chat-form" style="display:none;">
                     <button type="button" id="mic-btn" class="mic-btn">🎙️</button>
@@ -399,15 +510,21 @@
         </section>
     </main>
 
-    <footer class="footer">
-        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
-    </footer>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-message"></p>
+            <button id="modal-close-btn">Aceptar</button>
+        </div>
+    </div>
 
+    <!-- Stripe JS (reemplaza 'pk_test_tu_clave_publica_aqui' con tu clave pública) -->
+    <script src="https://js.stripe.com/v3/"></script>
     <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
             const chatWrapper = document.getElementById('chat-wrapper');
@@ -416,71 +533,163 @@
             const chatInput = document.getElementById('chat-input');
             const loadingMessage = document.getElementById('loading-message');
             const micBtn = document.getElementById('mic-btn');
-            const unlockBtn = document.getElementById('unlock-btn');
-            const secretCodeInput = document.getElementById('secret-code-input');
-            const paymentMessage = document.getElementById('payment-message');
             const anonymousProfileForm = document.getElementById('anonymous-profile-form');
             const payBtn = document.getElementById('pay-btn');
             const serviceSelect = document.getElementById('service-select');
             const services = ['rapida', 'risoterapia', 'horoscopo'];
             const timerDisplay = document.getElementById('timer-display');
-            
-            // Constantes de la API y claves
-            const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
-            const TEXT_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
-            const BACKEND_URL = "http://127.0.0.1:5000"; // URL de tu servidor (backend)
+            const unlockGate = document.getElementById('unlock-gate');
+            const secretCodeForm = document.getElementById('secret-code-form');
+            const secretCodeInput = document.getElementById('secret-code-input');
+            const SECRET_CODE = "MAYROGA2024"; // TU CÓDIGO SECRETO AQUÍ
 
-            const SECRET_CODE = "MAYROGA2024";
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            // Constantes de la API y claves
+            const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=`;
+            const TEXT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+
+            // ¡Importante! El BACKEND_URL ahora apunta a tu servidor en la nube.
+            const BACKEND_URL = "https://[tu-url-de-render].onrender.com";
+
+            // Detalles de los servicios para respuestas programáticas
+            const serviceData = {
+                'rapida': { name: 'Agente de Respuesta Rápida', cost: '$2 USD', duration: '55 segundos', time: 55, purpose: 'Este servicio está diseñado para darte consejos rápidos y efectivos sobre bienestar, nutrición y ejercicio para tu vida diaria.' },
+                'risoterapia': { name: 'Risoterapia y Bienestar Natural', cost: '$12 USD', duration: '10 minutos', time: 600, purpose: 'La risoterapia utiliza sesiones guiadas con las exclusivas Técnicas de Vida (TVid) para ayudarte a liberar el estrés, mejorar tu estado de ánimo y fortalecer tu bienestar emocional a través del poder de la risa.' },
+                'horoscopo': { name: 'Horóscopo Motivacional', cost: '$5 USD', duration: '1 minuto y 30 segundos', time: 90, purpose: 'Este servicio te ofrece un horóscopo con un enfoque positivo y motivacional. Te brinda herramientas de autoconocimiento y consejos para que afrontes tu día con una mentalidad optimista.' }
+            };
 
             let paidServices = {
-                rapida: false, 
+                rapida: false,  
                 risoterapia: false,
                 horoscopo: false
             };
-            let serviceTimers = {
-                rapida: null,
-                risoterapia: null,
-                horoscopo: null
-            };
             let timeLeftInSeconds = 0;
+            let currentService = null;
+            let userProfile = {};
+            let chatHistory = [];
+            let timerInterval;
             
             // Firebase setup
             const firebaseConfig = JSON.parse(__firebase_config);
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
             const app = initializeApp(firebaseConfig, 'mayroga-app');
             const db = getFirestore(app);
             const auth = getAuth(app);
             let userId = null;
 
+            // Mostrar modal de mensaje personalizado
+            function showModal(title, message) {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modal.style.display = 'flex';
+            }
+
+            modalCloseBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+
+            // Lógica de autenticación con Firebase
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
-                    // Lógica para escuchar los cambios en Firestore
                     listenForPaidServices(userId);
                 } else {
-                    await signInAnonymously(auth);
+                    if (initialAuthToken) {
+                        try {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } catch (error) {
+                            console.error("Error al iniciar sesión con token personalizado:", error);
+                            await signInAnonymously(auth);
+                        }
+                    } else {
+                        await signInAnonymously(auth);
+                    }
                 }
             });
 
             // Firestore real-time listener for paid services
             function listenForPaidServices(currentUserId) {
-                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId);
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'payment_status', 'services');
 
                 onSnapshot(userDocRef, (docSnap) => {
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        if (data.paid_services) {
+                        if (data && data.paid_services) {
                             for (const service in data.paid_services) {
                                 if (data.paid_services[service].status === 'unlocked' && !paidServices[service]) {
                                     unlockPaidService(service);
                                     console.log(`Servicio de ${service} desbloqueado via Firestore.`);
                                 }
                             }
+                        } else {
+                           console.log("El documento de servicios de pago existe pero no tiene el campo 'paid_services'. Esto es normal antes de un pago.");
                         }
+                    } else {
+                        console.log("El documento de servicios de pago no existe aún. Esto es normal antes de un pago.");
                     }
                 }, (error) => {
                     console.error("Error al escuchar cambios en Firestore:", error);
                 });
+            }
+
+            // Unlocks a single service and updates the UI.
+            function unlockPaidService(service) {
+                paidServices[service] = true;
+                const card = document.getElementById(`service-${service}`);
+                if (card) {
+                    const lockIcon = card.querySelector('.paid-lock');
+                    const unlockedMsg = card.querySelector('.unlocked-message');
+                    if (lockIcon) lockIcon.style.display = 'none';
+                    if (unlockedMsg) unlockedMsg.style.display = 'block';
+                }
+                
+                // Set the current service for timer
+                timeLeftInSeconds = serviceData[service].time;
+                currentService = service;
+                startTimer();
+                showModal('Servicio Desbloqueado', `¡Felicidades! El servicio de ${serviceData[service].name} ha sido desbloqueado. Ahora puedes usarlo en el chat.`);
+                // Ocultar la sección de servicios cuando el chat comienza
+                document.querySelector('.info-section').style.display = 'none';
+                unlockGate.style.display = 'none';
+                chatForm.style.display = 'flex';
+                const initialMessage = `¡Bienvenido! Con la información que me has dado, puedo decirte que estás en el lugar correcto. Aquí encontrarás un espacio para la relajación, la calma y la paz. Me alegra estar aquí para ti. ¿Cómo quieres que empecemos a trabajar en eso?`;
+                displayMessage(initialMessage, 'assistant');
+            }
+
+            // Unlocks ALL services and sets a long timer.
+            function unlockAllServices() {
+                services.forEach(service => {
+                    paidServices[service] = true;
+                    const card = document.getElementById(`service-${service}`);
+                    if (card) {
+                        const lockIcon = card.querySelector('.paid-lock');
+                        const unlockedMsg = card.querySelector('.unlocked-message');
+                        if (lockIcon) lockIcon.style.display = 'none';
+                        if (unlockedMsg) unlockedMsg.style.display = 'block';
+                    }
+                });
+                
+                timeLeftInSeconds = 1800; // 30 minutos por desbloqueo total
+                currentService = "all";
+                startTimer();
+                showModal('Acceso Concedido', '¡Felicidades! Has desbloqueado todos los servicios con tu código secreto.');
+                // Ocultar la sección de servicios cuando el chat comienza
+                document.querySelector('.info-section').style.display = 'none';
+                unlockGate.style.display = 'none';
+                chatForm.style.display = 'flex';
+                const initialMessage = `¡Bienvenido! Con la información que me has dado, puedo decirte que estás en el lugar correcto. Aquí encontrarás un espacio para la relajación, la calma y la paz. Me alegra estar aquí para ti. ¿Cómo quieres que empecemos a trabajar en eso?`;
+                displayMessage(initialMessage, 'assistant');
             }
 
             // Anonymous Profile Submission
@@ -488,12 +697,11 @@
                 event.preventDefault();
 
                 if (!userId) {
-                    console.error("Error: userId no disponible. No se puede guardar el perfil.");
-                    displayMessage('Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.', 'assistant');
+                    showModal('Error', 'Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.');
                     return;
                 }
 
-                const profileData = {
+                userProfile = {
                     sexo: document.getElementById('gender').value,
                     motivo: document.getElementById('reason').value,
                     siente: document.getElementById('feeling').value,
@@ -502,20 +710,27 @@
                 };
 
                 try {
-                    // Se cambió la ruta para usar la colección privada del usuario, que tiene permisos por defecto
                     const docRef = doc(db, 'artifacts', appId, 'users', userId, 'user_profiles', userId);
-                    await setDoc(docRef, profileData);
+                    await setDoc(docRef, userProfile);
                     console.log("Perfil anónimo guardado con éxito.");
-
-                    // Switch to chat view
+                    
                     anonymousProfileForm.style.display = 'none';
-                    chatForm.style.display = 'flex';
-                    // Mensaje inicial personalizado, profesional y más directo
-                    const initialMessage = `¡Bienvenido! Con la información que me has dado, puedo decirte que estás en el lugar correcto. Aquí encontrarás un espacio para la relajación, la calma y la paz. Me alegra estar aquí para ti. ¿Cómo quieres que empecemos a trabajar en eso?`;
-                    displayMessage(initialMessage, 'assistant');
+                    unlockGate.style.display = 'flex'; // Muestra la puerta de desbloqueo
+
                 } catch (error) {
                     console.error("Error al guardar el perfil anónimo:", error);
-                    displayMessage('Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.', 'assistant');
+                    showModal('Error', 'Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.');
+                }
+            });
+
+            // Secret Code Form Submission
+            secretCodeForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const code = secretCodeInput.value;
+                if (code === SECRET_CODE) {
+                    unlockAllServices();
+                } else {
+                    showModal('Código Incorrecto', 'El código secreto que has ingresado no es válido. Intenta de nuevo.');
                 }
             });
 
@@ -529,7 +744,6 @@
                 micBtn.addEventListener('click', () => {
                     recognition.start();
                     micBtn.textContent = '🔴';
-                    micBtn.style.color = 'red';
                 });
 
                 recognition.onresult = (event) => {
@@ -560,9 +774,11 @@
             }
 
             function pcmToWav(pcmData, sampleRate) {
-                const pcm16 = new Int16Array(pcmData);
-                const buffer = new ArrayBuffer(44 + pcm16.byteLength);
+                const numChannels = 1;
+                const bytesPerSample = 2;
+                const buffer = new ArrayBuffer(44 + pcmData.byteLength);
                 const view = new DataView(buffer);
+                const dataOffset = 44;
                 const writeString = (view, offset, string) => {
                     for (let i = 0; i < string.length; i++) {
                         view.setUint8(offset + i, string.charCodeAt(i));
@@ -570,26 +786,24 @@
                 };
 
                 writeString(view, 0, 'RIFF');
-                view.setUint32(4, 36 + pcm16.byteLength, true);
+                view.setUint32(4, 36 + pcmData.byteLength, true);
                 writeString(view, 8, 'WAVE');
                 writeString(view, 12, 'fmt ');
                 view.setUint32(16, 16, true);
                 view.setUint16(20, 1, true);
-                view.setUint16(22, 1, true);
+                view.setUint16(22, numChannels, true);
                 view.setUint32(24, sampleRate, true);
-                view.setUint32(28, sampleRate * 2, true);
-                view.setUint16(32, 2, true);
-                view.setUint16(34, 16, true);
+                view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+                view.setUint16(32, numChannels * bytesPerSample, true);
+                view.setUint16(34, bytesPerSample * 8, true);
                 writeString(view, 36, 'data');
-                view.setUint32(40, pcm16.byteLength, true);
+                view.setUint32(40, pcmData.byteLength, true);
 
-                let offset = 44;
-                for (let i = 0; i < pcm16.length; i++) {
-                    view.setInt16(offset, pcm16[i], true);
-                    offset += 2;
+                const pcmBytes = new Uint8Array(pcmData);
+                for (let i = 0; i < pcmData.byteLength; i++) {
+                    view.setUint8(dataOffset + i, pcmBytes[i]);
                 }
-
-                return new Blob([buffer], { type: 'audio/wav' });
+                return new Blob([view], { type: 'audio/wav' });
             }
 
             async function speakMessage(text) {
@@ -604,7 +818,6 @@
                         }
                     },
                 };
-
                 try {
                     const response = await fetch(TTS_API_URL, {
                         method: 'POST',
@@ -612,13 +825,17 @@
                         body: JSON.stringify(payload)
                     });
                     
+                    if (!response.ok) {
+                        console.error("Error al generar el audio:", response.status, response.statusText);
+                        return;
+                    }
                     const result = await response.json();
                     const audioPart = result?.candidates?.[0]?.content?.parts?.[0];
-
                     if (audioPart && audioPart.inlineData && audioPart.inlineData.data) {
                         const audioData = audioPart.inlineData.data;
                         const mimeType = audioPart.inlineData.mimeType;
-                        const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
                         const pcmData = base64ToArrayBuffer(audioData);
                         const wavBlob = pcmToWav(pcmData, sampleRate);
                         const audioUrl = URL.createObjectURL(wavBlob);
@@ -645,38 +862,11 @@
                 }
             }
 
-            // Payment Logic
-            function unlockPaidService(service) {
-                paidServices[service] = true;
-
-                const card = document.getElementById(`service-${service}`);
-                if (card.querySelector('.paid-lock')) {
-                    card.querySelector('.paid-lock').style.display = 'none';
-                }
-                if (!card.querySelector('.unlocked-message')) {
-                    card.innerHTML += '<span class="unlocked-message">Servicio Desbloqueado</span>';
-                }
-                paymentMessage.textContent = `¡Servicio de ${service} desbloqueado!`;
-                paymentMessage.style.color = '#28a745';
-            }
-
-            // Secret Code Unlock
-            unlockBtn.addEventListener('click', async () => {
-                const code = secretCodeInput.value.trim().toUpperCase();
-                if (code === SECRET_CODE) {
-                    services.forEach(service => unlockPaidService(service));
-                } else {
-                    paymentMessage.textContent = 'Código incorrecto. Por favor, inténtalo de nuevo.';
-                    paymentMessage.style.color = '#dc3545';
-                }
-            });
-            
             // Lógica de pago: Crea una sesión de checkout en el backend
             payBtn.addEventListener('click', async () => {
                 const service = serviceSelect.value;
-
                 if (!userId) {
-                    alert('Debes iniciar sesión para realizar el pago.');
+                    showModal('Error', 'Debes iniciar sesión para realizar el pago.');
                     return;
                 }
 
@@ -684,25 +874,46 @@
                     const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        // Se envía el userId en el cuerpo de la solicitud
                         body: JSON.stringify({ service: service, userId: userId }),
                     });
                     
                     const data = await response.json();
                     if (data.sessionId) {
-                        // Aquí se inicia la redirección a Stripe
-                        const stripe = Stripe('pk_test_tu_clave_publica_aqui'); // Reemplaza con tu clave pública
+                        const stripe = Stripe('pk_test_tu_clave_publica_aqui'); // REEMPLAZAR con tu clave pública de Stripe
                         stripe.redirectToCheckout({
                             sessionId: data.sessionId
                         });
                     } else {
-                        displayMessage('Ocurrió un error al crear la sesión de pago. Inténtalo de nuevo.', 'assistant');
+                        showModal('Error de Pago', 'Ocurrió un error al crear la sesión de pago. Inténtalo de nuevo.');
                     }
                 } catch (error) {
                     console.error("Error en la llamada al backend:", error);
-                    displayMessage('Ocurrió un error de conexión. Inténtalo de nuevo más tarde.', 'assistant');
+                    showModal('Error de Conexión', 'Ocurrió un error de conexión. Inténtalo de nuevo más tarde.');
                 }
             });
+
+            // Timer logic
+            function updateTimerDisplay() {
+                let minutes = Math.floor(timeLeftInSeconds / 60);
+                let seconds = timeLeftInSeconds % 60;
+                timerDisplay.textContent = `Tiempo restante: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            function startTimer() {
+                timerDisplay.style.display = 'block';
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (timeLeftInSeconds > 0) {
+                        timeLeftInSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        timerDisplay.style.display = 'none';
+                        currentService = null;
+                        showModal('Sesión Terminada', 'Tu sesión ha terminado. Puedes adquirir un nuevo servicio para continuar.');
+                    }
+                }, 1000);
+            }
 
             // Chat Form Submission
             chatForm.addEventListener('submit', async (event) => {
@@ -710,140 +921,138 @@
                 const userMessage = chatInput.value.trim();
                 if (userMessage === '') return;
 
+                // Manejo de preguntas sobre los servicios
+                const lowerCaseMessage = userMessage.toLowerCase();
+                let responseToUser = '';
+
+                // Verifica si el usuario pregunta por el tiempo o la duración de algún servicio
+                const timeKeywords = ['tiempo', 'duración', 'cuánto dura'];
+                const costKeywords = ['costo', 'precio', 'cuánto cuesta'];
+                const purposeKeywords = ['qué es', 'para qué sirve', 'cuál es el propósito', 'por qué'];
+
+                const checkServiceKeywords = (keywords) => {
+                    for (const key of keywords) {
+                        if (lowerCaseMessage.includes(key)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                const getServiceFromMessage = (message) => {
+                    if (message.includes('risoterapia')) return 'risoterapia';
+                    if (message.includes('respuesta rápida') || message.includes('rápida')) return 'rapida';
+                    if (message.includes('horoscopo')) return 'horoscopo';
+                    return null;
+                };
+                
+                const serviceRequested = getServiceFromMessage(lowerCaseMessage);
+
+                if (checkServiceKeywords(timeKeywords)) {
+                    if (serviceRequested) {
+                        responseToUser = `El servicio de ${serviceData[serviceRequested].name} tiene una duración de ${serviceData[serviceRequested].duration}.`;
+                    } else if (currentService) {
+                         let minutes = Math.floor(timeLeftInSeconds / 60);
+                         let seconds = timeLeftInSeconds % 60;
+                         responseToUser = `Claro. Te quedan ${minutes} minuto(s) y ${seconds} segundo(s) de tu sesión actual de ${serviceData[currentService].name}.`;
+                    } else {
+                        responseToUser = 'Aún no has iniciado una sesión de chat. Por favor, adquiere un servicio para comenzar.';
+                    }
+                } else if (checkServiceKeywords(costKeywords)) {
+                    if (serviceRequested) {
+                        responseToUser = `El costo del servicio de ${serviceData[serviceRequested].name} es de ${serviceData[serviceRequested].cost}.`;
+                    } else {
+                        responseToUser = `Los precios de mis servicios son: Agente de Respuesta Rápida ${serviceData['rapida'].cost}, Risoterapia y Bienestar Natural ${serviceData['risoterapia'].cost}, y Horóscopo Motivacional ${serviceData['horoscopo'].cost}.`;
+                    }
+                } else if (checkServiceKeywords(purposeKeywords)) {
+                    if (serviceRequested) {
+                        responseToUser = serviceData[serviceRequested].purpose;
+                    } else {
+                        responseToUser = 'Para poder responder, por favor especifica de qué servicio te gustaría saber su propósito.';
+                    }
+                } else if (lowerCaseMessage.includes('qué servicio estoy usando') || lowerCaseMessage.includes('servicio actual')) {
+                    if (currentService && serviceData[currentService]) {
+                        responseToUser = `Actualmente estás usando el servicio de ${serviceData[currentService].name}.`;
+                    } else {
+                        responseToUser = 'Aún no has iniciado una sesión de chat. Por favor, adquiere un servicio para comenzar.';
+                    }
+                }
+                
+                if (responseToUser) {
+                    displayMessage(userMessage, 'user');
+                    displayMessage(responseToUser, 'assistant');
+                    chatInput.value = '';
+                    chatInput.focus();
+                    return;
+                }
+
+                if (timeLeftInSeconds <= 0) {
+                    showModal('Sesión Terminada', 'Tu sesión ha terminado. Puedes adquirir un nuevo servicio para continuar.');
+                    chatInput.value = '';
+                    return;
+                }
+
+                // Append user message to chat history and display
+                chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
                 displayMessage(userMessage, 'user');
                 chatInput.value = '';
                 chatInput.disabled = true;
                 loadingMessage.style.display = 'block';
 
-                const isTimeQuery = userMessage.toLowerCase().includes('tiempo') || userMessage.toLowerCase().includes('duración') || userMessage.toLowerCase().includes('minutos') || userMessage.toLowerCase().includes('queda');
-                const isExerciseQuery = userMessage.toLowerCase().includes('ejercicio') || userMessage.toLowerCase().includes('respiración');
+                // --- INSTRUCCIONES DEL SISTEMA ACTUALIZADAS PARA EL ASISTENTE ---
+                const systemPrompt = `
+                Eres May Roga, una guía y facilitadora profesional de crecimiento personal, salud y positividad. Tu objetivo es ayudar a los usuarios basándote en su perfil de bienestar. El perfil del usuario es:
+                Sexo: ${userProfile.sexo}, Motivo: ${userProfile.motivo}, Siente: ${userProfile.siente}, Quiere: ${userProfile.quiere}.
 
+                Tu comportamiento es el de un verdadero educador de salud y bienestar. Escuchas con paciencia y humildad, sin interrumpir. Te tomas el tiempo necesario, como si cada minuto fuera solo para la persona que atiendes. Respondes con palabras sencillas y cuidadosamente elegidas. Tu bondad se muestra en gestos pequeños: calma, paciencia y una mirada que nunca juzga. Tu servicio no es un trámite, es un acompañamiento.
 
-                if (isTimeQuery) {
-                    let minutes = Math.floor(timeLeftInSeconds / 60);
-                    let seconds = timeLeftInSeconds % 60;
-                    let timeRemainingMessage = '';
-                    if (timeLeftInSeconds > 0) {
-                        timeRemainingMessage = `Claro. Te quedan ${minutes} minuto${minutes === 1 ? '' : 's'} y ${seconds} segundo${seconds === 1 ? '' : 's'} de tu sesión.`;
-                    } else {
-                        timeRemainingMessage = 'Tu sesión ha terminado. Puedes adquirir un nuevo servicio para continuar.';
-                    }
-                    displayMessage(timeRemainingMessage, 'assistant');
+                Eres un maestro de la dualidad: acoge lo que duele y lo que alivia, lo oscuro y lo claro, y lo transformas en crecimiento y bienestar. Tu trabajo es un puente entre la experiencia difícil y la posibilidad de estar mejor.
+
+                Utiliza las "Técnicas de Vida" (TVid) como herramientas de apoyo. No las impongas, ofrécelas como ejercicios:
+                - **TDB (Técnica del Bien):** Orientar la energía hacia lo que sí funciona y agradecer lo pequeño.
+                - **TDM (Técnica del Mal):** Mirar lo difícil para extraer el aprendizaje y convertirlo en fuerza.
+                - **TDN (Técnica del Niño):** Usar la curiosidad y el juego para abrir posibilidades y reír.
+                - **TDK (Técnica del Beso):** Ofrecer afecto y cuidado a través de gestos simbólicos.
+                - **TDMM (Técnica de la Madre):** Dar nutrición emocional, calor y permiso para descansar.
+                - **TDP (Técnica del Padre):** Proporcionar dirección, límites con respeto y claridad.
+                - **TDG (Técnica de la Guerra):** Canalizar la energía intensa (miedo, enojo) en coraje y compostura.
+
+                Conciencia contextual:
+                - El cliente está usando el servicio de ${serviceData[currentService]?.name || 'N/A'}, con una duración total de ${serviceData[currentService]?.duration || 'N/A'}.
+                - Le quedan ${Math.floor(timeLeftInSeconds / 60)} minuto(s) y ${timeLeftInSeconds % 60} segundo(s) de sesión.
+
+                Tu respuesta debe ser profesional, empática, concisa y siempre dirigida a elevar el espíritu del cliente.
+                `;
+
+                try {
+                    const response = await fetch(TEXT_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: chatHistory,
+                            systemInstruction: {
+                                parts: [{ text: systemPrompt }]
+                            },
+                        })
+                    });
+
+                    const result = await response.json();
+                    const assistantMessage = result?.candidates?.[0]?.content?.parts?.[0]?.text || 'Lo siento, no puedo responder en este momento.';
+                    
+                    // Append assistant message to chat history
+                    chatHistory.push({ role: 'model', parts: [{ text: assistantMessage }] });
+                    displayMessage(assistantMessage, 'assistant');
+
+                } catch (error) {
+                    console.error("Error al comunicarse con la API de IA:", error);
+                    displayMessage('Lo siento, estoy teniendo problemas técnicos. Por favor, intenta de nuevo más tarde.', 'assistant');
+                } finally {
                     loadingMessage.style.display = 'none';
                     chatInput.disabled = false;
                     chatInput.focus();
-                    return;
                 }
-                
-                if (isExerciseQuery) {
-                    const exerciseMessage = `Bien. Empecemos con un ejercicio de respiración. Cierra los ojos y respira profundo por la nariz, sostén el aire 3 segundos y exhala por la boca. Repitamos esto 5 veces. Cuando termines, dime: 'listo'.`;
-                    displayMessage(exerciseMessage, 'assistant');
-                    loadingMessage.style.display = 'none';
-                    chatInput.disabled = false;
-                    chatInput.focus();
-                    return;
-                }
-
-                const isRapida = userMessage.toLowerCase().includes('rápida');
-                const isRisoterapia = userMessage.toLowerCase().includes('risoterapia');
-                const isHoroscopo = userMessage.toLowerCase().includes('horoscopo') || userMessage.toLowerCase().includes('zodiaco');
-                
-                let assistantResponse = '';
-
-                let activeService = null;
-                if (isRapida) activeService = 'rapida';
-                else if (isRisoterapia) activeService = 'risoterapia';
-                else if (isHoroscopo) activeService = 'horoscopo';
-
-                if (activeService && !paidServices[activeService]) {
-                    assistantResponse = `Para acceder al servicio de ${activeService}, necesitas desbloquearlo. Por favor, adquiere el servicio o introduce el código secreto.`;
-                } else {
-                    // Check if a paid service timer has expired
-                    if (activeService && timeLeftInSeconds <= 0 && serviceTimers[activeService] === null) {
-                        assistantResponse = `Tu tiempo para este servicio ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`;
-                    } else {
-                        // Start service timers if not already running
-                        if (activeService && serviceTimers[activeService] === null) {
-                            let duration = 0;
-                            if (activeService === 'rapida') duration = 55;
-                            else if (activeService === 'risoterapia') duration = 10 * 60;
-                            else if (activeService === 'horoscopo') duration = 1.5 * 60;
-
-                            startServiceTimer(activeService, duration); 
-                            displayMessage(`El servicio de ${activeService} ha comenzado. Tienes un tiempo limitado para esta sesión. Te avisaré cuando esté terminando.`, 'assistant');
-                        }
-
-                        try {
-                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Entiende que el cliente puede escribir o hablar con errores ortográficos o gramaticales; tu trabajo es descifrar su intención y responder de forma natural, **sin jamás corregirlo**. Adapta tu lenguaje al estilo del cliente. Sabe que tus servicios son: Agente de Respuesta Rápida (55 segundos), Risototerapia y Bienestar Natural (10 minutos), y Horóscopo Motivacional (1.5 minutos). Siempre que el cliente pregunte por un servicio, debes saber el tiempo que dura y cuánto le queda de su sesión. Sé directo y ve al grano, el tiempo del cliente es valioso. No tomes el mando de la conversación; deja que el cliente hable primero. Si el cliente no habla mucho, entonces puedes ofrecer una respuesta más detallada. De lo contrario, tus respuestas deben ser concisas y siempre invitar al cliente a continuar hablando. Si es una instrucción, ve directo al punto. Pregunta '¿Cómo te sientes?', '¿Quieres que lo repitamos?', o '¿Quieres seguir?' para que el cliente sienta que el espacio es suyo. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia u horóscopo, utiliza la lógica de TVid para responder.`;
-
-                            const payload = {
-                                contents: [{ parts: [{ text: userMessage }] }],
-                                systemInstruction: {
-                                    parts: [{ text: systemPrompt }]
-                                },
-                            };
-
-                            const response = await fetch(TEXT_API_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            });
-
-                            const result = await response.json();
-                            const candidate = result?.candidates?.[0];
-                            if (candidate && candidate.content?.parts?.[0]?.text) {
-                                assistantResponse = candidate.content.parts[0].text;
-                            } else {
-                                assistantResponse = 'Lo siento, no pude generar una respuesta en este momento. Inténtalo de nuevo más tarde.';
-                            }
-                        } catch (error) {
-                            console.error("Error en la llamada a la API:", error);
-                            assistantResponse = 'Ocurrió un error. Por favor, revisa tu conexión e inténtalo de nuevo.';
-                        }
-                    }
-                }
-                
-                displayMessage(assistantResponse, 'assistant');
-                loadingMessage.style.display = 'none';
-                chatInput.disabled = false;
-                chatInput.focus();
             });
-
-            // Service Timer Logic
-            function startServiceTimer(service, durationInSeconds) {
-                if (serviceTimers[service] !== null) return; // Timer already running
-                
-                timeLeftInSeconds = durationInSeconds;
-                const card = document.getElementById(`service-${service}`);
-                const durationElement = card.querySelector('.duration');
-                timerDisplay.style.display = 'block';
-
-                const timerInterval = setInterval(() => {
-                    timeLeftInSeconds--;
-                    let minutes = Math.floor(timeLeftInSeconds / 60);
-                    let seconds = timeLeftInSeconds % 60;
-                    
-                    timerDisplay.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
-                    
-                    if (timeLeftInSeconds <= 0) {
-                        clearInterval(timerInterval);
-                        paidServices[service] = false;
-                        serviceTimers[service] = null;
-                        timerDisplay.style.display = 'none';
-                        durationElement.textContent = 'Duración: 0m 0s';
-                        card.querySelector('.paid-lock').style.display = 'block';
-                        const unlockedMessage = card.querySelector('.unlocked-message');
-                        if (unlockedMessage) {
-                            unlockedMessage.remove();
-                        }
-                        displayMessage(`Tu tiempo para el servicio de ${service} ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`, 'assistant');
-                    }
-                }, 1000);
-
-                serviceTimers[service] = timerInterval;
-            }
         });
     </script>
-    <script src="https://js.stripe.com/v3/"></script>
 </body>
 </html>
