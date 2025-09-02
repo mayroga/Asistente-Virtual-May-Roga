@@ -1,89 +1,761 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual May Roga</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="/static/js/script.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Virtual May Roga</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            background-color: #fff;
+            padding: 2rem 1rem;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            font-size: 2rem;
+            color: #007BFF;
+            margin: 0;
+        }
+
+        .tagline {
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem;
+        }
+
+        .info-section {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #343a40;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #007BFF;
+            padding-bottom: 0.5rem;
+        }
+
+        .service-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: #f1f7fd;
+            border: 1px solid #cce5ff;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            flex: 1 1 200px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #0056b3;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+        }
+
+        .price {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #343a40;
+            margin-top: 0.5rem;
+        }
+
+        .duration {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .divider {
+            border: 0;
+            height: 1px;
+            background-color: #ddd;
+            margin: 2rem 0;
+        }
+
+        .chat-section {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .chat-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            border: 1px solid #cce5ff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chat-output {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            background-color: #e6f7ff;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .assistant-message {
+            background-color: #f1f7fd;
+            color: #333;
+            padding: 0.75rem 1rem;
+            border-radius: 18px 18px 18px 4px;
+            display: inline-block;
+            max-width: 80%;
+            float: left;
+            clear: both;
+        }
+        
+        .user-message {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 0.75rem 1rem;
+            border-radius: 18px 18px 4px 18px;
+            display: inline-block;
+            max-width: 80%;
+            float: right;
+            clear: both;
+        }
+        
+        .chat-form {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #dee2e6;
+            background-color: #fff;
+        }
+        
+        .chat-form input {
+            flex-grow: 1;
+            margin-right: 0.5rem;
+        }
+
+        .mic-btn {
+            background-color: #f1f7fd;
+            color: #007BFF;
+            padding: 0.5rem;
+            border-radius: 50%;
+            border: 1px solid #cce5ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        
+        .loading-message {
+            text-align: center;
+            padding: 0.5rem;
+            display: none;
+        }
+        
+        .loading-message span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #007BFF;
+            margin: 0 4px;
+            animation: bounce 0.6s infinite alternate;
+        }
+        
+        .loading-message span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-message span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes bounce {
+            to {
+                transform: translateY(-5px);
+            }
+        }
+        .paid-lock {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            color: rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+        }
+        .unlocked-message {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 0.7rem;
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .anonymous-profile-form {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .anonymous-profile-form label {
+            font-weight: bold;
+            color: #007BFF;
+        }
+
+        .anonymous-profile-form input,
+        .anonymous-profile-form select,
+        .anonymous-profile-form textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cce5ff;
+            border-radius: 4px;
+        }
+
+        .anonymous-profile-form button {
+            background-color: #007BFF;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .anonymous-profile-form button:hover {
+            background-color: #0056b3;
+        }
+
+        .stripe-btn {
+            background-color: #6772e5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            width: 100%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+    </style>
+    <!-- Incluye Stripe.js para manejar la redirección al checkout -->
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-    <header class="header">
-        <h1 class="logo">Asistente Virtual May Roga</h1>
-        <p class="tagline">Bienvenido a tu Asistente Virtual</p>
-    </header>
+    <header class="header">
+        <h1 class="logo">Asistente Virtual May Roga</h1>
+        <p class="tagline">Bienvenido a tu Asistente Virtual</p>
+    </header>
 
-    <main class="container">
-                <section class="info-section">
-            <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
-            <div class="service-cards">
-                <div class="card">
-                    <h3>Agente de Respuesta Rápida</h3>
-                    <p>Orientación de salud general, nutrición y ejercicio en segundos.</p>
-                    <p class="price">$1 USD</p>
-                    <p class="duration">Duración: 55 segundos</p>
-            </div>
-            <div class="card">
-                    <h3>Risoterapia y Bienestar Natural</h3>
-                    <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
-                    <p class="price">$12 USD</p>
-                    <p class="duration">Duración: 10 minutos</p>
-            </div>
-            <div class="card">
-                    <h3>Horóscopo Motivacional</h3>
-                    <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
-                    <p class="price">$3 USD</p>
-            </div>
-          </div>
-          <p class="disclaimer">Recuerda: Este servicio es educativo e informativo, no sustituye una consulta médica profesional.</p>
-        </section>
+    <main class="container">
+        <section class="info-section">
+            <h2 class="section-title">Nuestros Servicios de Bienestar</h2>
+            <div class="service-cards">
+                <div class="card" id="service-rapida">
+                    <span class="paid-lock">🔒</span>
+                    <h3>Agente de Respuesta Rápida</h3>
+                    <p>Consejos de bienestar, nutrición y ejercicio para tu vida diaria.</p>
+                    <p class="price">$2 USD</p>
+                    <p class="duration">Duración: 55 segundos</p>
+                    <!-- El servicio de respuesta rápida no tiene botón de pago de momento -->
+                </div>
+                <div class="card" id="service-risoterapia">
+                    <span class="paid-lock">🔒</span>
+                    <h3>Risoterapia y Bienestar Natural</h3>
+                    <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
+                    <p class="price">$12 USD</p>
+                    <p class="duration">Duración: 10 minutos</p>
+                    <button class="stripe-btn" data-service="risoterapia">Pagar con Stripe</button>
+                </div>
+                <div class="card" id="service-horoscopo">
+                    <span class="paid-lock">🔒</span>
+                    <h3>Horóscopo Motivacional</h3>
+                    <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
+                    <p class="price">$5 USD</p>
+                    <p class="duration">Duración: 1.5 minutos</p>
+                    <button class="stripe-btn" data-service="horoscopo">Pagar con Stripe</button>
+                </div>
+            </div>
+            <div id="payment-section" style="text-align: center; margin-top: 2rem;">
+                <p>Para desbloquear los servicios de pago, introduce tu código secreto:</p>
+                <input type="text" id="secret-code-input" placeholder="Ingresa tu código aquí..." style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; width: 200px;">
+                <button id="unlock-btn" style="background-color: #28a745; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">Desbloquear</button>
+                <p id="payment-message" style="margin-top: 0.5rem;"></p>
+            </div>
+        </section>
 
-        <hr class="divider">
+        <hr class="divider">
 
-                <section class="chat-section">
-            <h2 class="section-title">Acceso y Chat</h2>
-            <div class="form-container">
-                <div class="input-group">
-                    <label for="apodo">Tu Apodo (obligatorio):</label>
-                    <input type="text" id="apodo" placeholder="Ej: Maykel" required>
-                </div>
+        <section class="chat-section">
+            <h2 class="section-title">Asistente de Bienestar</h2>
+            
+            <div id="chat-wrapper" class="chat-wrapper">
+                <div id="chat-output" class="chat-output">
+                    <!-- Mensajes de chat se añaden aquí -->
+                </div>
 
-                <div class="service-select">
-                    <label for="service-selector">Elige un Servicio:</label>
-                    <select id="service-selector">
-                        <option value="respuesta_rapida">Agente de Respuesta Rápida ($1)</option>
-                        <option value="risoterapia">Risoterapia ($12)</option>
-                        <option value="horoscopo">Horóscopo ($3)</option>
-                    </select>
-                </div>
+                <form id="anonymous-profile-form" class="anonymous-profile-form">
+                    <p>Para ayudarte mejor, por favor completa esta información anónima:</p>
+                    <label for="gender">Sexo:</label>
+                    <select id="gender" name="gender" required>
+                        <option value="">Selecciona</option>
+                        <option value="hombre">Hombre</option>
+                        <option value="mujer">Mujer</option>
+                        <option value="no-binario">No binario</option>
+                        <option value="prefiero-no-decir">Prefiero no decir</option>
+                    </select>
 
-                <div class="button-group">
-                    <input type="password" id="access-code" placeholder="Código de acceso">
-                    <button id="btn-access-code" class="btn btn-secondary">Acceder con código</button>
-                    <button id="btn-pay-stripe" class="btn btn-primary">Pagar con Stripe</button>
-                </div>
-            </div>
+                    <label for="reason">Motivo de la visita:</label>
+                    <textarea id="reason" name="reason" placeholder="Ej: Vengo por consejos para relajarme." required></textarea>
 
-            <div id="chat-wrapper" class="chat-wrapper hidden">
-                <div id="chat-output" class="chat-output">
-                    <p class="assistant-message">Hola, soy tu asistente de bienestar. Elige un servicio y comienza a chatear.</p>
-                </div>
-                <form id="chat-form" class="chat-form">
-                    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." required>
-                    <button type="submit" class="btn btn-secondary">Enviar</button>
-                    <div id="loading-message" class="loading-message hidden">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                  </div>
-                </form>
-            </div>
-        </section>
-    </main>
+                    <label for="feeling">¿Qué sientes en este momento?</label>
+                    <textarea id="feeling" name="feeling" placeholder="Ej: Me siento ansioso y con estrés." required></textarea>
 
-    <footer class="footer">
-        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
-    </footer>
+                    <label for="desire">¿Qué te gustaría lograr?</label>
+                    <textarea id="desire" name="desire" placeholder="Ej: Quiero aprender a manejar mis emociones." required></textarea>
+
+                    <button type="submit">Comenzar el chat</button>
+                </form>
+
+                <form id="chat-form" class="chat-form" style="display:none;">
+                    <button type="button" id="mic-btn" class="mic-btn">🎙️</button>
+                    <input type="text" id="chat-input" placeholder="Escribe o habla tu mensaje..." required>
+                    <button type="submit" class="btn btn-secondary">Enviar</button>
+                    <div id="loading-message" class="loading-message">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 May Roga LLC. Todos los derechos reservados.</p>
+    </footer>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatWrapper = document.getElementById('chat-wrapper');
+            const chatOutput = document.getElementById('chat-output');
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
+            const loadingMessage = document.getElementById('loading-message');
+            const micBtn = document.getElementById('mic-btn');
+            const unlockBtn = document.getElementById('unlock-btn');
+            const secretCodeInput = document.getElementById('secret-code-input');
+            const paymentMessage = document.getElementById('payment-message');
+            const risoterapiaCard = document.getElementById('service-risoterapia');
+            const horoscopoCard = document.getElementById('service-horoscopo');
+            const rapidaCard = document.getElementById('service-rapida'); // Get the rapid service card
+            const anonymousProfileForm = document.getElementById('anonymous-profile-form');
+            const stripeButtons = document.querySelectorAll('.stripe-btn');
+
+            const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
+            const TEXT_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
+            const apiKey = "";
+            const SECRET_CODE = "MAYROGA2024";
+
+            // Inicializa Stripe con tu clave pública
+            const stripe = Stripe('pk_test_tu_clave_publica_aqui'); // REEMPLAZA ESTA CLAVE CON TU CLAVE PÚBLICA DE STRIPE
+
+            let paidServices = {
+                rapida: false, 
+                risoterapia: false,
+                horoscopo: false
+            };
+            let serviceTimers = {
+                rapida: null,
+                risoterapia: null,
+                horoscopo: null
+            };
+            
+            // Firebase setup
+            const firebaseConfig = JSON.parse(__firebase_config);
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const app = initializeApp(firebaseConfig, 'mayroga-app');
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            let userId = null;
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    await signInAnonymously(auth);
+                }
+            });
+
+            // Anonymous Profile Submission
+            anonymousProfileForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const profileData = {
+                    sexo: document.getElementById('gender').value,
+                    motivo: document.getElementById('reason').value,
+                    siente: document.getElementById('feeling').value,
+                    quiere: document.getElementById('desire').value,
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    const docRef = doc(db, `/artifacts/${appId}/public/data/user_profiles/${userId}`);
+                    await setDoc(docRef, profileData);
+                    console.log("Perfil anónimo guardado con éxito.");
+
+                    // Switch to chat view
+                    anonymousProfileForm.style.display = 'none';
+                    chatForm.style.display = 'flex';
+                    displayMessage('¡Gracias! Ahora podemos empezar nuestra conversación. ¿En qué puedo ayudarte hoy?', 'assistant');
+                } catch (error) {
+                    console.error("Error al guardar el perfil anónimo:", error);
+                    displayMessage('Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.', 'assistant');
+                }
+            });
+
+            // Speech Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'es-ES';
+
+                micBtn.addEventListener('click', () => {
+                    recognition.start();
+                    micBtn.textContent = '🔴';
+                    micBtn.style.color = 'red';
+                });
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    chatInput.value = transcript;
+                    micBtn.textContent = '🎙️';
+                    micBtn.style.color = '#007BFF';
+                };
+
+                recognition.onend = () => {
+                    micBtn.textContent = '🎙️';
+                    micBtn.style.color = '#007BFF';
+                };
+            } else {
+                micBtn.style.display = 'none';
+                console.log('Speech Recognition API no soportada en este navegador.');
+            }
+
+            // Audio Generation (TTS)
+            function base64ToArrayBuffer(base64) {
+                const binaryString = atob(base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+
+            function pcmToWav(pcmData, sampleRate) {
+                const pcm16 = new Int16Array(pcmData);
+                const buffer = new ArrayBuffer(44 + pcm16.byteLength);
+                const view = new DataView(buffer);
+                const writeString = (view, offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+
+                writeString(view, 0, 'RIFF');
+                view.setUint32(4, 36 + pcm16.byteLength, true);
+                writeString(view, 8, 'WAVE');
+                writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * 2, true);
+                view.setUint16(32, 2, true);
+                view.setUint16(34, 16, true);
+                writeString(view, 36, 'data');
+                view.setUint32(40, pcm16.byteLength, true);
+
+                let offset = 44;
+                for (let i = 0; i < pcm16.length; i++) {
+                    view.setInt16(offset, pcm16[i], true);
+                    offset += 2;
+                }
+
+                return new Blob([buffer], { type: 'audio/wav' });
+            }
+
+            async function speakMessage(text) {
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                };
+
+                try {
+                    const response = await fetch(TTS_API_URL + apiKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+                    const audioPart = result?.candidates?.[0]?.content?.parts?.[0];
+
+                    if (audioPart && audioPart.inlineData && audioPart.inlineData.data) {
+                        const audioData = audioPart.inlineData.data;
+                        const mimeType = audioPart.inlineData.mimeType;
+                        const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                        const pcmData = base64ToArrayBuffer(audioData);
+                        const wavBlob = pcmToWav(pcmData, sampleRate);
+                        const audioUrl = URL.createObjectURL(wavBlob);
+                        const audio = new Audio(audioUrl);
+                        audio.play();
+                    } else {
+                        console.error("No se pudo obtener el audio de la API.");
+                    }
+                } catch (error) {
+                    console.error("Error al generar el audio:", error);
+                }
+            }
+
+            // Chat UI
+            function displayMessage(text, sender) {
+                const messageDiv = document.createElement('p');
+                messageDiv.classList.add(`${sender}-message`);
+                messageDiv.textContent = text;
+                chatOutput.appendChild(messageDiv);
+                chatOutput.scrollTop = chatOutput.scrollHeight;
+
+                if (sender === 'assistant') {
+                    speakMessage(text);
+                }
+            }
+
+            // Payment Logic
+            function unlockPaidServices(service) {
+                paidServices[service] = true;
+
+                const card = document.getElementById(`service-${service}`);
+                if (card.querySelector('.paid-lock')) {
+                    card.querySelector('.paid-lock').style.display = 'none';
+                }
+                if (!card.querySelector('.unlocked-message')) {
+                    card.innerHTML += '<span class="unlocked-message">Servicio Desbloqueado</span>';
+                }
+                paymentMessage.textContent = `¡Servicio de ${service} desbloqueado!`;
+                paymentMessage.style.color = '#28a745';
+            }
+
+            // Secret Code Unlock
+            unlockBtn.addEventListener('click', async () => {
+                const code = secretCodeInput.value.trim().toUpperCase();
+                if (code === SECRET_CODE) {
+                    unlockPaidServices('rapida');
+                    unlockPaidServices('risoterapia');
+                    unlockPaidServices('horoscopo');
+                } else {
+                    paymentMessage.textContent = 'Código incorrecto. Por favor, inténtalo de nuevo.';
+                    paymentMessage.style.color = '#dc3545';
+                }
+            });
+
+            // Lógica de Stripe Checkout
+            stripeButtons.forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const service = event.target.dataset.service;
+                    
+                    try {
+                        const response = await fetch('/create-checkout-session', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ service: service }),
+                        });
+                        
+                        const session = await response.json();
+                        
+                        if (session.error) {
+                            console.error(session.error);
+                            displayMessage('Hubo un error al procesar el pago. Por favor, inténtalo de nuevo.', 'assistant');
+                        } else {
+                            // Redirige al usuario al checkout de Stripe
+                            const result = await stripe.redirectToCheckout({
+                                sessionId: session.id,
+                            });
+                            
+                            if (result.error) {
+                                console.error(result.error.message);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error:', e);
+                        displayMessage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.', 'assistant');
+                    }
+                });
+            });
+
+            // Chat Form Submission
+            chatForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const userMessage = chatInput.value.trim();
+                if (userMessage === '') return;
+
+                displayMessage(userMessage, 'user');
+                chatInput.value = '';
+                chatInput.disabled = true;
+                loadingMessage.style.display = 'block';
+
+                const isRapida = userMessage.toLowerCase().includes('rápida');
+                const isRisoterapia = userMessage.toLowerCase().includes('risoterapia');
+                const isHoroscopo = userMessage.toLowerCase().includes('horoscopo') || userMessage.toLowerCase().includes('zodiaco');
+                
+                let assistantResponse = '';
+
+                let activeService = null;
+                if (isRapida) activeService = 'rapida';
+                else if (isRisoterapia) activeService = 'risoterapia';
+                else if (isHoroscopo) activeService = 'horoscopo';
+
+                if (activeService && !paidServices[activeService]) {
+                    assistantResponse = `Para acceder al servicio de ${activeService}, necesitas desbloquearlo. Por favor, adquiere el servicio o introduce el código secreto.`;
+                } else {
+                    // Check if a paid service timer has expired
+                    if (activeService && serviceTimers[activeService] === 0) {
+                         assistantResponse = `Tu tiempo para este servicio ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`;
+                    } else {
+                        // Start service timers if not already running
+                        if (activeService && serviceTimers[activeService] === null) {
+                            let duration = 0;
+                            if (activeService === 'rapida') duration = 55;
+                            else if (activeService === 'risoterapia') duration = 10 * 60;
+                            else if (activeService === 'horoscopo') duration = 1.5 * 60;
+
+                            startServiceTimer(activeService, duration); 
+                            displayMessage(`El servicio de ${activeService} ha comenzado. Tienes ${duration} segundos.`, 'assistant');
+                        }
+
+                        try {
+                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Nunca apresures al usuario, escucha con total atención y ofrece palabras que cuidan. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia o horóscopo, utiliza la lógica de TVid para responder.`;
+
+                            const payload = {
+                                contents: [{ parts: [{ text: userMessage }] }],
+                                systemInstruction: {
+                                    parts: [{ text: systemPrompt }]
+                                },
+                            };
+
+                            const response = await fetch(TEXT_API_URL + apiKey, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            const result = await response.json();
+                            const candidate = result?.candidates?.[0];
+                            if (candidate && candidate.content?.parts?.[0]?.text) {
+                                assistantResponse = candidate.content.parts[0].text;
+                            } else {
+                                assistantResponse = 'Lo siento, no pude generar una respuesta en este momento. Inténtalo de nuevo más tarde.';
+                            }
+                        } catch (error) {
+                            console.error("Error en la llamada a la API:", error);
+                            assistantResponse = 'Ocurrió un error. Por favor, revisa tu conexión e inténtalo de nuevo.';
+                        }
+                    }
+                }
+                
+                displayMessage(assistantResponse, 'assistant');
+                loadingMessage.style.display = 'none';
+                chatInput.disabled = false;
+                chatInput.focus();
+            });
+
+            // Service Timer Logic
+            function startServiceTimer(service, durationInSeconds) {
+                if (serviceTimers[service] !== null) return; // Timer already running
+                
+                let timeLeft = durationInSeconds;
+                const card = document.getElementById(`service-${service}`);
+                const durationElement = card.querySelector('.duration');
+                
+                serviceTimers[service] = setInterval(() => {
+                    timeLeft--;
+                    let minutes = Math.floor(timeLeft / 60);
+                    let seconds = timeLeft % 60;
+                    durationElement.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(serviceTimers[service]);
+                        paidServices[service] = false;
+                        serviceTimers[service] = null;
+                        durationElement.textContent = 'Duración: 0m 0s';
+                        card.querySelector('.paid-lock').style.display = 'block';
+                        const unlockedMessage = card.querySelector('.unlocked-message');
+                        if (unlockedMessage) {
+                            unlockedMessage.remove();
+                        }
+                        displayMessage(`Tu tiempo para el servicio de ${service} ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`, 'assistant');
+                    }
+                }, 1000);
+            }
+        });
+    </script>
 </body>
 </html>
