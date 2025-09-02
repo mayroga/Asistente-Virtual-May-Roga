@@ -267,15 +267,23 @@
             background-color: #0056b3;
         }
 
-        .stripe-btn {
+        .pay-section {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .pay-section select {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-right: 0.5rem;
+        }
+        .pay-btn {
             background-color: #6772e5;
             color: white;
             padding: 0.5rem 1rem;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 0.5rem;
-            width: 100%;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             font-weight: bold;
         }
@@ -299,7 +307,6 @@
                     <p>Consejos de bienestar, nutrición y ejercicio para tu vida diaria.</p>
                     <p class="price">$2 USD</p>
                     <p class="duration">Duración: 55 segundos</p>
-                    <!-- El servicio de respuesta rápida no tiene botón de pago de momento -->
                 </div>
                 <div class="card" id="service-risoterapia">
                     <span class="paid-lock">🔒</span>
@@ -307,7 +314,6 @@
                     <p>Sesiones guiadas con las exclusivas Técnicas de Vida (TVid).</p>
                     <p class="price">$12 USD</p>
                     <p class="duration">Duración: 10 minutos</p>
-                    <button class="stripe-btn" data-service="risoterapia">Pagar con Stripe</button>
                 </div>
                 <div class="card" id="service-horoscopo">
                     <span class="paid-lock">🔒</span>
@@ -315,11 +321,21 @@
                     <p>Consejos positivos y herramientas de autoconocimiento para tu día.</p>
                     <p class="price">$5 USD</p>
                     <p class="duration">Duración: 1.5 minutos</p>
-                    <button class="stripe-btn" data-service="horoscopo">Pagar con Stripe</button>
                 </div>
             </div>
+            
+            <div class="pay-section">
+                <p>Elige un servicio para pagar:</p>
+                <select id="service-select">
+                    <option value="rapida">Respuesta Rápida ($2 USD)</option>
+                    <option value="risoterapia">Risoterapia ($12 USD)</option>
+                    <option value="horoscopo">Horóscopo ($5 USD)</option>
+                </select>
+                <button id="pay-btn" class="pay-btn">Pagar con Stripe</button>
+            </div>
+
             <div id="payment-section" style="text-align: center; margin-top: 2rem;">
-                <p>Para desbloquear los servicios de pago, introduce tu código secreto:</p>
+                <p>O, para desbloquear los servicios con tu código secreto:</p>
                 <input type="text" id="secret-code-input" placeholder="Ingresa tu código aquí..." style="border: 1px solid #ccc; padding: 0.5rem; border-radius: 4px; width: 200px;">
                 <button id="unlock-btn" style="background-color: #28a745; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;">Desbloquear</button>
                 <p id="payment-message" style="margin-top: 0.5rem;"></p>
@@ -393,11 +409,10 @@
             const unlockBtn = document.getElementById('unlock-btn');
             const secretCodeInput = document.getElementById('secret-code-input');
             const paymentMessage = document.getElementById('payment-message');
-            const risoterapiaCard = document.getElementById('service-risoterapia');
-            const horoscopoCard = document.getElementById('service-horoscopo');
-            const rapidaCard = document.getElementById('service-rapida'); // Get the rapid service card
             const anonymousProfileForm = document.getElementById('anonymous-profile-form');
-            const stripeButtons = document.querySelectorAll('.stripe-btn');
+            const payBtn = document.getElementById('pay-btn');
+            const serviceSelect = document.getElementById('service-select');
+            const services = ['rapida', 'risoterapia', 'horoscopo'];
 
             const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
             const TEXT_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
@@ -588,7 +603,7 @@
             }
 
             // Payment Logic
-            function unlockPaidServices(service) {
+            function unlockPaidService(service) {
                 paidServices[service] = true;
 
                 const card = document.getElementById(`service-${service}`);
@@ -606,9 +621,7 @@
             unlockBtn.addEventListener('click', async () => {
                 const code = secretCodeInput.value.trim().toUpperCase();
                 if (code === SECRET_CODE) {
-                    unlockPaidServices('rapida');
-                    unlockPaidServices('risoterapia');
-                    unlockPaidServices('horoscopo');
+                    services.forEach(service => unlockPaidService(service));
                 } else {
                     paymentMessage.textContent = 'Código incorrecto. Por favor, inténtalo de nuevo.';
                     paymentMessage.style.color = '#dc3545';
@@ -616,39 +629,37 @@
             });
 
             // Lógica de Stripe Checkout
-            stripeButtons.forEach(button => {
-                button.addEventListener('click', async (event) => {
-                    const service = event.target.dataset.service;
+            payBtn.addEventListener('click', async () => {
+                const service = serviceSelect.value;
+                
+                try {
+                    const response = await fetch('/create-checkout-session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ service: service }),
+                    });
                     
-                    try {
-                        const response = await fetch('/create-checkout-session', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ service: service }),
+                    const session = await response.json();
+                    
+                    if (session.error) {
+                        console.error(session.error);
+                        displayMessage('Hubo un error al procesar el pago. Por favor, inténtalo de nuevo.', 'assistant');
+                    } else {
+                        // Redirige al usuario al checkout de Stripe
+                        const result = await stripe.redirectToCheckout({
+                            sessionId: session.id,
                         });
                         
-                        const session = await response.json();
-                        
-                        if (session.error) {
-                            console.error(session.error);
-                            displayMessage('Hubo un error al procesar el pago. Por favor, inténtalo de nuevo.', 'assistant');
-                        } else {
-                            // Redirige al usuario al checkout de Stripe
-                            const result = await stripe.redirectToCheckout({
-                                sessionId: session.id,
-                            });
-                            
-                            if (result.error) {
-                                console.error(result.error.message);
-                            }
+                        if (result.error) {
+                            console.error(result.error.message);
                         }
-                    } catch (e) {
-                        console.error('Error:', e);
-                        displayMessage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.', 'assistant');
                     }
-                });
+                } catch (e) {
+                    console.error('Error:', e);
+                    displayMessage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.', 'assistant');
+                }
             });
 
             // Chat Form Submission
