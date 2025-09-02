@@ -1,4 +1,5 @@
 Flask
+Flask-CORS
+gunicorn
 stripe==11.4.0
 firebase-admin
-gunicorn
