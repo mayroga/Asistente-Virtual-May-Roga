@@ -1,13 +1,4 @@
-firebase-admin
-fastapi
-python-dotenv
-stripe
-google-generativeai
-openai==0.28
-uvicorn
-gunicorn
-python-multipart
-itsdangerous
-Jinja2
 Flask
-Flask-CORS
+stripe==11.4.0
+firebase-admin
+gunicorn
