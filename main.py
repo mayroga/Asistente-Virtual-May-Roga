@@ -105,10 +105,3 @@ def stripe_webhook():
                 print(f"Error al actualizar Firestore: {e}")
 
     return jsonify({"success": True}), 200
-
-# Esta es la parte que ha sido corregida
-if __name__ == '__main__':
-    import uvicorn
-    # Uvicorn puede ejecutar aplicaciones WSGI (como Flask) directamente.
-    # El servidor "envuelve" la aplicación para que funcione correctamente.
-    uvicorn.run(app, host="0.0.0.0", port=5000)
