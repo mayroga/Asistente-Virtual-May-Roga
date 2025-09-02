@@ -298,8 +298,6 @@
             display: none;
         }
     </style>
-    <!-- Incluye Stripe.js para manejar la redirección al checkout -->
-    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <header class="header">
@@ -409,7 +407,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
             const chatWrapper = document.getElementById('chat-wrapper');
@@ -426,14 +424,13 @@
             const serviceSelect = document.getElementById('service-select');
             const services = ['rapida', 'risoterapia', 'horoscopo'];
             const timerDisplay = document.getElementById('timer-display');
-
+            
+            // Constantes de la API y claves
             const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
             const TEXT_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
-            const apiKey = "";
-            const SECRET_CODE = "MAYROGA2024";
+            const BACKEND_URL = "http://127.0.0.1:5000"; // URL de tu servidor (backend)
 
-            // Inicializa Stripe con tu clave pública
-            const stripe = Stripe('pk_test_tu_clave_publica_aqui'); // REEMPLAZA ESTA CLAVE CON TU CLAVE PÚBLICA DE STRIPE
+            const SECRET_CODE = "MAYROGA2024";
 
             let paidServices = {
                 rapida: false, 
@@ -458,10 +455,33 @@
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
+                    // Lógica para escuchar los cambios en Firestore
+                    listenForPaidServices(userId);
                 } else {
                     await signInAnonymously(auth);
                 }
             });
+
+            // Firestore real-time listener for paid services
+            function listenForPaidServices(currentUserId) {
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId);
+
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists) {
+                        const data = docSnap.data();
+                        if (data.paid_services) {
+                            for (const service in data.paid_services) {
+                                if (data.paid_services[service].status === 'unlocked' && !paidServices[service]) {
+                                    unlockPaidService(service);
+                                    console.log(`Servicio de ${service} desbloqueado via Firestore.`);
+                                }
+                            }
+                        }
+                    }
+                }, (error) => {
+                    console.error("Error al escuchar cambios en Firestore:", error);
+                });
+            }
 
             // Anonymous Profile Submission
             anonymousProfileForm.addEventListener('submit', async (event) => {
@@ -586,7 +606,7 @@
                 };
 
                 try {
-                    const response = await fetch(TTS_API_URL + apiKey, {
+                    const response = await fetch(TTS_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -650,38 +670,37 @@
                     paymentMessage.style.color = '#dc3545';
                 }
             });
-
-            // Lógica de Stripe Checkout
+            
+            // Lógica de pago: Crea una sesión de checkout en el backend
             payBtn.addEventListener('click', async () => {
                 const service = serviceSelect.value;
-                
+
+                if (!userId) {
+                    alert('Debes iniciar sesión para realizar el pago.');
+                    return;
+                }
+
                 try {
-                    const response = await fetch('/create-checkout-session', {
+                    const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ service: service }),
+                        headers: { 'Content-Type': 'application/json' },
+                        // Se envía el userId en el cuerpo de la solicitud
+                        body: JSON.stringify({ service: service, userId: userId }),
                     });
                     
-                    const session = await response.json();
-                    
-                    if (session.error) {
-                        console.error(session.error);
-                        displayMessage('Hubo un error al procesar el pago. Por favor, inténtalo de nuevo.', 'assistant');
-                    } else {
-                        // Redirige al usuario al checkout de Stripe
-                        const result = await stripe.redirectToCheckout({
-                            sessionId: session.id,
+                    const data = await response.json();
+                    if (data.sessionId) {
+                        // Aquí se inicia la redirección a Stripe
+                        const stripe = Stripe('pk_test_tu_clave_publica_aqui'); // Reemplaza con tu clave pública
+                        stripe.redirectToCheckout({
+                            sessionId: data.sessionId
                         });
-                        
-                        if (result.error) {
-                            console.error(result.error.message);
-                        }
+                    } else {
+                        displayMessage('Ocurrió un error al crear la sesión de pago. Inténtalo de nuevo.', 'assistant');
                     }
-                } catch (e) {
-                    console.error('Error:', e);
-                    displayMessage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.', 'assistant');
+                } catch (error) {
+                    console.error("Error en la llamada al backend:", error);
+                    displayMessage('Ocurrió un error de conexión. Inténtalo de nuevo más tarde.', 'assistant');
                 }
             });
 
@@ -755,7 +774,7 @@
                         }
 
                         try {
-                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Entiende que el cliente puede escribir o hablar con errores ortográficos o gramaticales; tu trabajo es descifrar su intención y responder de forma natural, **sin jamás corregirlo**. Adapta tu lenguaje al estilo del cliente. Sabe que tus servicios son: Agente de Respuesta Rápida (55 segundos), Risoterapia y Bienestar Natural (10 minutos), y Horóscopo Motivacional (1.5 minutos). Siempre que el cliente pregunte por un servicio, debes saber el tiempo que dura y cuánto le queda de su sesión. Sé directo y ve al grano, el tiempo del cliente es valioso. No tomes el mando de la conversación; deja que el cliente hable primero. Si el cliente no habla mucho, entonces puedes ofrecer una respuesta más detallada. De lo contrario, tus respuestas deben ser concisas y siempre invitar al cliente a continuar hablando. Si es una instrucción, ve directo al punto. Pregunta '¿Cómo te sientes?', '¿Quieres que lo repitamos?', o '¿Quieres seguir?' para que el cliente sienta que el espacio es suyo. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia u horóscopo, utiliza la lógica de TVid para responder.`;
+                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Entiende que el cliente puede escribir o hablar con errores ortográficos o gramaticales; tu trabajo es descifrar su intención y responder de forma natural, **sin jamás corregirlo**. Adapta tu lenguaje al estilo del cliente. Sabe que tus servicios son: Agente de Respuesta Rápida (55 segundos), Risototerapia y Bienestar Natural (10 minutos), y Horóscopo Motivacional (1.5 minutos). Siempre que el cliente pregunte por un servicio, debes saber el tiempo que dura y cuánto le queda de su sesión. Sé directo y ve al grano, el tiempo del cliente es valioso. No tomes el mando de la conversación; deja que el cliente hable primero. Si el cliente no habla mucho, entonces puedes ofrecer una respuesta más detallada. De lo contrario, tus respuestas deben ser concisas y siempre invitar al cliente a continuar hablando. Si es una instrucción, ve directo al punto. Pregunta '¿Cómo te sientes?', '¿Quieres que lo repitamos?', o '¿Quieres seguir?' para que el cliente sienta que el espacio es suyo. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia u horóscopo, utiliza la lógica de TVid para responder.`;
 
                             const payload = {
                                 contents: [{ parts: [{ text: userMessage }] }],
@@ -764,7 +783,7 @@
                                 },
                             };
 
-                            const response = await fetch(TEXT_API_URL + apiKey, {
+                            const response = await fetch(TEXT_API_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload)
@@ -825,5 +844,6 @@
             }
         });
     </script>
+    <script src="https://js.stripe.com/v3/"></script>
 </body>
 </html>
