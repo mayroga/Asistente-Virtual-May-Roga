@@ -287,6 +287,16 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             font-weight: bold;
         }
+
+        .timer-display {
+            text-align: center;
+            font-weight: bold;
+            color: #dc3545;
+            padding: 0.5rem;
+            background-color: #fff3cd;
+            border-radius: 4px;
+            display: none;
+        }
     </style>
     <!-- Incluye Stripe.js para manejar la redirección al checkout -->
     <script src="https://js.stripe.com/v3/"></script>
@@ -351,6 +361,8 @@
                 <div id="chat-output" class="chat-output">
                     <!-- Mensajes de chat se añaden aquí -->
                 </div>
+                
+                <div id="timer-display" class="timer-display"></div>
 
                 <form id="anonymous-profile-form" class="anonymous-profile-form">
                     <p>Para ayudarte mejor, por favor completa esta información anónima:</p>
@@ -413,6 +425,7 @@
             const payBtn = document.getElementById('pay-btn');
             const serviceSelect = document.getElementById('service-select');
             const services = ['rapida', 'risoterapia', 'horoscopo'];
+            const timerDisplay = document.getElementById('timer-display');
 
             const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=";
             const TEXT_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=";
@@ -432,6 +445,7 @@
                 risoterapia: null,
                 horoscopo: null
             };
+            let timeLeftInSeconds = 0;
             
             // Firebase setup
             const firebaseConfig = JSON.parse(__firebase_config);
@@ -453,6 +467,12 @@
             anonymousProfileForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
+                if (!userId) {
+                    console.error("Error: userId no disponible. No se puede guardar el perfil.");
+                    displayMessage('Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.', 'assistant');
+                    return;
+                }
+
                 const profileData = {
                     sexo: document.getElementById('gender').value,
                     motivo: document.getElementById('reason').value,
@@ -462,14 +482,17 @@
                 };
 
                 try {
-                    const docRef = doc(db, `/artifacts/${appId}/public/data/user_profiles/${userId}`);
+                    // Se cambió la ruta para usar la colección privada del usuario, que tiene permisos por defecto
+                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'user_profiles', userId);
                     await setDoc(docRef, profileData);
                     console.log("Perfil anónimo guardado con éxito.");
 
                     // Switch to chat view
                     anonymousProfileForm.style.display = 'none';
                     chatForm.style.display = 'flex';
-                    displayMessage('¡Gracias! Ahora podemos empezar nuestra conversación. ¿En qué puedo ayudarte hoy?', 'assistant');
+                    // Mensaje inicial personalizado, profesional y más directo
+                    const initialMessage = `¡Bienvenido! Con la información que me has dado, puedo decirte que estás en el lugar correcto. Aquí encontrarás un espacio para la relajación, la calma y la paz. Me alegra estar aquí para ti. ¿Cómo quieres que empecemos a trabajar en eso?`;
+                    displayMessage(initialMessage, 'assistant');
                 } catch (error) {
                     console.error("Error al guardar el perfil anónimo:", error);
                     displayMessage('Lo siento, hubo un problema al iniciar la sesión. Por favor, intenta de nuevo.', 'assistant');
@@ -673,6 +696,35 @@
                 chatInput.disabled = true;
                 loadingMessage.style.display = 'block';
 
+                const isTimeQuery = userMessage.toLowerCase().includes('tiempo') || userMessage.toLowerCase().includes('duración') || userMessage.toLowerCase().includes('minutos') || userMessage.toLowerCase().includes('queda');
+                const isExerciseQuery = userMessage.toLowerCase().includes('ejercicio') || userMessage.toLowerCase().includes('respiración');
+
+
+                if (isTimeQuery) {
+                    let minutes = Math.floor(timeLeftInSeconds / 60);
+                    let seconds = timeLeftInSeconds % 60;
+                    let timeRemainingMessage = '';
+                    if (timeLeftInSeconds > 0) {
+                        timeRemainingMessage = `Claro. Te quedan ${minutes} minuto${minutes === 1 ? '' : 's'} y ${seconds} segundo${seconds === 1 ? '' : 's'} de tu sesión.`;
+                    } else {
+                        timeRemainingMessage = 'Tu sesión ha terminado. Puedes adquirir un nuevo servicio para continuar.';
+                    }
+                    displayMessage(timeRemainingMessage, 'assistant');
+                    loadingMessage.style.display = 'none';
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                    return;
+                }
+                
+                if (isExerciseQuery) {
+                    const exerciseMessage = `Bien. Empecemos con un ejercicio de respiración. Cierra los ojos y respira profundo por la nariz, sostén el aire 3 segundos y exhala por la boca. Repitamos esto 5 veces. Cuando termines, dime: 'listo'.`;
+                    displayMessage(exerciseMessage, 'assistant');
+                    loadingMessage.style.display = 'none';
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                    return;
+                }
+
                 const isRapida = userMessage.toLowerCase().includes('rápida');
                 const isRisoterapia = userMessage.toLowerCase().includes('risoterapia');
                 const isHoroscopo = userMessage.toLowerCase().includes('horoscopo') || userMessage.toLowerCase().includes('zodiaco');
@@ -688,8 +740,8 @@
                     assistantResponse = `Para acceder al servicio de ${activeService}, necesitas desbloquearlo. Por favor, adquiere el servicio o introduce el código secreto.`;
                 } else {
                     // Check if a paid service timer has expired
-                    if (activeService && serviceTimers[activeService] === 0) {
-                         assistantResponse = `Tu tiempo para este servicio ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`;
+                    if (activeService && timeLeftInSeconds <= 0 && serviceTimers[activeService] === null) {
+                        assistantResponse = `Tu tiempo para este servicio ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`;
                     } else {
                         // Start service timers if not already running
                         if (activeService && serviceTimers[activeService] === null) {
@@ -699,11 +751,11 @@
                             else if (activeService === 'horoscopo') duration = 1.5 * 60;
 
                             startServiceTimer(activeService, duration); 
-                            displayMessage(`El servicio de ${activeService} ha comenzado. Tienes ${duration} segundos.`, 'assistant');
+                            displayMessage(`El servicio de ${activeService} ha comenzado. Tienes un tiempo limitado para esta sesión. Te avisaré cuando esté terminando.`, 'assistant');
                         }
 
                         try {
-                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Nunca apresures al usuario, escucha con total atención y ofrece palabras que cuidan. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia o horóscopo, utiliza la lógica de TVid para responder.`;
+                            const systemPrompt = `Actúa como May Roga, un educador de salud y bienestar que practica la risoterapia, el zodiaco y las Técnicas de Vida (TVid). Tu servicio es un acompañamiento humano que transforma lo que duele en crecimiento. Habla con paciencia, bondad, sin juzgar y con cariño. Entiende que el cliente puede escribir o hablar con errores ortográficos o gramaticales; tu trabajo es descifrar su intención y responder de forma natural, **sin jamás corregirlo**. Adapta tu lenguaje al estilo del cliente. Sabe que tus servicios son: Agente de Respuesta Rápida (55 segundos), Risoterapia y Bienestar Natural (10 minutos), y Horóscopo Motivacional (1.5 minutos). Siempre que el cliente pregunte por un servicio, debes saber el tiempo que dura y cuánto le queda de su sesión. Sé directo y ve al grano, el tiempo del cliente es valioso. No tomes el mando de la conversación; deja que el cliente hable primero. Si el cliente no habla mucho, entonces puedes ofrecer una respuesta más detallada. De lo contrario, tus respuestas deben ser concisas y siempre invitar al cliente a continuar hablando. Si es una instrucción, ve directo al punto. Pregunta '¿Cómo te sientes?', '¿Quieres que lo repitamos?', o '¿Quieres seguir?' para que el cliente sienta que el espacio es suyo. Tu objetivo es sanar mente, cuerpo y alma, guiando a la persona con el ejemplo, no con un manual. Si la persona pregunta sobre risoterapia u horóscopo, utiliza la lógica de TVid para responder.`;
 
                             const payload = {
                                 contents: [{ parts: [{ text: userMessage }] }],
@@ -742,20 +794,23 @@
             function startServiceTimer(service, durationInSeconds) {
                 if (serviceTimers[service] !== null) return; // Timer already running
                 
-                let timeLeft = durationInSeconds;
+                timeLeftInSeconds = durationInSeconds;
                 const card = document.getElementById(`service-${service}`);
                 const durationElement = card.querySelector('.duration');
-                
-                serviceTimers[service] = setInterval(() => {
-                    timeLeft--;
-                    let minutes = Math.floor(timeLeft / 60);
-                    let seconds = timeLeft % 60;
-                    durationElement.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
+                timerDisplay.style.display = 'block';
+
+                const timerInterval = setInterval(() => {
+                    timeLeftInSeconds--;
+                    let minutes = Math.floor(timeLeftInSeconds / 60);
+                    let seconds = timeLeftInSeconds % 60;
                     
-                    if (timeLeft <= 0) {
-                        clearInterval(serviceTimers[service]);
+                    timerDisplay.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
+                    
+                    if (timeLeftInSeconds <= 0) {
+                        clearInterval(timerInterval);
                         paidServices[service] = false;
                         serviceTimers[service] = null;
+                        timerDisplay.style.display = 'none';
                         durationElement.textContent = 'Duración: 0m 0s';
                         card.querySelector('.paid-lock').style.display = 'block';
                         const unlockedMessage = card.querySelector('.unlocked-message');
@@ -765,6 +820,8 @@
                         displayMessage(`Tu tiempo para el servicio de ${service} ha terminado. Para continuar, por favor, adquiere el servicio nuevamente.`, 'assistant');
                     }
                 }, 1000);
+
+                serviceTimers[service] = timerInterval;
             }
         });
     </script>
