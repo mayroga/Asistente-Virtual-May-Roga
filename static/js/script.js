@@ -1,10 +1,8 @@
 // Tu clave publicable de Stripe
-// Reemplaza 'pk_test_tu_clave_publica_aqui' con tu clave real
-const stripe = Stripe('pk_test_tu_clave_publica_aqui');
+const stripe = Stripe('pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz');
 
 // La URL de tu servidor backend de Render
-// Reemplaza 'https://tu-backend-url.onrender.com' con tu URL real
-const BACKEND_URL = 'https://tu-backend-url.onrender.com';
+const BACKEND_URL = 'https://asistente-virtual-may-roga.onrender.com';
 
 document.addEventListener('DOMContentLoaded', function() {
     const apodoInput = document.getElementById('apodo');
