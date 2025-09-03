@@ -6,7 +6,7 @@
     <title>Asistente Virtual · May Roga</title>
     <!-- Tailwind CSS para un diseño limpio y adaptable -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Stripe JS SDK -->
+    <!-- Stripe JS SDK para gestionar pagos -->
     <script src="https://js.stripe.com/v3/"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -104,7 +104,7 @@
             <p id="timerDisplay" class="text-lg font-mono text-gray-600"></p>
         </div>
 
-        <div id="chatInterface" class="flex-grow flex flex-col">
+        <div id="chatInterface" class="hidden flex-grow flex flex-col">
             <div id="chatContainer" class="chat-container"></div>
             <div id="loadingMessage" class="loader hidden">
                 <div class="spinner"></div>
@@ -149,10 +149,6 @@
     // --- Configuración de Stripe y backend ---
     const stripe = Stripe('pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz');
     const BACKEND_URL = 'https://asistente-virtual-may-roga.onrender.com';
-
-    const API_URL_CHAT = `${BACKEND_URL}/chat`;
-    const API_URL_TTS = `${BACKEND_URL}/tts`;
-    const API_KEY = ""; // No se necesita, Render maneja las claves
 
     let currentService = null;
     let timerInterval = null;
@@ -219,7 +215,7 @@
             voiceName_en: 'Zephyr',
             steps: {
                 es: [
-                    { texto: "¡Hola! Bienvenido a tu sesión de risoterapia. Para comenzar, encuentra un lugar cómodo y siéntate o acuéstate.", pausa: 5 },
+                    { texto: "¡Hola! Bienvenido a tu sesión de risoterapia. Para comenzar, encuentra un lugar cómodo y siéntate o acuéstese.", pausa: 5 },
                     { texto: "Ahora, cierra los ojos y respira profundamente. Inhala por la nariz...", pausa: 5 },
                     { texto: "y exhala por la boca. Repite esto tres veces.", pausa: 15 },
                     { texto: "Ahora, coloca tu mano sobre tu estómago y respira, sintiendo cómo se infla como un globo.", pausa: 10 },
@@ -276,7 +272,7 @@
         document.getElementById(pageId).classList.remove('hidden');
     }
 
-    function startServiceFree() {
+    function startService() {
         currentService = services[serviceSelect.value];
         serviceTitle.textContent = currentService.name;
         
@@ -288,6 +284,7 @@
         } else if (currentService.type === 'voice') {
             voiceInterface.classList.remove('hidden');
             manualControls.classList.add('hidden');
+            currentLang = languageSelect.value;
         }
 
         // Inicia el temporizador
@@ -298,6 +295,7 @@
             timerDisplay.textContent = `Tiempo restante: ${formatTime(timeLeft)}`;
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
+                stopVoiceSession();
                 showModal('Tiempo Terminado', 'Tu sesión ha finalizado. Puedes volver a la página principal para elegir otro servicio.', () => {
                     location.reload();
                 });
@@ -305,11 +303,10 @@
         }, 1000);
     }
     
-    // --- Lógica del pago con Stripe ---
+    // --- Lógica del pago con Stripe (ahora con llamada al backend) ---
     async function startCheckout() {
         const serviceId = serviceSelect.value;
-        console.log(`Intentando iniciar pago para el servicio: ${serviceId}`); // Log de depuración
-        showModal('Cargando...', 'Creando la sesión de pago. Por favor, espere...', null);
+        showModal('Procesando pago...', 'Conectando con el servicio de pagos. Por favor, espera.');
         
         try {
             const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
@@ -317,24 +314,25 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ serviceId: serviceId })
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'No se pudo crear la sesión de pago. Posible error en la configuración del servidor.');
+                throw new Error(errorData.error || 'Error al crear la sesión de pago.');
             }
-            
+
             const session = await response.json();
-            
+
+            // Redirigir al usuario a la página de pago de Stripe
             const result = await stripe.redirectToCheckout({
-                sessionId: session.id
+                sessionId: session.id,
             });
-            
+
             if (result.error) {
-                showModal('Error en el Pago', result.error.message);
+                showModal('Error en el pago', result.error.message);
             }
         } catch (error) {
             console.error('Error durante el proceso de pago:', error);
-            showModal('Error en el Pago', 'Error al iniciar el pago. Por favor, revisa la consola para más detalles o intenta de nuevo más tarde.');
+            showModal('Error de Conexión', `Error: ${error.message}. Por favor, revisa la consola para más detalles.`);
         }
     }
 
@@ -342,13 +340,13 @@
     function checkSecretCode() {
         const codeEntered = codeInput.value.trim();
         if (codeEntered === SECRET_CODE) {
-            showModal('Código Correcto', '¡Acceso concedido! Disfruta de tu sesión gratuita.', startServiceFree);
+            showModal('Código Correcto', '¡Acceso concedido! Disfruta de tu sesión gratuita.', startService);
         } else {
             showModal('Código Incorrecto', 'El código que ingresaste no es válido. Por favor, inténtalo de nuevo.');
         }
     }
-
-    // --- Funciones de chat y voz (sin cambios) ---
+    
+    // --- Funciones de chat y voz ---
     function displayMessages() {
         chatContainer.innerHTML = '';
         chatHistory.forEach(message => {
@@ -366,22 +364,147 @@
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
+    // Función de chat ahora simulada
+    async function sendMessage() {
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) return;
+
+        chatInput.value = '';
+        const userChat = { role: 'user', parts: [{ text: userMessage }] };
+        chatHistory.push(userChat);
+        displayMessages();
+
+        loadingMessage.classList.remove('hidden');
+        chatInput.disabled = true;
+        sendBtn.disabled = true;
+
+        try {
+            // Se simula la respuesta de la IA
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simula un retraso de 1.5 segundos
+            
+            const assistantMessage = { role: 'system', parts: [{ text: `¡Hola! He recibido tu mensaje. Gracias por usar nuestro servicio. ¿Hay algo más en lo que pueda ayudarte? (Esta es una respuesta de prueba simulada).` }] };
+            chatHistory.push(assistantMessage);
+
+        } catch (error) {
+            console.error('Error al enviar mensaje:', error);
+            const errorMessage = { role: 'system', parts: [{ text: 'Lo siento, hubo un error al procesar tu solicitud. Por favor, revisa la consola para más detalles.' }] };
+            chatHistory.push(errorMessage);
+        } finally {
+            loadingMessage.classList.add('hidden');
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            displayMessages();
+            chatInput.focus();
+        }
+    }
+
+    // Función de voz ahora simulada
+    async function playStep(step) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.src = '';
+        }
+        audioLoading.classList.remove('hidden');
+        currentVoiceText.textContent = step.texto;
+
+        try {
+            // Se simula la generación del audio sin un backend
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Simula 2 segundos de generación
+
+            console.log(`[AUDIO SIMULADO] Reproduciendo: "${step.texto}"`);
+            
+            // Simular que el audio se ha reproducido para que la lógica de la sesión automática continúe
+            const simulatedDuration = step.texto.length * 60; // Estimar duración del audio
+            
+            setTimeout(() => {
+                // Si la sesión es automática, pasa al siguiente paso
+                if (isServiceRunning) {
+                    currentStepIndex++;
+                    if (currentStepIndex < currentService.steps[currentLang].length) {
+                        timeoutId = setTimeout(() => {
+                            playStep(currentService.steps[currentLang][currentStepIndex]);
+                        }, currentService.steps[currentLang][currentStepIndex].pausa * 1000);
+                    }
+                }
+            }, simulatedDuration);
+            
+        } catch (error) {
+            console.error('Error al reproducir audio:', error);
+            showModal('Error', 'No se pudo generar el audio. Por favor, inténtalo de nuevo más tarde.');
+        } finally {
+            audioLoading.classList.add('hidden');
+        }
+    }
+
+    function startAutoSession() {
+        isServiceRunning = true;
+        currentStepIndex = 0;
+        playStep(currentService.steps[currentLang][currentStepIndex]);
+        startAutoBtn.disabled = true;
+        startManualBtn.disabled = true;
+    }
+
+    function startManualSession() {
+        manualControls.classList.remove('hidden');
+        startAutoBtn.disabled = true;
+        startManualBtn.disabled = true;
+        currentStepIndex = 0;
+        currentVoiceText.textContent = currentService.steps[currentLang][currentStepIndex].texto;
+    }
+
+    function stopVoiceSession() {
+        isServiceRunning = false;
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.src = '';
+        }
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+    
     // --- Event Listeners ---
     stripePayBtn.addEventListener('click', startCheckout);
     codeBtn.addEventListener('click', checkSecretCode);
-    
-    // El resto de la lógica del chat y la voz que ya tenías...
+    serviceSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'risoterapia') {
+        languageSelectDiv.classList.remove('hidden');
+      } else {
+        languageSelectDiv.classList.add('hidden');
+      }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    startAutoBtn.addEventListener('click', startAutoSession);
+    startManualBtn.addEventListener('click', startManualSession);
+    playStepBtn.addEventListener('click', () => playStep(currentService.steps[currentLang][currentStepIndex]));
+    nextStepBtn.addEventListener('click', () => {
+      currentStepIndex++;
+      if (currentStepIndex < currentService.steps[currentLang].length) {
+        currentVoiceText.textContent = currentService.steps[currentLang][currentStepIndex].texto;
+      } else {
+        showModal('Sesión Completada', 'Has completado todos los pasos de la sesión manual.', () => stopVoiceSession());
+      }
+    });
+    stopVoiceBtn.addEventListener('click', () => {
+        stopVoiceSession();
+        location.reload();
+    });
 
     // Función para manejar el éxito del pago
     window.onload = function() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment_status') === 'success') {
-            showModal('Pago Exitoso', '¡Tu pago ha sido procesado! Ahora puedes iniciar tu sesión.', startServiceFree);
-            // Limpia la URL para que no se muestre el estado del pago
+            // Este es el flujo para cuando el usuario es redirigido de vuelta después de un pago exitoso
+            showModal('Pago Exitoso', '¡Tu pago ha sido procesado! Ahora puedes iniciar tu sesión.', startService);
             history.replaceState(null, '', window.location.pathname);
         }
     };
-    
 </script>
 
 </body>
