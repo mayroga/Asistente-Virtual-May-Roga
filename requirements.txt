@@ -3,3 +3,4 @@ Flask-CORS
 gunicorn
 stripe==11.4.0
 firebase-admin
+google-generativeai
