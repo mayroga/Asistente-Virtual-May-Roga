@@ -1,3 +1,11 @@
+// Tu clave publicable de Stripe
+// Reemplaza 'pk_test_tu_clave_publica_aqui' con tu clave real
+const stripe = Stripe('pk_test_tu_clave_publica_aqui');
+
+// La URL de tu servidor backend de Render
+// Reemplaza 'https://tu-backend-url.onrender.com' con tu URL real
+const BACKEND_URL = 'https://tu-backend-url.onrender.com';
+
 document.addEventListener('DOMContentLoaded', function() {
     const apodoInput = document.getElementById('apodo');
     const serviceSelector = document.getElementById('service-selector');
@@ -28,33 +36,40 @@ document.addEventListener('DOMContentLoaded', function() {
             currentService = serviceSelector.value;
 
             if (!currentNickname) {
-                alert('Por favor, ingresa tu apodo.');
+                // Se reemplazó 'alert' por 'console.error' para asegurar el funcionamiento en Render
+                console.error('Por favor, ingresa tu apodo.');
                 return;
             }
 
             try {
-                // Esta es la línea corregida
-                const response = await fetch('/create-checkout-session/', {
+                // Se actualizó la llamada a la API para usar la URL del backend de Render
+                const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        nickname: currentNickname,
                         service: currentService
                     }),
                 });
 
                 const session = await response.json();
                 if (session.error) {
-                    alert('Error en la sesión de pago: ' + session.error);
+                    console.error('Error en la sesión de pago: ' + session.error);
                     return;
                 }
+                
+                // Redirige al usuario a la página de pago de Stripe
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.sessionId
+                });
+                
+                if (result.error) {
+                    console.error(result.error.message);
+                }
 
-                window.location.href = session.url;
             } catch (e) {
-                console.error('Error:', e);
-                alert('Ocurrió un error al procesar el pago.');
+                console.error('Ocurrió un error al procesar el pago:', e);
             }
         });
     }
@@ -63,11 +78,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (accessCodeButton) {
         accessCodeButton.addEventListener('click', () => {
             const accessCode = document.getElementById('access-code').value;
-            // El código de acceso correcto es "MAYROGA2024" en mayúsculas
             if (accessCode === 'MAYROGA2024') {
                 toggleChat(true);
             } else {
-                alert('Código de acceso incorrecto.');
+                console.error('Código de acceso incorrecto.');
             }
         });
     }
