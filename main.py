@@ -1,40 +1,43 @@
-import os
-import firebase_admin
-from firebase_admin import credentials, firestore
-import google.generativeai as genai # Importación actualizada
+from flask import Flask, jsonify, request
 
-# --- Firebase Setup ---
-# Obtiene la configuración de Firebase de la variable de entorno
-firebase_config_json = os.environ.get('__firebase_config__')
+app = Flask(__name__)
 
-if firebase_config_json:
-    # Carga las credenciales de Firebase desde la configuración
+# Una ruta simple para verificar que la API funciona.
+@app.route('/')
+def home():
+    """
+    Ruta de inicio de la API.
+
+    Returns:
+        JSON con un mensaje de bienvenida.
+    """
+    return jsonify({
+        "message": "¡Hola! La API está funcionando correctamente."
+    })
+
+# Una ruta de ejemplo que recibe datos del cuerpo de la petición.
+@app.route('/data', methods=['POST'])
+def process_data():
+    """
+    Ruta para procesar datos enviados en el cuerpo de la petición.
+
+    Returns:
+        JSON con un mensaje de confirmación y los datos recibidos.
+    """
     try:
-        cred = credentials.Certificate(eval(firebase_config_json))
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        print("Firebase inicializado correctamente.")
+        data = request.get_json(silent=True)
+        if data is None:
+            return jsonify({"error": "No se encontraron datos JSON en el cuerpo de la petición."}), 400
+        
+        # Simplemente devolvemos los datos para confirmar que los recibimos.
+        return jsonify({
+            "message": "Datos recibidos correctamente.",
+            "received_data": data
+        })
     except Exception as e:
-        print(f"Error al inicializar Firebase: {e}")
-else:
-    print("Error: La variable de entorno '__firebase_config__' no está configurada.")
+        return jsonify({"error": str(e)}), 500
 
-# --- Gemini API Setup ---
-# Obtiene la clave de API de Gemini de la variable de entorno
-gemini_api_key = os.environ.get('GEMINI_API_KEY')
-
-if gemini_api_key:
-    # Configura el cliente de la API de Gemini con la nueva función
-    genai.configure(api_key=gemini_api_key)
-    print("Cliente de la API de Gemini configurado correctamente.")
-else:
-    print("Error: La variable de entorno 'GEMINI_API_KEY' no está configurada.")
-
-# --- Aquí puedes añadir el resto de tu lógica de la aplicación ---
-# Ahora puedes usar 'db' para interactuar con Firestore y el módulo 'genai'
-# para hacer llamadas a la API de Gemini.
-
-# Ejemplo de cómo podrías usar el cliente de Gemini (solo para demostración)
-# model = genai.GenerativeModel('gemini-pro')
-# response = model.generate_content("Escribe una historia corta.")
-# print(response.text)
+# Esta parte del código es solo para cuando ejecutas el archivo localmente,
+# Gunicorn la ignora por completo.
+if __name__ == '__main__':
+    app.run(debug=True)
