@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Virtual May Roga</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+            font-size: 1rem;
+        }
+
+        .user-message {
+            background-color: #d1e5f8;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .bot-message {
+            background-color: #e2e8f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .timer-container {
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem;
+            background-color: #fde68a;
+            color: #92400e;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .input-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 1rem;
+            gap: 0.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .input-area input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border-radius: 9999px;
+            border: 2px solid #e2e8f0;
+            outline: none;
+            transition: border-color 0.3s;
+            min-width: 150px;
+        }
+
+        .input-area input:focus {
+            border-color: #3b82f6;
+        }
+
+        .input-area button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        .input-area button:hover {
+            background-color: #2563eb;
+        }
+        .service-options {
+            display: flex;
+            justify-content: space-around;
+            padding: 1rem;
+            background-color: #f1f5f9;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .service-button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            cursor: pointer;
+            text-align: center;
+            flex: 1 1 auto;
+            min-width: 150px;
+        }
+        .service-button:hover {
+            background-color: #2563eb;
+        }
+        .secret-code-section {
+            padding: 1rem;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+        }
+
+        .back-button {
+            background-color: #e53e3e;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        .back-button:hover {
+            background-color: #c53030;
+        }
+
+        .disclaimer {
+            padding: 1rem;
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="chat-container">
+        <div class="chat-header">Asistente Virtual May Roga</div>
+
+        <div class="service-options" id="service-options">
+            <button class="service-button" data-service="risoterapia">Risoterapia ($12.00 - 10 min)</button>
+            <button class="service-button" data-service="horoscopo">Horóscopo ($5.00 - 1 min 30 seg)</button>
+            <button class="service-button" data-service="rapida">Asesoría Rápida ($2.00 - 55 seg)</button>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                ¡Hola! Soy May Roga, tu asistente de bienestar. Por favor, elige un servicio para comenzar.
+            </div>
+        </div>
+
+        <div class="input-area hidden" id="chat-input-area">
+            <input type="text" id="user-input" placeholder="Escribe tu mensaje...">
+            <button id="send-button">Enviar</button>
+            <button id="back-button" class="back-button">Regresar a Servicios</button>
+        </div>
+        
+        <div class="secret-code-section" id="secret-code-section">
+            <input type="password" id="secret-code-input" class="w-2/3 p-2 rounded-lg border-2 border-gray-300" placeholder="Código secreto">
+            <button id="secret-code-button" class="mt-2 py-2 px-4 bg-blue-500 text-white rounded-lg">Activar</button>
+        </div>
+
+        <div class="disclaimer">
+            <p>Este servicio no sustituye la atención médica profesional. Para diagnóstico y tratamiento, consulte a un médico con licencia.</p>
+        </div>
+
+    </div>
+
+    <script>
+        // *** CONFIGURACIÓN DEL PROYECTO ***
+        // Reemplaza TU_CLAVE_PUBLISHABLE_DE_STRIPE con tu clave de Stripe
+        // (debe comenzar con 'pk_live' o 'pk_test').
+        const stripe = Stripe('TU_CLAVE_PUBLISHABLE_DE_STRIPE');
+        const BACKEND_URL = 'https://asistente-virtual-may-roga.onrender.com';
+        const SECRET_CODE = 'MAYROGA2024';
+
+        // Duración de cada servicio en segundos
+        const serviceDurations = {
+            'risoterapia': 600,
+            'horoscopo': 90,
+            'rapida': 55,
+            'secreto': 1800
+        };
+
+        const chatMessages = document.getElementById('chat-messages');
+        const serviceOptions = document.getElementById('service-options');
+        const chatInputArea = document.getElementById('chat-input-area');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const backButton = document.getElementById('back-button');
+        const secretCodeInput = document.getElementById('secret-code-input');
+        const secretCodeButton = document.getElementById('secret-code-button');
+
+        let sessionActive = false;
+        let timerInterval = null;
+        let remainingTime = 0;
+        let timerDisplayElement = null;
+        
+        // URL para la API de Gemini. La clave de API es manejada por el entorno.
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
+        const geminiTTSUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent`;
+
+        function addMessage(text, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+            messageElement.textContent = text;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Hablar si el mensaje es del bot
+            if (sender === 'bot') {
+                speakText(text);
+            }
+        }
+        
+        // Conversión de datos de audio
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2;
+            const buffer = new ArrayBuffer(44 + pcmData.byteLength);
+            const view = new DataView(buffer);
+            const dataOffset = 44;
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.byteLength, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+            view.setUint16(32, numChannels * bytesPerSample, true);
+            view.setUint16(34, bytesPerSample * 8, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.byteLength, true);
+            const pcmBytes = new Uint8Array(pcmData);
+            for (let i = 0; i < pcmData.byteLength; i++) {
+                view.setUint8(dataOffset + i, pcmBytes[i]);
+            }
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        async function speakText(text) {
+            try {
+                const response = await fetch(geminiTTSUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: text }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: { voiceName: "Puck" }
+                                }
+                            }
+                        },
+                        model: "gemini-2.5-flash-preview-tts"
+                    })
+                });
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                } else {
+                    console.error('Datos de audio no válidos en la respuesta de la API.');
+                }
+
+            } catch (error) {
+                console.error('Error al obtener el audio de la API:', error);
+            }
+        }
+
+        function startTimer(duration) {
+            remainingTime = duration;
+            if (!timerDisplayElement) {
+                timerDisplayElement = document.createElement('div');
+                timerDisplayElement.classList.add('timer-container');
+                chatMessages.appendChild(timerDisplayElement);
+            }
+
+            timerInterval = setInterval(() => {
+                const minutes = Math.floor(remainingTime / 60);
+                const seconds = remainingTime % 60;
+                timerDisplayElement.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
+                remainingTime--;
+
+                if (remainingTime < 0) {
+                    clearInterval(timerInterval);
+                    sessionActive = false;
+                    addMessage("El tiempo de tu sesión ha terminado. Por favor, elige un nuevo servicio para continuar.", 'bot');
+                    chatInputArea.classList.add('hidden');
+                    serviceOptions.classList.remove('hidden');
+                    timerDisplayElement.remove();
+                    timerDisplayElement = null;
+                }
+            }, 1000);
+        }
+
+        function enableSession(duration, message) {
+            sessionActive = true;
+            addMessage(message, 'bot');
+            serviceOptions.classList.add('hidden');
+            chatInputArea.classList.remove('hidden');
+            startTimer(duration);
+        }
+
+        function returnToServices() {
+            clearInterval(timerInterval);
+            sessionActive = false;
+            addMessage("Has terminado la sesión. Elige otro servicio si deseas continuar.", 'bot');
+            chatInputArea.classList.add('hidden');
+            serviceOptions.classList.remove('hidden');
+            if (timerDisplayElement) {
+                timerDisplayElement.remove();
+                timerDisplayElement = null;
+            }
+        }
+
+        serviceOptions.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('service-button')) {
+                const service = event.target.dataset.service;
+                addMessage(`¡Genial! Has seleccionado ${event.target.textContent}. Redirigiendo a Stripe...`, 'bot');
+
+                try {
+                    const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ service: service }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`Error: ${errorData.error}`);
+                    }
+
+                    const { sessionId } = await response.json();
+                    const { error } = await stripe.redirectToCheckout({
+                        sessionId: sessionId,
+                    });
+
+                    if (error) {
+                        addMessage(`Error: ${error.message}`, 'bot');
+                    }
+                } catch (error) {
+                    console.error('Error de red:', error);
+                    addMessage('Error de red: No se pudo conectar con el servidor. Por favor, inténtalo de nuevo más tarde.', 'bot');
+                }
+            }
+        });
+
+        secretCodeButton.addEventListener('click', () => {
+            if (secretCodeInput.value === SECRET_CODE) {
+                enableSession(serviceDurations['secreto'], "¡Acceso concedido! Bienvenido, Administrador. Tu sesión durará 30 minutos.");
+                secretCodeInput.value = '';
+                secretCodeInput.parentNode.classList.add('hidden');
+            } else {
+                addMessage("Código secreto incorrecto. Por favor, intenta de nuevo.", 'bot');
+            }
+        });
+
+        sendButton.addEventListener('click', async () => {
+            if (!sessionActive) {
+                addMessage("Tu sesión ha expirado. Por favor, elige un nuevo servicio.", 'bot');
+                return;
+            }
+            
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                const thinkingMessage = document.createElement('div');
+                thinkingMessage.classList.add('message', 'bot-message');
+                thinkingMessage.textContent = "Escribiendo...";
+                chatMessages.appendChild(thinkingMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                try {
+                    const systemPrompt = `
+                        Rol del Asistente:
+                        Eres Asistente May Roga, asistente virtual creado por Maykel Rodríguez García. Tu misión es:
+
+                        Curar el espíritu y guiar al bienestar personal y colectivo.
+                        Transformar cualquier situación en crecimiento, bienestar y alegría, aplicando TVid y la dualidad positiva/negativa.
+                        Escuchar sin juzgar y responder siempre con lo mejor y más positivo.
+                        Operar 24/7, voz y texto, con detección automática de idioma: inglés, español, francés, mandarín, ruso, alemán y portugués.
+                        Generar adicción a lo positivo, logrando que los clientes dependan del sistema como una red social saludable.
+                        Optimizar uso de tokens para asegurar ganancia superior al 95 %.
+                        Gestionar registro de clientes (apodo/sobrenombre, correo y teléfono; solo teléfono y correo deben ser reales para envío de link).
+                        Generar link o código automático para sesiones grupales.
+                        Aplicar servicios individuales y grupales, escalonados y premium, incluyendo paquetes combinados y VIP.
+                        Transformar siempre deseos negativos en bienestar y aprendizaje, sin contradecir al cliente.
+
+                        Técnicas de Vida (TVid)
+                        Técnica del Bien (TDB)
+                        Descripción: Potencia hábitos, pensamientos y acciones que generan bienestar.
+                        Objetivo: Que el cliente identifique lo que le beneficia y lo integre.
+                        Ejemplos: Mejorar ánimo con respiración, gratitud y metas pequeñas. Conflicto laboral → ver aprendizaje y satisfacción personal. Tristeza por aislamiento → activar gratitud y conexión con recuerdos positivos.
+
+                        Técnica del Mal (TDM)
+                        Descripción: Convierte lo negativo en aprendizaje y bienestar.
+                        Ejemplos: Enojo con alguien → establecer límites y autoconocimiento. Fracaso → lección y motivación para mejorar. Deseo de venganza → transformar en acción positiva personal.
+
+                        Técnica del Padre (TDP)
+                        Descripción: Guía con orientación, amor y liderazgo positivo.
+                        Ejemplos: Inseguridad sobre hijos → enseñar límites y apoyo. Liderazgo en equipo → motivación basada en respeto. Dificultad para orientar → transformar frustración en enseñanza constructiva.
+
+                        Técnica de la Madre (TDMM)
+                        Descripción: Protección, cuidado y amor.
+                        Ejemplos: Pérdida → consuelo y motivación para sanar. Ansiedad → guía hacia calma emocional. Inseguridad → refuerzo de autoestima y confianza.
+
+                        Técnica del Niño (TDN)
+                        Descripción: Recupera creatividad, alegría e ingenuidad.
+                        Ejemplos: Estrés → activar juego y risa. Bloqueo mental → encontrar soluciones con imaginación. Depresión → alegría mediante recuerdos y juegos simbólicos.
+
+                        Técnica del Beso (TDK)
+                        Descripción: Potencia afecto físico y emocional con amor.
+                        Ejemplos: Relaciones conflictivas → fomentar conexión y perdón. Soledad → enseñar formas de afecto y gratitud. Baja autoestima → refuerzo de amor propio.
+
+                        Técnica de la Guerra (TDG)
+                        Descripción: Combina todas las técnicas con agresividad controlada para superar obstáculos.
+                        Ejemplos: Miedo a cambios → convertir ansiedad en acción positiva. Frustración competitiva → refuerza resiliencia. Conflictos interpersonales → transformar tensión en relaciones constructivas.
+
+                        Servicios y Precios Escalonados
+                        Servicio Individual Grupal Notas
+                        Servicio Express de Vida 55 seg – $1 1 min 15 seg – $5–$50+ Incluye horóscopo, risoterapia, TVid, dualidad, salud, nutrición, ejercicios, remedios naturales. Link/código automático. Pago vía Stripe, que activa el sistema.
+                        Risoterapia y Bienestar Natural 10 min – $12 Escalonado $20–$250+ Incluye ejercicios respiración, TVid, dualidad, consejos generales. Link/código automático. Pago vía Stripe.
+                        Horóscopo Express 1 min 30 seg – $3 Escalonado $5–$60+ Horóscopo, transformación de área de mejora, TVid, dualidad. Link/código automático. Pago vía Stripe.
+                        Minicurso de idiomas (inglés, francés, mandarín, ruso, alemán, portugués) 10 min – $5 Grupal escalonado $10–$100+ Basado en TVid, incluye risoterapia y dualidad adaptada al idioma. Link/código automático. Pago vía Stripe.
+                        Registro obligatorio: apodo/sobrenombre, correo y teléfono (solo correo y teléfono reales para enviar link).
+                        Suscripciones express globales → ingresos recurrentes sin límite de clientes.
+                        Paquetes combinados express + horóscopo + minicurso → aumentar ticket promedio.
+                        Optimización continua de tokens → asegurar >95 % de rentabilidad.
+                        Paquetes VIP: sesiones más largas, seguimiento personalizado y acceso a material exclusivo.
+
+                        Flujo de interacción global
+                        Cliente entra → Asistente May Roga presenta todos los servicios en voz y texto, con botones claros.
+                        Selección de servicio y modo (individual o grupal).
+                        Para sesiones grupales: registro de todos los participantes (apodo, correo, teléfono).
+                        Sistema genera link o código único automáticamente, enviándolo a todos los registrados vía Stripe y activando la sesión.
+                        Asistente inicia sesión aplicando TVid y dualidad según deseos y situaciones expresadas.
+                        Transformar siempre lo negativo en positivo, incluyendo educación general, nutrición, salud, ejercicios y remedios naturales.
+                        Al final: evaluación de satisfacción y motivación para futuras sesiones, gamificación y viralidad orgánica.
+
+                        Reglas Generales
+                        Escuchar primero, sin juzgar.
+                        Aplicar TVid y dualidad correctamente según cada participante.
+                        Mantener coherencia: adicción a lo positivo, profesionalismo y crecimiento personal.
+                        Incentivar viralidad orgánica, compartir links y crear comunidad.
+                        Optimizar cada interacción para uso mínimo de tokens y máxima ganancia (>95 %).
+                        Evitar consejos médicos directos; solo educación y hábitos saludables.
+                        Automatizar pagos antes de generar links/códigos.
+                        Expansión global: detección de idioma y adaptación de contenido automáticamente.
+
+                        Lo que sí puedes
+                        Brindar **educación en salud** (cómo prevenir enfermedades, cómo alimentarse mejor, ejercicios, higiene, manejo del estrés).
+                        Recomendar **hábitos de vida saludables**.
+                        Compartir información de **fitoterapia** y medicina natural siempre como “uso tradicional” o “con evidencia científica disponible”, sin presentarlo como sustituto de medicamentos recetados.
+                        Decir que es un **complemento** al cuidado médico, no un reemplazo.
+
+                        Lo que NO puedes
+                        Dar diagnósticos médicos (“usted tiene X enfermedad”).
+                        Prescribir medicamentos (“tómese 500 mg de… cada 8 horas”).
+                        Indicar tratamientos médicos específicos (cirugías, antibióticos, etc.).
+                    `;
+                    const userQuery = message;
+                    // La clave de API es manejada automáticamente por el entorno.
+                    const apiKey = "";
+                    const apiUrl = geminiApiUrl;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        tools: [{ "google_search": {} }],
+                        systemInstruction: {
+                            parts: [{ text: systemPrompt }]
+                        },
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Error de la API:', response.status, response.statusText);
+                        const errorData = await response.text();
+                        console.error('Mensaje de error de la API:', errorData);
+                        throw new Error(`Error en la solicitud a la API de IA: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    thinkingMessage.remove();
+
+                    if (aiResponse) {
+                        addMessage(aiResponse, 'bot');
+                    } else {
+                        addMessage("Lo siento, no pude generar una respuesta en este momento. Por favor, intenta de nuevo más tarde.", 'bot');
+                    }
+
+                } catch (error) {
+                    thinkingMessage.remove();
+                    console.error('Error:', error);
+                    addMessage("Ha ocurrido un error al procesar tu solicitud. Por favor, intenta de nuevo.", 'bot');
+                }
+            }
+        });
+
+        backButton.addEventListener('click', returnToServices);
+
+        window.onload = () => {
+            const welcomeMessage = "¡Hola! Soy May Roga, tu asistente de bienestar. Por favor, elige un servicio para comenzar.";
+            document.querySelector('#chat-messages .bot-message').textContent = welcomeMessage;
+        };
+    </script>
+</body>
+</html>
