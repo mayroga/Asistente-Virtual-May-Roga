@@ -1,7 +1,7 @@
 import os
 import json
 import stripe
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, redirect, render_template
 from flask_cors import CORS
 
 # Cargar variables de entorno y configuración
@@ -10,6 +10,7 @@ try:
     if __firebase_config__:
         firebase_config = json.loads(__firebase_config__)
     else:
+        # En caso de no estar en Canvas, se usarán valores por defecto
         raise ValueError("FIREBASE_CONFIG environment variable is not set.")
     
     stripe_secret_key = os.environ.get('STRIPE_SECRET_KEY')
@@ -24,12 +25,20 @@ try:
 
 except (ValueError, json.JSONDecodeError) as e:
     print(f"Error en la configuración de las variables de entorno: {e}")
-    stripe_secret_key = "sk_test_..." 
+    stripe_secret_key = "sk_test_..."
     url_site = "http://localhost:5000"
     stripe.api_key = stripe_secret_key
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 CORS(app)
+
+# === Rutas para el Frontend ===
+
+@app.route('/')
+def home():
+    """Sirve el archivo HTML principal de la aplicación."""
+    return render_template('may-roga-chat-assistant.html')
+
 
 # Productos y precios
 PRODUCTS = {
