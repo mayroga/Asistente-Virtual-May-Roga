@@ -1,58 +1,57 @@
-from flask import Flask, render_template, request, jsonify, redirect
 import os
+from flask import Flask, request, jsonify
 import stripe
 
 app = Flask(__name__)
 
-# Claves de Stripe desde variables de entorno
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
-ACCESS_CODE = os.environ.get('MAYROGA_ACCESS_CODE')
+# 🔑 Clave secreta de Stripe (debes configurarla en Render como variable de entorno STRIPE_SECRET_KEY)
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 
-# Página principal
-@app.route('/')
-def index():
-    return render_template('index.html', stripe_key=STRIPE_PUBLISHABLE_KEY, access_code=ACCESS_CODE)
+@app.route("/")
+def home():
+    return "Servidor de May Roga funcionando ✅"
 
-# Endpoint para crear sesión de pago
-@app.route('/create-checkout-session', methods=['POST'])
+# Crear sesión de pago real con Stripe Checkout
+@app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    data = request.json
+    data = request.get_json()
+    service = data.get("service")
+    price = data.get("price")
+
     try:
-        # Datos del servicio desde el cliente
-        service_name = data['service']
-        price = int(data['price'] * 100)  # Stripe usa centavos
-
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
             line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': service_name,
-                    },
-                    'unit_amount': price,
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": service},
+                    "unit_amount": int(price * 100),  # Stripe trabaja en centavos
                 },
-                'quantity': 1,
+                "quantity": 1,
             }],
-            mode='payment',
-            success_url=os.environ.get('SUCCESS_URL', 'https://asistente-virtual-may-roga.onrender.com/success'),
-            cancel_url=os.environ.get('CANCEL_URL', 'https://asistente-virtual-may-roga.onrender.com/cancel'),
+            mode="payment",
+            success_url="https://asistente-virtual-may-roga.onrender.com/success",
+            cancel_url="https://asistente-virtual-may-roga.onrender.com/cancel",
         )
-        return jsonify({'url': checkout_session.url})
+        return jsonify({"url": session.url})
     except Exception as e:
-        return jsonify(error=str(e)), 403
+        return jsonify({"error": str(e)}), 400
 
-# Página de éxito
-@app.route('/success')
+# Validar código secreto
+@app.route("/validate-access-code", methods=["POST"])
+def validate_access_code():
+    data = request.get_json()
+    code = data.get("access_code")
+
+    if code == os.environ.get("MAYROGA_ACCESS_CODE"):  
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False})
+
+@app.route("/success")
 def success():
-    return "¡Pago completado con éxito! Gracias por tu compra."
+    return "✅ Pago realizado con éxito. Gracias por usar May Roga."
 
-# Página de cancelación
-@app.route('/cancel')
+@app.route("/cancel")
 def cancel():
-    return "Pago cancelado. Puedes intentar de nuevo."
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    return "❌ Pago cancelado. Intenta de nuevo."
