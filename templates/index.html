@@ -3,86 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>May Roga · Servicios</title>
+    <title>May Roga - Servicios</title>
     <script src="https://js.stripe.com/v3/"></script>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
-        .service { border: 1px solid #ccc; padding: 15px; margin: 10px 0; cursor: pointer; }
-        .hidden { display: none; }
-        #codeInput { padding: 10px; font-size: 16px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-top: 10px; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Servicios de May Roga</h1>
-    
-    <div>
-        <label for="codeInput">Ingresa tu código secreto (opcional para acceso libre):</label><br>
-        <input type="text" id="codeInput" placeholder="Código secreto">
-        <button onclick="validateCode()">Validar código</button>
+<body class="bg-gray-100 p-6">
+
+<h1 class="text-3xl font-bold mb-4 text-center">Servicios May Roga</h1>
+
+<div class="max-w-xl mx-auto mb-6">
+    <input type="password" id="accessCode" placeholder="Ingrese código secreto" class="border p-2 w-full">
+    <button id="checkAccess" class="bg-green-500 text-white px-4 py-2 mt-2 w-full rounded">Acceder</button>
+</div>
+
+<div id="services" class="grid gap-4 max-w-xl mx-auto hidden">
+    {% for service in services %}
+    <div class="bg-white p-4 rounded shadow flex justify-between items-center">
+        <div>
+            <h2 class="text-xl font-semibold">{{ service.name }}</h2>
+            <p>Precio: ${{ '%.2f' | format(service.price / 100) }}</p>
+        </div>
+        <button class="pay-btn bg-blue-500 text-white px-3 py-1 rounded" data-id="{{ service.id }}">Pagar</button>
     </div>
+    {% endfor %}
+</div>
 
-    <div id="servicesContainer">
-        {% for service in services %}
-            <div class="service" data-id="{{ service.id }}">
-                <strong>{{ service.name }}</strong><br>
-                Precio: ${{ service.price }} USD<br>
-                <button onclick="buyService({{ service.id }})">Pagar / Acceder</button>
-            </div>
-        {% endfor %}
-    </div>
+<div id="card-element-container" class="max-w-xl mx-auto mt-6 hidden">
+    <div id="card-element" class="p-4 bg-white rounded shadow"></div>
+    <button id="submitPayment" class="bg-purple-500 text-white px-4 py-2 mt-2 w-full rounded">Confirmar Pago</button>
+</div>
 
-    <script>
-        const stripe = Stripe("{{ stripe_key }}");
+<script>
+const stripe = Stripe("{{ stripe_key }}");
+let selectedServiceId = null;
+let clientSecret = null;
+const elements = stripe.elements();
+const card = elements.create("card");
+card.mount("#card-element");
 
-        function validateCode() {
-            const code = document.getElementById("codeInput").value;
-            fetch("/validate-code", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("¡Código correcto! Acceso libre activado.");
-                    document.querySelectorAll(".service").forEach(s => s.querySelector("button").textContent = "Acceder");
-                } else {
-                    alert("Código incorrecto");
-                }
-            });
+// Código secreto
+document.getElementById("checkAccess").addEventListener("click", async () => {
+    const code = document.getElementById("accessCode").value;
+    const res = await fetch("/access", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({code})
+    });
+    if(res.ok){
+        document.getElementById("services").classList.remove("hidden");
+        alert("Acceso concedido ✅");
+    } else {
+        alert("Código incorrecto ❌");
+    }
+});
+
+// Selección de servicio y generación de PaymentIntent
+document.querySelectorAll(".pay-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+        selectedServiceId = btn.getAttribute("data-id");
+        const res = await fetch("/create-payment-intent", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({service_id: selectedServiceId})
+        });
+        const data = await res.json();
+        if(data.error){
+            alert(data.error);
+            return;
         }
+        clientSecret = data.client_secret;
+        document.getElementById("card-element-container").classList.remove("hidden");
+    });
+});
 
-        function buyService(serviceId) {
-            const code = document.getElementById("codeInput").value;
+// Confirmar pago
+document.getElementById("submitPayment").addEventListener("click", async () => {
+    if(!clientSecret) return alert("Seleccione un servicio primero");
+    const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {card: card}
+    });
+    if(result.error){
+        alert(result.error.message);
+    } else if(result.paymentIntent.status === "succeeded"){
+        alert("Pago exitoso ✅ Servicio desbloqueado");
+        document.getElementById("services").classList.remove("hidden");
+    }
+});
+</script>
 
-            fetch("/validate-code", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("¡Acceso libre activado para este servicio!");
-                    return;
-                }
-
-                // Si no tiene código, crear sesión de Stripe
-                fetch("/create-checkout-session", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ service_id: serviceId })
-                })
-                .then(res => res.json())
-                .then(session => {
-                    return stripe.redirectToCheckout({ sessionId: session.id });
-                })
-                .then(result => {
-                    if (result.error) alert(result.error.message);
-                });
-            });
-        }
-    </script>
 </body>
 </html>
