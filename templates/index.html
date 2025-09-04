@@ -1,136 +1,139 @@
-// server.js
-// Express backend mínimo para comunicación con OpenAI y plantilla para Gemini.
-// npm i express node-fetch dotenv body-parser cors
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Servicios May Roga</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    h1 { text-align: center; color: #4CAF50; }
+    .service {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 15px 0;
+      padding: 15px;
+      border-radius: 8px;
+      background: #e8f5e9;
+    }
+    .service button {
+      background: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .service button:hover {
+      background: #43a047;
+    }
+    .access-code {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .access-code input {
+      padding: 8px;
+      width: 60%;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-right: 8px;
+    }
+    .access-code button {
+      background: #f57c00;
+    }
+    .access-code button:hover {
+      background: #ef6c00;
+    }
+  </style>
+</head>
+<body>
 
-import express from "express";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
-import cors from "cors";
-import bodyParser from "body-parser";
+<div class="container">
+  <h1>Servicios May Roga</h1>
 
-dotenv.config();
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+  <!-- Servicios -->
+  <div id="services">
+    <div class="service">
+      <div>
+        <strong>Respuesta Rápida</strong><br>
+        Duración: 55 segundos<br>
+        Precio: $2
+      </div>
+      <button onclick="payService('Respuesta Rápida', 200)">Pagar</button>
+    </div>
+    <div class="service">
+      <div>
+        <strong>Risoterapia y Bienestar Natural</strong><br>
+        Duración: 10 minutos<br>
+        Precio: $12
+      </div>
+      <button onclick="payService('Risoterapia y Bienestar Natural', 1200)">Pagar</button>
+    </div>
+    <div class="service">
+      <div>
+        <strong>Horóscopo y Consejos</strong><br>
+        Duración: 1 minuto 30 segundos<br>
+        Precio: $5
+      </div>
+      <button onclick="payService('Horóscopo y Consejos', 500)">Pagar</button>
+    </div>
+  </div>
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini"; // ajusta según tu cuenta
+  <!-- Código secreto -->
+  <div class="access-code">
+    <input type="password" id="accessCode" placeholder="Ingresa tu código secreto">
+    <button onclick="validateCode()">Acceder</button>
+  </div>
 
-// Opcional: GEMINI (plantilla). Debes completar GEMINI_API_KEY y endpoint si quieres usarlo.
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_ENDPOINT = process.env.GEMINI_ENDPOINT; // p.ej. URL de PaLM/vertex (según Google)
+</div>
 
-/**
- * /detect-language
- * Recibe { text } y devuelve { language: 'es' } (código ISO) usando OpenAI para detectar si se necesita.
- */
-app.post("/detect-language", async (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: "text required" });
+<script>
+  const stripe = Stripe('pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3NMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz');
+  const backendURL = 'https://asistente-virtual-may-roga.onrender.com';
 
-  try {
-    // Usamos OpenAI para detectar idioma de manera fiable
-    const prompt = `Detecta el idioma del siguiente texto y responde solo con su código ISO-639-1 (p.ej. "es", "en", "fr"): "${text}"`;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [{ role: "system", content: "Eres un detector de idioma." }, { role: "user", content: prompt }],
-        temperature: 0,
-        max_tokens: 5,
-      }),
-    });
-    const j = await response.json();
-    const out = j?.choices?.[0]?.message?.content?.trim()?.replace(/[".]/g, "");
-    const lang = out || (req.headers["accept-language"] ? req.headers["accept-language"].slice(0,2) : "es");
-    return res.json({ language: lang });
-  } catch (err) {
-    console.error("detect-language err", err);
-    return res.status(500).json({ error: "error detecting language" });
+  async function payService(product, amount) {
+    try {
+      const response = await axios.post(`${backendURL}/create-checkout-session`, { product, amount });
+      const sessionId = response.data.id;
+      const { error } = await stripe.redirectToCheckout({ sessionId });
+      if (error) alert(error.message);
+    } catch (err) {
+      alert('Error al procesar el pago: ' + err.message);
+    }
   }
-});
 
-/**
- * /assistant
- * Recibe:
- * {
- *   service: "Risoterapia y Bienestar Natural",
- *   userInput: "hola",
- *   language: "es",
- *   sessionId: "abc123", // opcional
- *   systemPrompt: "..." // tu texto extenso de entrenamiento/personalidad
- * }
- *
- * Devuelve respuesta generada por OpenAI (y opcionalmente Gemini).
- */
-app.post("/assistant", async (req, res) => {
-  const { service, userInput, language = "es", sessionId = null, systemPrompt = "" } = req.body;
-  if (!userInput) return res.status(400).json({ error: "userInput required" });
-
-  // Construimos prompt para el asistente: incluimos systemPrompt + datos del servicio y requerimientos
-  const assistantSystem = `
-Eres "Asistente May Roga", educador de salud y risoterapia. Responde siempre con amabilidad, respeto y calma.
-Cliente idioma: ${language}
-Servicio activo: ${service}
-Instrucciones clave:
-- Detecta y responde en el idioma indicado.
-- Si el contenido incluye un ejercicio con temporizador (ej: "respira por 1 minuto"), devuelve en el campo "actions" un array con el temporizador solicitado (en segundos).
-- Sigue la personalidad y la retórica de cuidado que se te proporcionó.
-SystemPrompt (entrenamiento del asistente):
-${systemPrompt}
-`;
-
-  const userMsg = `Usuario dice (en ${language}): "${userInput}". Responde de forma amable, breve y explica si hay ejercicios, indicando tiempos en segundos cuando corresponda.`;
-
-  try {
-    // Llamada a OpenAI Chat Completions
-    const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [
-          { role: "system", content: assistantSystem },
-          { role: "user", content: userMsg },
-        ],
-        temperature: 0.7,
-        max_tokens: 600,
-      }),
-    });
-
-    const openaiJson = await openaiResp.json();
-    const openaiText = openaiJson?.choices?.[0]?.message?.content || "";
-
-    // Intentamos extraer instrucciones de temporizador desde el texto (heurística simple)
-    // Buscamos patrones como "respira por X minuto(s)" o "X segundos"
-    const timerMatches = [];
-    const regexMin = /(?:respira|respiración|inhalar|exhalar).{0,30}?(\d+)\s*min(?:uto|utos)?/i;
-    const regexSec = /(?:respira|respiración|inhalar|exhalar).{0,30}?(\d+)\s*seg(?:undo|undos)?/i;
-
-    let m = openaiText.match(regexMin);
-    if (m) timerMatches.push({ action: "silence_for", seconds: parseInt(m[1], 10) * 60, note: "ejercicio respiración (minutos detectado)" });
-    m = openaiText.match(regexSec);
-    if (m) timerMatches.push({ action: "silence_for", seconds: parseInt(m[1], 10), note: "ejercicio respiración (segundos detectado)" });
-
-    // Respuesta final
-    return res.json({
-      provider: "openai",
-      text: openaiText,
-      timers: timerMatches,
-      raw: openaiJson,
-    });
-  } catch (err) {
-    console.error("assistant err", err);
-    return res.status(500).json({ error: "assistant error" });
+  async function validateCode() {
+    const code = document.getElementById('accessCode').value;
+    if (!code) return alert('Ingresa un código');
+    try {
+      const response = await axios.post(`${backendURL}/validate-access-code`, { code });
+      if (response.data.valid) {
+        alert('Código válido. Acceso directo habilitado.');
+        // Aquí podrías habilitar todos los servicios sin pago
+      } else {
+        alert('Código inválido.');
+      }
+    } catch (err) {
+      alert('Error al validar código: ' + err.message);
+    }
   }
-});
+</script>
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server listening on", PORT));
+</body>
+</html>
