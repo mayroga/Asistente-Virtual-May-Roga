@@ -1,110 +1,136 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>May Roga · Servicios</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://js.stripe.com/v3/"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>May Roga · Servicios</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
-  <div class="max-w-4xl mx-auto p-4">
-    <h1 class="text-3xl font-bold text-center mb-6">Servicios May Roga</h1>
+<div class="max-w-4xl mx-auto p-4">
+  <h1 class="text-3xl font-bold text-center mb-6">Servicios May Roga</h1>
 
-    <!-- Servicios básicos siempre visibles -->
-    <div id="basic-services" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Respuesta Rápida" data-price="2">
-        <h2 class="text-xl font-semibold">Respuesta Rápida</h2>
-        <p>Duración: 55 segundos</p>
-        <p>Precio: $2</p>
-      </div>
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Risoterapia y Bienestar Natural" data-price="12">
-        <h2 class="text-xl font-semibold">Risoterapia y Bienestar Natural</h2>
-        <p>Duración: 10 minutos</p>
-        <p>Precio: $12</p>
-      </div>
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Horóscopo y Consejos" data-price="5">
-        <h2 class="text-xl font-semibold">Horóscopo y Consejos</h2>
-        <p>Duración: 1 minuto 30 segundos</p>
-        <p>Precio: $5</p>
-      </div>
+  <div id="basic-services" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Respuesta Rápida" data-price="2">
+      <h2 class="text-xl font-semibold">Respuesta Rápida</h2>
+      <p>Duración: 55 segundos</p>
+      <p>Precio: $2</p>
     </div>
-
-    <!-- Ventana emergente para servicios especiales -->
-    <div id="special-services-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-      <div class="bg-white p-6 rounded shadow max-w-lg w-full relative">
-        <button id="close-modal" class="absolute top-2 right-2 text-gray-600 hover:text-gray-900">&times;</button>
-        <h2 class="text-2xl font-bold mb-4">Servicios Especiales</h2>
-        <div id="special-services" class="grid grid-cols-1 gap-4">
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Risoterapia 20min" data-price="20">
-            <h3 class="font-semibold">Sesión Risoterapia 20min</h3>
-            <p>Precio: $20.00</p>
-          </div>
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Personalizada 30min" data-price="35">
-            <h3 class="font-semibold">Sesión Personalizada 30min</h3>
-            <p>Precio: $35.00</p>
-          </div>
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Paquete Corporativo 20-40min" data-price="50">
-            <h3 class="font-semibold">Paquete Corporativo 20-40min</h3>
-            <p>Precio: $50.00</p>
-          </div>
-        </div>
-      </div>
+    <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Risoterapia y Bienestar Natural" data-price="12" data-special="true">
+      <h2 class="text-xl font-semibold">Risoterapia y Bienestar Natural</h2>
+      <p>Duración: 10 minutos</p>
+      <p>Precio: $12</p>
     </div>
-
-    <!-- Input para código secreto -->
-    <div class="mt-6">
-      <input type="text" id="access-code" placeholder="Ingresa tu código secreto" class="p-2 border rounded w-full">
-      <button id="access-btn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Acceder</button>
+    <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Horóscopo y Consejos" data-price="5">
+      <h2 class="text-xl font-semibold">Horóscopo y Consejos</h2>
+      <p>Duración: 1 minuto 30 segundos</p>
+      <p>Precio: $5</p>
     </div>
   </div>
 
-  <script>
-    const stripeKey = "{{ stripe_key }}"; // Desde Flask
-    const stripe = Stripe(stripeKey);
+  <!-- Modal servicios especiales -->
+  <div id="special-services-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow max-w-lg w-full relative">
+      <button id="close-modal" class="absolute top-2 right-2 text-3xl text-gray-600 hover:text-gray-900 leading-none">&times;</button>
+      <h2 class="text-2xl font-bold mb-4">Servicios Especiales</h2>
+      <div id="special-services" class="grid grid-cols-1 gap-4">
+        <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Risoterapia 20min" data-price="20">
+          <h3 class="font-semibold">Sesión Risoterapia 20min</h3>
+          <p>Precio: $20.00</p>
+        </div>
+        <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Personalizada 30min" data-price="35">
+          <h3 class="font-semibold">Sesión Personalizada 30min</h3>
+          <p>Precio: $35.00</p>
+        </div>
+        <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Paquete Corporativo 20-40min" data-price="50">
+          <h3 class="font-semibold">Paquete Corporativo 20-40min</h3>
+          <p>Precio: $50.00</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    const ACCESS_CODE = "{{ access_code }}"; // Variable enviada desde Flask (MAYROGA_ACCESS_CODE)
+  <div class="mt-6">
+    <input type="password" id="access-code" placeholder="Ingresa tu código secreto" class="p-2 border rounded w-full">
+    <button id="access-btn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Acceder</button>
+    <p id="message" class="text-center mt-2"></p>
+  </div>
+</div>
 
-    // Abrir modal de servicios especiales solo si se selecciona Risoterapia y Bienestar Natural
-    document.querySelectorAll('.service-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const serviceName = card.getAttribute('data-service');
-        if (serviceName === 'Risoterapia y Bienestar Natural') {
-          document.getElementById('special-services-modal').classList.remove('hidden');
-        } else {
-          alert(`Seleccionaste el servicio: ${serviceName}. Procede al pago.`);
-          // Aquí se puede redirigir al flujo de pago
-        }
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const stripe = Stripe("{{ stripe_key }}");
+
+  const basicServices = document.querySelectorAll('.service-card');
+  const specialServices = document.querySelectorAll('.special-service-card');
+  const modal = document.getElementById('special-services-modal');
+  const closeModalBtn = document.getElementById('close-modal');
+  const accessCodeInput = document.getElementById('access-code');
+  const accessBtn = document.getElementById('access-btn');
+  const messageEl = document.getElementById('message');
+
+  const showModal = () => modal.classList.remove('hidden');
+  const hideModal = () => modal.classList.add('hidden');
+
+  const displayMessage = (msg, isError=false) => {
+    messageEl.textContent = msg;
+    messageEl.className = `text-center mt-2 ${isError ? 'text-red-600' : 'text-green-600'}`;
+  }
+
+  const createCheckout = async (serviceName, price) => {
+    try {
+      const res = await fetch('/create_checkout_session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({service: serviceName, price: price})
       });
-    });
+      const data = await res.json();
+      if (data.id) stripe.redirectToCheckout({ sessionId: data.id });
+      else displayMessage('Error al iniciar el pago.', true);
+    } catch (err) {
+      displayMessage('Error al conectar con el servidor.', true);
+    }
+  }
 
-    // Cerrar modal
-    document.getElementById('close-modal').addEventListener('click', () => {
-      document.getElementById('special-services-modal').classList.add('hidden');
+  basicServices.forEach(card => {
+    card.addEventListener('click', () => {
+      const serviceName = card.getAttribute('data-service');
+      const price = card.getAttribute('data-price');
+      if (card.hasAttribute('data-special')) showModal();
+      else createCheckout(serviceName, price);
     });
+  });
 
-    // Seleccionar servicio especial
-    document.querySelectorAll('.special-service-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const serviceName = card.getAttribute('data-service');
-        const price = card.getAttribute('data-price');
-        alert(`Seleccionaste el servicio especial: ${serviceName} - $${price}. Procede al pago.`);
-        document.getElementById('special-services-modal').classList.add('hidden');
-        // Aquí se puede redirigir al flujo de pago
+  specialServices.forEach(card => {
+    card.addEventListener('click', () => {
+      const serviceName = card.getAttribute('data-service');
+      const price = card.getAttribute('data-price');
+      createCheckout(serviceName, price);
+      hideModal();
+    });
+  });
+
+  closeModalBtn.addEventListener('click', hideModal);
+
+  accessBtn.addEventListener('click', async () => {
+    const code = accessCodeInput.value.trim();
+    try {
+      const res = await fetch('/validate_code', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code: code})
       });
-    });
+      const data = await res.json();
+      if (data.success) showModal();
+      displayMessage(data.success ? 'Código correcto. ¡Bienvenido!' : 'Código incorrecto. Intenta de nuevo.', !data.success);
+    } catch (err) {
+      displayMessage('Error al validar el código.', true);
+    }
+  });
+});
+</script>
 
-    // Código secreto
-    document.getElementById('access-btn').addEventListener('click', () => {
-      const code = document.getElementById('access-code').value;
-      if (code === ACCESS_CODE) {
-        alert('Código correcto. Puedes acceder a los servicios especiales.');
-        document.getElementById('special-services-modal').classList.remove('hidden');
-      } else {
-        alert('Código incorrecto.');
-      }
-    });
-  </script>
 </body>
 </html>
