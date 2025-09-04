@@ -3,40 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>May Roga - Asistente Virtual</title>
+    <title>Asistente Virtual May Roga</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Asistente Virtual May Roga 🌿</h1>
-        
-        <!-- Acceso -->
-        <div id="access-section">
-            <input type="text" id="access-code" placeholder="Introduce tu código secreto">
-            <button id="btn-access">Acceder</button>
-            <p id="access-msg"></p>
+        <h1>🌿 Asistente Virtual May Roga</h1>
+
+        <h2>Servicios disponibles</h2>
+        <div id="services">
+            <div class="service">
+                <h3>Agente de Respuesta Rápida</h3>
+                <p>Duración: 55 segundos | Precio: $2.00</p>
+                <button onclick="startPayment('rapida')">Pagar y Usar</button>
+            </div>
+            <div class="service">
+                <h3>Risoterapia y Bienestar Natural</h3>
+                <p>Duración: 10 minutos | Precio: $12.00</p>
+                <button onclick="startPayment('risoterapia')">Pagar y Usar</button>
+            </div>
+            <div class="service">
+                <h3>Horóscopo y Consejos</h3>
+                <p>Duración: 1 minuto 30 segundos | Precio: $5.00</p>
+                <button onclick="startPayment('horoscopo')">Pagar y Usar</button>
+            </div>
         </div>
 
-        <!-- Servicios -->
-        <div id="services-section" style="display:none;">
-            <h2>Servicios Disponibles</h2>
-            <ul>
-                <li>Risoterapia 10 min - $12 <button class="btn-pay" data-service="risoterapia">Pagar y Acceder</button></li>
-                <li>Horóscopo 1 min 30 seg - $5 <button class="btn-pay" data-service="horoscopo">Pagar y Acceder</button></li>
-                <li>Respuesta Rápida 55 seg - $2 <button class="btn-pay" data-service="rapida">Pagar y Acceder</button></li>
-            </ul>
-        </div>
+        <hr>
 
-        <!-- Chat -->
-        <div id="chat-section" style="display:none;">
-            <h2>Chat con May Roga</h2>
-            <div id="chat-box"></div>
-            <textarea id="user-message" placeholder="Escribe tu mensaje..."></textarea>
-            <button id="btn-send">Enviar</button>
-            <button id="btn-tts">Escuchar respuesta</button>
-        </div>
+        <h2>Chat con May Roga</h2>
+        <div id="chat-box"></div>
+        <textarea id="user-input" placeholder="Escribe tu mensaje aquí..."></textarea>
+        <button id="send-btn">Enviar</button>
+        <button id="btn-tts">Escuchar Respuesta</button>
     </div>
+
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        const stripe = Stripe("{{ os.environ.get('STRIPE_PUBLISHABLE_KEY') }}");
+
+        async function startPayment(serviceId){
+            try {
+                const res = await fetch("/create-checkout-session", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ serviceId })
+                });
+                const data = await res.json();
+                if(data.id){
+                    await stripe.redirectToCheckout({ sessionId: data.id });
+                } else {
+                    alert("Error creando sesión de pago.");
+                }
+            } catch (err){
+                console.error(err);
+                alert("No se pudo iniciar el pago.");
+            }
+        }
+    </script>
 </body>
 </html>
