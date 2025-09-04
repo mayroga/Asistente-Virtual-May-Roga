@@ -5,46 +5,60 @@ import stripe
 app = Flask(__name__)
 
 # Claves de Stripe desde variables de entorno
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
-STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-stripe.api_key = STRIPE_SECRET_KEY
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
-# Código secreto
-ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
+# Código secreto desde variable de entorno
+ACCESS_CODE = os.environ.get('MAYROGA_ACCESS_CODE')
 
-# Servicios disponibles
-SERVICES = [
-    {"id": 1, "name": "Sesión Risoterapia 30min", "price": 2000},
-    {"id": 2, "name": "Sesión Personalizada 1hr", "price": 3500},
-    {"id": 3, "name": "Paquete Corporativo", "price": 5000},
-]
-
+# Página principal
 @app.route("/")
 def index():
-    return render_template("index.html", stripe_key=STRIPE_PUBLISHABLE_KEY, services=SERVICES)
+    return render_template("index.html", stripe_key=STRIPE_PUBLISHABLE_KEY)
 
-@app.route("/access", methods=["POST"])
-def access():
-    code = request.json.get("code")
+# Validar código secreto
+@app.route("/validate_code", methods=["POST"])
+def validate_code():
+    data = request.get_json()
+    code = data.get("code", "")
     if code == ACCESS_CODE:
-        return jsonify({"access_granted": True})
-    return jsonify({"access_granted": False}), 403
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False})
 
-@app.route("/create-payment-intent", methods=["POST"])
-def create_payment():
-    service_id = int(request.json.get("service_id"))
-    service = next((s for s in SERVICES if s["id"] == service_id), None)
-    if not service:
-        return jsonify({"error": "Servicio no encontrado"}), 404
+# Crear sesión de pago Stripe
+@app.route("/create_checkout_session", methods=["POST"])
+def create_checkout_session():
+    data = request.get_json()
+    service_name = data.get("service")
+    price = data.get("price")
+    
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=service["price"],
-            currency="usd",
-            metadata={"service_id": service_id, "service_name": service["name"]},
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": service_name},
+                    "unit_amount": int(float(price) * 100),  # convertir a centavos
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=f"{os.environ.get('RENDER_EXTERNAL_URL', 'https://asistente-virtual-may-roga.onrender.com')}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{os.environ.get('RENDER_EXTERNAL_URL', 'https://asistente-virtual-may-roga.onrender.com')}/cancel",
         )
-        return jsonify({"client_secret": intent.client_secret})
+        return jsonify({"id": session.id})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify(error=str(e)), 500
+
+@app.route("/success")
+def success():
+    return "<h1>Pago completado correctamente. ¡Gracias!</h1>"
+
+@app.route("/cancel")
+def cancel():
+    return "<h1>Pago cancelado. Intenta nuevamente.</h1>"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
