@@ -3,41 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual · May Roga</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Stripe JS SDK -->
+    <title>May Roga · Servicios</title>
     <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f8ff; }
+        .service { border: 1px solid #ccc; padding: 15px; margin: 10px 0; cursor: pointer; }
+        .hidden { display: none; }
+        #codeInput { padding: 10px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900 flex flex-col items-center justify-center min-h-screen">
+<body>
+    <h1>Servicios de May Roga</h1>
+    
+    <div>
+        <label for="codeInput">Ingresa tu código secreto (opcional para acceso libre):</label><br>
+        <input type="text" id="codeInput" placeholder="Código secreto">
+        <button onclick="validateCode()">Validar código</button>
+    </div>
 
-    <h1 class="text-3xl font-bold mb-6">Bienvenido a May Roga</h1>
-
-    <!-- Botón de pago de ejemplo -->
-    <button id="checkout-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-        Pagar
-    </button>
+    <div id="servicesContainer">
+        {% for service in services %}
+            <div class="service" data-id="{{ service.id }}">
+                <strong>{{ service.name }}</strong><br>
+                Precio: ${{ service.price }} USD<br>
+                <button onclick="buyService({{ service.id }})">Pagar / Acceder</button>
+            </div>
+        {% endfor %}
+    </div>
 
     <script>
-        // Inicializa Stripe usando la clave que Flask pasa al template
         const stripe = Stripe("{{ stripe_key }}");
 
-        const checkoutButton = document.getElementById("checkout-button");
-        checkoutButton.addEventListener("click", () => {
-            // Aquí puedes redirigir a tu sesión de checkout creada en backend
-            fetch("/create-checkout-session", { method: "POST" })
-                .then((response) => response.json())
-                .then((session) => {
+        function validateCode() {
+            const code = document.getElementById("codeInput").value;
+            fetch("/validate-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("¡Código correcto! Acceso libre activado.");
+                    document.querySelectorAll(".service").forEach(s => s.querySelector("button").textContent = "Acceder");
+                } else {
+                    alert("Código incorrecto");
+                }
+            });
+        }
+
+        function buyService(serviceId) {
+            const code = document.getElementById("codeInput").value;
+
+            fetch("/validate-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("¡Acceso libre activado para este servicio!");
+                    return;
+                }
+
+                // Si no tiene código, crear sesión de Stripe
+                fetch("/create-checkout-session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ service_id: serviceId })
+                })
+                .then(res => res.json())
+                .then(session => {
                     return stripe.redirectToCheckout({ sessionId: session.id });
                 })
-                .then((result) => {
-                    if (result.error) {
-                        alert(result.error.message);
-                    }
-                })
-                .catch((error) => console.error("Error:", error));
-        });
+                .then(result => {
+                    if (result.error) alert(result.error.message);
+                });
+            });
+        }
     </script>
-
 </body>
 </html>
