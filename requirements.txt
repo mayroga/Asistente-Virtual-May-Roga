@@ -1,13 +1,20 @@
-Flask
-Flask-CORS
-gunicorn
-stripe
-firebase-admin
-google-generativeai
-google-cloud-firestore
-google-auth
-httpx
-certifi
-idna
-httpcore
-requests
+Flask==2.3.3
+Flask-CORS==4.0.1
+gunicorn==21.2.0
+stripe==6.12.0
+
+# Firebase y dependencias Google
+firebase-admin==6.5.0
+google-generativeai==0.7.1
+google-cloud-firestore==2.16.0
+google-auth==2.29.0
+google-api-core==2.25.1
+proto-plus==1.26.0
+rsa==4.9
+
+# HTTP y requests
+httpx==0.28.1
+httpcore==1.0.5
+requests==2.32.3
+certifi==2024.7.4
+idna==3.7
