@@ -1,66 +1,44 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual May Roga</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>May Roga · Asistente</title>
+<script src="https://js.stripe.com/v3/"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>🌿 Asistente Virtual May Roga</h1>
 
-        <h2>Servicios disponibles</h2>
-        <div id="services">
-            <div class="service">
-                <h3>Agente de Respuesta Rápida</h3>
-                <p>Duración: 55 segundos | Precio: $2.00</p>
-                <button onclick="startPayment('rapida')">Pagar y Usar</button>
-            </div>
-            <div class="service">
-                <h3>Risoterapia y Bienestar Natural</h3>
-                <p>Duración: 10 minutos | Precio: $12.00</p>
-                <button onclick="startPayment('risoterapia')">Pagar y Usar</button>
-            </div>
-            <div class="service">
-                <h3>Horóscopo y Consejos</h3>
-                <p>Duración: 1 minuto 30 segundos | Precio: $5.00</p>
-                <button onclick="startPayment('horoscopo')">Pagar y Usar</button>
-            </div>
-        </div>
+<h1>Bienvenido a May Roga</h1>
+<p>Elige tu servicio y paga fácilmente:</p>
 
-        <hr>
+<button onclick="buyService('rapida')">Agente de Respuesta Rápida</button>
+<button onclick="buyService('risoterapia')">Risoterapia y Bienestar Natural</button>
+<button onclick="buyService('horoscopo')">Horóscopo</button>
 
-        <h2>Chat con May Roga</h2>
-        <div id="chat-box"></div>
-        <textarea id="user-input" placeholder="Escribe tu mensaje aquí..."></textarea>
-        <button id="send-btn">Enviar</button>
-        <button id="btn-tts">Escuchar Respuesta</button>
-    </div>
+<script>
+const stripe = Stripe("{{ stripe_key }}");
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-    <script src="https://js.stripe.com/v3/"></script>
-    <script>
-        const stripe = Stripe("{{ os.environ.get('STRIPE_PUBLISHABLE_KEY') }}");
-
-        async function startPayment(serviceId){
-            try {
-                const res = await fetch("/create-checkout-session", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({ serviceId })
-                });
-                const data = await res.json();
-                if(data.id){
-                    await stripe.redirectToCheckout({ sessionId: data.id });
-                } else {
-                    alert("Error creando sesión de pago.");
-                }
-            } catch (err){
-                console.error(err);
-                alert("No se pudo iniciar el pago.");
-            }
+async function buyService(serviceId) {
+    try {
+        const res = await fetch('/create-checkout-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({serviceId})
+        });
+        const data = await res.json();
+        if(data.id){
+            await stripe.redirectToCheckout({ sessionId: data.id });
+        } else {
+            alert("Error al crear la sesión de pago");
         }
-    </script>
+    } catch (err) {
+        console.error(err);
+        alert("Ocurrió un error, revisa la consola");
+    }
+}
+</script>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
