@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>May Roga - Asistente Virtual</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
     <div class="container">
         <h1>Asistente Virtual May Roga 🌿</h1>
         
-        <!-- Acceso con código secreto -->
+        <!-- Acceso -->
         <div id="access-section">
             <input type="text" id="access-code" placeholder="Introduce tu código secreto">
             <button id="btn-access">Acceder</button>
@@ -21,9 +22,9 @@
         <div id="services-section" style="display:none;">
             <h2>Servicios Disponibles</h2>
             <ul>
-                <li><strong>Risoterapia y Bienestar Natural:</strong> 10 min - $12 <button class="btn-service" data-service="risoterapia">Seleccionar</button></li>
-                <li><strong>Horóscopo:</strong> 1 min 30 seg - $5 <button class="btn-service" data-service="horoscopo">Seleccionar</button></li>
-                <li><strong>Respuesta Rápida de Vida:</strong> 55 seg - $2 <button class="btn-service" data-service="rapida">Seleccionar</button></li>
+                <li>Risoterapia 10 min - $12 <button class="btn-pay" data-service="risoterapia">Pagar y Acceder</button></li>
+                <li>Horóscopo 1 min 30 seg - $5 <button class="btn-pay" data-service="horoscopo">Pagar y Acceder</button></li>
+                <li>Respuesta Rápida 55 seg - $2 <button class="btn-pay" data-service="rapida">Pagar y Acceder</button></li>
             </ul>
         </div>
 
@@ -36,7 +37,6 @@
             <button id="btn-tts">Escuchar respuesta</button>
         </div>
     </div>
-
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
