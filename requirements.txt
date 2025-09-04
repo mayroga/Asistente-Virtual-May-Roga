@@ -1,7 +1,7 @@
 Flask==2.3.3
 Flask-CORS==4.0.1
 gunicorn==21.2.0
-stripe==6.12.0
+stripe==10.6.0
 
 # Firebase y dependencias Google
 firebase-admin==6.5.0
