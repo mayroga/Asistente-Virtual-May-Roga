@@ -1,11 +1,9 @@
-// Variables globales
 let accessGranted = false;
 let lastReply = "";
 
-// --- Acceso con código secreto ---
+// Acceso
 document.getElementById("btn-access").addEventListener("click", () => {
     const code = document.getElementById("access-code").value.trim();
-    // Ejemplo simple: compara con "MAYROGA123" (más adelante puedes usar users.json)
     if (code === "MAYROGA123") {
         accessGranted = true;
         document.getElementById("access-section").style.display = "none";
@@ -16,26 +14,42 @@ document.getElementById("btn-access").addEventListener("click", () => {
     }
 });
 
-// --- Selección de servicios ---
-document.querySelectorAll(".btn-service").forEach(btn => {
+// Inicializa Stripe
+const stripePublicKey = "pk_test_XXXXXXXXXXXXXXXXXXXX"; // reemplaza con tu clave pública
+const stripe = Stripe(stripePublicKey);
+
+// Pagos
+document.querySelectorAll(".btn-pay").forEach(btn => {
     btn.addEventListener("click", async () => {
         const service = btn.dataset.service;
-        alert(`Servicio seleccionado: ${service}. Próximamente se integrará el pago con Stripe.`);
-        // Aquí más adelante se puede abrir Stripe Checkout
+        try {
+            const res = await fetch("/create-checkout-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ serviceId: service })
+            });
+            const data = await res.json();
+            if (data.id) {
+                await stripe.redirectToCheckout({ sessionId: data.id });
+            } else {
+                alert("Error al crear sesión de pago.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error al conectar con el servidor.");
+        }
     });
 });
 
-// --- Enviar mensaje al asistente ---
+// Chat
 document.getElementById("btn-send").addEventListener("click", async () => {
     if (!accessGranted) return;
     const message = document.getElementById("user-message").value.trim();
     if (!message) return;
 
-    // Mostrar mensaje del usuario
     const chatBox = document.getElementById("chat-box");
     chatBox.innerHTML += `<div class="user-msg"><strong>Tú:</strong> ${message}</div>`;
 
-    // Llamada al endpoint /api/chat
     try {
         const res = await fetch("/api/chat", {
             method: "POST",
@@ -52,15 +66,4 @@ document.getElementById("btn-send").addEventListener("click", async () => {
         }
     } catch (err) {
         chatBox.innerHTML += `<div class="bot-msg error">Error al conectar con el servidor.</div>`;
-        console.error(err);
-    }
-
-    document.getElementById("user-message").value = "";
-});
-
-// --- Botón Text-to-Speech ---
-document.getElementById("btn-tts").addEventListener("click", () => {
-    if (!lastReply) return;
-    const utterance = new SpeechSynthesisUtterance(lastReply);
-    speechSynthesis.speak(utterance);
-});
+        console.error
