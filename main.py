@@ -1,30 +1,31 @@
 import os
 import json
 import sys
+import threading
+import queue
 from datetime import datetime
 from flask import Flask, jsonify, request, render_template
 import stripe
 import firebase_admin
 from firebase_admin import credentials, firestore
 import google.generativeai as genai
+import time
 
-# --- Inicialización de Flask ---
 app = Flask(__name__)
 
-# --- Configuración de Stripe ---
+# --- Stripe ---
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 if not stripe.api_key:
-    print("Error: La variable de entorno 'STRIPE_SECRET_KEY' no está configurada.", file=sys.stderr)
+    print("Error: 'STRIPE_SECRET_KEY' no configurada.", file=sys.stderr)
     sys.exit(1)
 
-# Productos y precios
 productos = {
     'rapida': {'price_id': 'price_1OaX6qBOA5mT4t0PLXz7r7k5', 'name': 'Agente de Respuesta Rápida'},
     'risoterapia': {'price_id': 'price_1OaX7LBOA5mT4t0P4Lz7d7e8', 'name': 'Risoterapia y Bienestar Natural'},
     'horoscopo': {'price_id': 'price_1OaX8lBOA5mT4t0PHaVpQW8d', 'name': 'Horóscopo'}
 }
 
-# --- Configuración de Firebase ---
+# --- Firebase ---
 firebase_config_json = os.environ.get('__firebase_config__')
 if firebase_config_json:
     try:
@@ -33,23 +34,24 @@ if firebase_config_json:
         db = firestore.client()
         print("Firebase inicializado correctamente.")
     except Exception as e:
-        print(f"Error al inicializar Firebase: {e}", file=sys.stderr)
+        print(f"Error inicializando Firebase: {e}", file=sys.stderr)
 else:
-    print("Error: La variable de entorno '__firebase_config__' no está configurada.", file=sys.stderr)
+    print("Error: '__firebase_config__' no configurada.", file=sys.stderr)
 
-# --- Configuración de Gemini ---
+# --- Gemini ---
 gemini_api_key = os.environ.get('GEMINI_API_KEY')
 if gemini_api_key:
     genai.configure(api_key=gemini_api_key)
-    print("Cliente de la API de Gemini configurado correctamente.")
+    print("Gemini configurado correctamente.")
 else:
-    print("Error: La variable de entorno 'GEMINI_API_KEY' no está configurada.", file=sys.stderr)
+    print("Error: 'GEMINI_API_KEY' no configurada.", file=sys.stderr)
 
-# --- Rutas ---
-@app.route('/')
-def index():
-    return render_template("index.html")
+# --- Cola de mensajes ---
+chat_queue = queue.Queue()
+responses_cache = {}
+USER_LIMIT = 3  # máximo de solicitudes simultáneas por usuario (puedes ajustar)
 
+# --- Sesión de Stripe ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
@@ -71,69 +73,99 @@ def create_checkout_session():
         )
         return jsonify({'id': session.id})
     except Exception as e:
-        print(f"Error en create-checkout-session: {e}", file=sys.stderr)
+        print(f"Error Stripe: {e}", file=sys.stderr)
         return jsonify({"error": "Error interno del servidor"}), 500
 
+# --- Endpoints web ---
+@app.route('/')
+def index():
+    return render_template("index.html")
+
 @app.route('/success')
-def payment_success():
+def success():
     return render_template("success.html")
 
 @app.route('/cancel')
-def payment_cancel():
+def cancel():
     return render_template("cancel.html")
 
+# --- Chat ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
         data = request.get_json()
-        user_message = data.get('message', '').strip()
-        if not user_message:
+        user_id = data.get('userId', 'anon')
+        message = data.get('message', '').strip()
+        if not message:
             return jsonify({"error": "No se recibió mensaje"}), 400
 
-        system_prompt = """
-You are May Roga Assistant, a professional wellness guide specialized in Laughter Therapy and Natural Wellness.
-Follow the TVid techniques: Bien, Mal, Padre, Madre, Niño, Beso, Guerra.
-Core ethic: listen without judgment, never shame or contradict; reflect the client's words and guide to healthy, responsible choices.
-Always balance negative and positive to turn duality into growth, calm, and wellbeing.
-Use clear, short answers (30–90 seconds), concrete steps, and a warm tone.
-Avoid medical diagnoses or prescriptions; offer general health education, prevention, exercise and nutrition advice within safe limits.
-Encourage responsible follow-up with professionals when needed.
-Detect language automatically if not specified.
-For each response: 
-1) validate feelings
-2) choose one TVid lens and name it
-3) give one small actionable step
-4) provide one hopeful takeaway
-        """
+        # Limitación simple por usuario
+        user_count = sum(1 for item in list(chat_queue.queue) if item['user_id'] == user_id)
+        if user_count >= USER_LIMIT:
+            return jsonify({"error": "Has alcanzado el límite de solicitudes simultáneas. Intenta más tarde."}), 429
 
-        if gemini_api_key:
-            response = genai.chat.create(
-                model="chat-bison-001",
-                messages=[{"role": "system", "content": system_prompt},
-                          {"role": "user", "content": user_message}],
-                temperature=0.7
-            )
-            reply_text = response.last.response
-        else:
-            reply_text = "Error: Gemini API key no configurada."
-
-        # Guardar historial en Firebase
-        if firebase_config_json:
-            try:
-                db.collection("chat_history").add({
-                    "message": user_message,
-                    "reply": reply_text,
-                    "timestamp": datetime.utcnow()
-                })
-            except Exception as e:
-                print(f"Error guardando en Firebase: {e}", file=sys.stderr)
-
+        # Añadir a cola
+        response_event = threading.Event()
+        chat_queue.put({'user_id': user_id, 'message': message, 'event': response_event})
+        response_event.wait(timeout=15)  # espera máxima 15 seg
+        reply_text = responses_cache.pop(user_id, "Lo siento, hubo un error procesando tu solicitud.")
         return jsonify({"reply": reply_text})
+
     except Exception as e:
-        print(f"Error en /api/chat: {e}", file=sys.stderr)
+        print(f"Error chat endpoint: {e}", file=sys.stderr)
         return jsonify({"error": "Error interno del servidor"}), 500
 
-# --- Ejecutar la app ---
+# --- Hilo que procesa la cola ---
+def process_queue():
+    while True:
+        try:
+            item = chat_queue.get()
+            user_id = item['user_id']
+            message = item['message']
+
+            # Prompt seguro
+            system_prompt = """
+You are May Roga Assistant, professional wellness guide using TVid techniques.
+Listen without judgment, validate feelings, reflect user words, suggest small actions, offer hope.
+Short clear answers 30-90 seconds, warm tone, safe health advice.
+Detect language automatically.
+"""
+            reply_text = "Error procesando Gemini."
+            if gemini_api_key:
+                try:
+                    response = genai.chat.create(
+                        model="chat-bison-001",
+                        messages=[{"role": "system", "content": system_prompt},
+                                  {"role": "user", "content": message}],
+                        temperature=0.7
+                    )
+                    reply_text = response.last.response
+                except Exception as e:
+                    print(f"Error Gemini: {e}", file=sys.stderr)
+
+            # Guardar en Firebase
+            if firebase_config_json:
+                try:
+                    db.collection("chat_history").add({
+                        "user_id": user_id,
+                        "message": message,
+                        "reply": reply_text,
+                        "timestamp": datetime.utcnow()
+                    })
+                except Exception as e:
+                    print(f"Error guardando Firebase: {e}", file=sys.stderr)
+
+            responses_cache[user_id] = reply_text
+            item['event'].set()
+            chat_queue.task_done()
+            time.sleep(0.5)  # evita saturación de la IA
+        except Exception as e:
+            print(f"Error procesando cola: {e}", file=sys.stderr)
+
+# --- Iniciar hilo de la cola ---
+threading.Thread(target=process_queue, daemon=True).start()
+
+# --- Ejecutar app ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
