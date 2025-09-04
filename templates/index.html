@@ -1,133 +1,52 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Servicios May Roga 🌿</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
-    header { text-align: center; padding: 2rem; background: #d4edda; color: #155724; }
-    h1 { margin: 0; font-size: 2rem; }
-    .container { max-width: 800px; margin: 2rem auto; padding: 1rem; }
-    .service { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1rem; margin-bottom: 1rem; }
-    .service h2 { margin: 0 0 0.5rem 0; }
-    .service p { margin: 0.2rem 0; }
-    .service button { background: #28a745; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-top: 0.5rem; }
-    .service button:hover { background: #218838; }
-    #access-code { display: flex; justify-content: center; margin-bottom: 2rem; }
-    #access-code input { padding: 0.5rem; font-size: 1rem; border-radius: 4px; border: 1px solid #ccc; }
-    #access-code button { margin-left: 0.5rem; padding: 0.5rem 1rem; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    #access-code button:hover { background: #0069d9; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Servicios May Roga 🌿</h1>
-  </header>
+import express from 'express';
+import Stripe from 'stripe';
+import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
 
-  <div class="container">
-    <!-- Campo de código secreto -->
-    <div id="access-code">
-      <input type="password" id="code-input" placeholder="Ingresa tu código secreto">
-      <button onclick="validateCode()">Acceder</button>
-    </div>
+const app = express();
+app.use(express.json());
+app.use(cors());
 
-    <!-- Servicios básicos -->
-    <div id="services-basic">
-      <div class="service">
-        <h2>Respuesta Rápida</h2>
-        <p>Duración: 55 segundos</p>
-        <p>Precio: $2</p>
-        <button onclick="purchaseService('Respuesta Rápida', 200)">Comprar</button>
-      </div>
-      <div class="service">
-        <h2>Risoterapia y Bienestar Natural</h2>
-        <p>Duración: 10 minutos</p>
-        <p>Precio: $12</p>
-        <button onclick="purchaseService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
-      </div>
-      <div class="service">
-        <h2>Horóscopo y Consejos</h2>
-        <p>Duración: 1 minuto 30 segundos</p>
-        <p>Precio: $5</p>
-        <button onclick="purchaseService('Horóscopo y Consejos', 500)">Comprar</button>
-      </div>
-    </div>
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-    <!-- Servicios especiales -->
-    <div id="services-special" style="display:none;">
-      <div class="service">
-        <h2>Sesión de Risoterapia</h2>
-        <p>Duración: 20 minutos</p>
-        <p>Precio: $30</p>
-        <button onclick="purchaseService('Sesión de Risoterapia', 3000)">Comprar</button>
-      </div>
-      <div class="service">
-        <h2>Sesión Personalizada</h2>
-        <p>Duración: 30 minutos</p>
-        <p>Precio: $80</p>
-        <button onclick="purchaseService('Sesión Personalizada', 8000)">Comprar</button>
-      </div>
-      <div class="service">
-        <h2>Paquete Corporativo</h2>
-        <p>Duración: 20 a 40 minutos</p>
-        <p>Precio: $750</p>
-        <button onclick="purchaseService('Paquete Corporativo', 75000)">Comprar</button>
-      </div>
-    </div>
-  </div>
+// Endpoint para crear sesión de pago
+app.post('/create-checkout-session', async (req, res) => {
+  try {
+    const { product, amount } = req.body;
 
-  <script>
-    const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
-    const API_URL = "https://asistente-virtual-may-roga.onrender.com";
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: product },
+            unit_amount: parseInt(amount),
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL}?success=true`,
+      cancel_url: `${process.env.FRONTEND_URL}?canceled=true`,
+    });
 
-    async function purchaseService(product, amount) {
-      try {
-        const response = await fetch(`${API_URL}/create-checkout-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product: product,
-            amount: amount,
-            success_url: `${API_URL}/success.html`,
-            cancel_url: `${API_URL}/cancel.html`
-          })
-        });
-        const data = await response.json();
-        if(data.id) {
-          stripe.redirectToCheckout({ sessionId: data.id });
-        } else {
-          alert("Error al crear la sesión de pago.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error de conexión con el servidor.");
-      }
-    }
+    res.json({ id: session.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    async function validateCode() {
-      const code = document.getElementById("code-input").value;
-      if(!code) return alert("Ingresa un código.");
+// Endpoint para validar código secreto
+app.post('/validate-access-code', (req, res) => {
+  const { code } = req.body;
+  if (code === process.env.MAYROGA_ACCESS_CODE) {
+    res.json({ valid: true });
+  } else {
+    res.json({ valid: false });
+  }
+});
 
-      try {
-        const response = await fetch(`${API_URL}/validate-access-code`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: code })
-        });
-        const data = await response.json();
-        if(data.valid) {
-          document.getElementById("services-special").style.display = "block";
-          alert("Acceso al panel de servicios especiales concedido.");
-        } else {
-          alert("Código incorrecto.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error de conexión con el servidor.");
-      }
-    }
-  </script>
-</body>
-</html>
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
