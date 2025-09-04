@@ -46,12 +46,12 @@ if gemini_api_key:
 else:
     print("Error: 'GEMINI_API_KEY' no configurada.", file=sys.stderr)
 
-# --- Cola de mensajes ---
+# --- Cola de chat ---
 chat_queue = queue.Queue()
 responses_cache = {}
-USER_LIMIT = 3  # máximo de solicitudes simultáneas por usuario (puedes ajustar)
+USER_LIMIT = 3  # máximo de solicitudes simultáneas por usuario
 
-# --- Sesión de Stripe ---
+# --- Stripe Checkout ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
@@ -99,7 +99,7 @@ def chat():
         if not message:
             return jsonify({"error": "No se recibió mensaje"}), 400
 
-        # Limitación simple por usuario
+        # Limitar solicitudes por usuario
         user_count = sum(1 for item in list(chat_queue.queue) if item['user_id'] == user_id)
         if user_count >= USER_LIMIT:
             return jsonify({"error": "Has alcanzado el límite de solicitudes simultáneas. Intenta más tarde."}), 429
@@ -107,7 +107,7 @@ def chat():
         # Añadir a cola
         response_event = threading.Event()
         chat_queue.put({'user_id': user_id, 'message': message, 'event': response_event})
-        response_event.wait(timeout=15)  # espera máxima 15 seg
+        response_event.wait(timeout=15)
         reply_text = responses_cache.pop(user_id, "Lo siento, hubo un error procesando tu solicitud.")
         return jsonify({"reply": reply_text})
 
@@ -115,7 +115,7 @@ def chat():
         print(f"Error chat endpoint: {e}", file=sys.stderr)
         return jsonify({"error": "Error interno del servidor"}), 500
 
-# --- Hilo que procesa la cola ---
+# --- Procesar cola en hilo ---
 def process_queue():
     while True:
         try:
@@ -123,7 +123,6 @@ def process_queue():
             user_id = item['user_id']
             message = item['message']
 
-            # Prompt seguro
             system_prompt = """
 You are May Roga Assistant, professional wellness guide using TVid techniques.
 Listen without judgment, validate feelings, reflect user words, suggest small actions, offer hope.
@@ -158,11 +157,10 @@ Detect language automatically.
             responses_cache[user_id] = reply_text
             item['event'].set()
             chat_queue.task_done()
-            time.sleep(0.5)  # evita saturación de la IA
+            time.sleep(0.5)
         except Exception as e:
             print(f"Error procesando cola: {e}", file=sys.stderr)
 
-# --- Iniciar hilo de la cola ---
 threading.Thread(target=process_queue, daemon=True).start()
 
 # --- Ejecutar app ---
