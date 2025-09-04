@@ -1,12 +1,12 @@
 import os
-import firebase_admin
-from firebase_admin import credentials, firestore
-import google.generativeai as genai
-from flask import Flask, jsonify, request
-import stripe
 import json
 import sys
 from datetime import datetime
+from flask import Flask, jsonify, request, render_template
+import stripe
+import firebase_admin
+from firebase_admin import credentials, firestore
+import google.generativeai as genai
 
 # --- Inicialización de Flask ---
 app = Flask(__name__)
@@ -17,7 +17,7 @@ if not stripe.api_key:
     print("Error: La variable de entorno 'STRIPE_SECRET_KEY' no está configurada.", file=sys.stderr)
     sys.exit(1)
 
-# Productos y precios (coinciden con frontend)
+# Productos y precios
 productos = {
     'rapida': {'price_id': 'price_1OaX6qBOA5mT4t0PLXz7r7k5', 'name': 'Agente de Respuesta Rápida'},
     'risoterapia': {'price_id': 'price_1OaX7LBOA5mT4t0P4Lz7d7e8', 'name': 'Risoterapia y Bienestar Natural'},
@@ -45,15 +45,10 @@ if gemini_api_key:
 else:
     print("Error: La variable de entorno 'GEMINI_API_KEY' no está configurada.", file=sys.stderr)
 
-# --- Endpoints ---
-
+# --- Rutas ---
 @app.route('/')
-def home():
-    return jsonify({
-        "status": "éxito",
-        "mensaje": "La aplicación está funcionando correctamente. Las APIs de Firebase, Gemini y Stripe están configuradas."
-    })
-
+def index():
+    return render_template("index.html")
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
@@ -64,36 +59,37 @@ def create_checkout_session():
             return jsonify({"error": "Servicio no válido"}), 400
 
         product = productos[service_id]
-        success_url = request.url_root + '?payment_status=success'
-        cancel_url = request.url_root + '?payment_status=cancel'
+        success_url = request.url_root + f'success?service={service_id}'
+        cancel_url = request.url_root + 'cancel'
 
-        checkout_session = stripe.checkout.Session.create(
+        session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{'price': product['price_id'], 'quantity': 1}],
             mode='payment',
             success_url=success_url,
             cancel_url=cancel_url,
         )
-        return jsonify({'id': checkout_session.id})
-    except stripe.error.StripeError as e:
-        print(f"Error de Stripe: {e}", file=sys.stderr)
-        return jsonify(error=str(e)), 403
+        return jsonify({'id': session.id})
     except Exception as e:
-        print(f"Error inesperado: {e}", file=sys.stderr)
-        return jsonify(error="Error inesperado en el servidor"), 500
+        print(f"Error en create-checkout-session: {e}", file=sys.stderr)
+        return jsonify({"error": "Error interno del servidor"}), 500
 
+@app.route('/success')
+def payment_success():
+    return render_template("success.html")
+
+@app.route('/cancel')
+def payment_cancel():
+    return render_template("cancel.html")
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
         data = request.get_json()
         user_message = data.get('message', '').strip()
-        user_language = data.get('language', 'auto')
-
         if not user_message:
             return jsonify({"error": "No se recibió mensaje"}), 400
 
-        # Prompt de May Roga Assistant
         system_prompt = """
 You are May Roga Assistant, a professional wellness guide specialized in Laughter Therapy and Natural Wellness.
 Follow the TVid techniques: Bien, Mal, Padre, Madre, Niño, Beso, Guerra.
@@ -110,28 +106,34 @@ For each response:
 4) provide one hopeful takeaway
         """
 
-        # --- Llamada a Gemini ---
         if gemini_api_key:
             response = genai.chat.create(
                 model="chat-bison-001",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.7,
+                messages=[{"role": "system", "content": system_prompt},
+                          {"role": "user", "content": user_message}],
+                temperature=0.7
             )
             reply_text = response.last.response
         else:
             reply_text = "Error: Gemini API key no configurada."
 
-        return jsonify({"reply": reply_text})
+        # Guardar historial en Firebase
+        if firebase_config_json:
+            try:
+                db.collection("chat_history").add({
+                    "message": user_message,
+                    "reply": reply_text,
+                    "timestamp": datetime.utcnow()
+                })
+            except Exception as e:
+                print(f"Error guardando en Firebase: {e}", file=sys.stderr)
 
+        return jsonify({"reply": reply_text})
     except Exception as e:
         print(f"Error en /api/chat: {e}", file=sys.stderr)
         return jsonify({"error": "Error interno del servidor"}), 500
 
-
-# --- Arranque de la app ---
+# --- Ejecutar la app ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
