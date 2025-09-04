@@ -67,3 +67,10 @@ document.getElementById("btn-send").addEventListener("click", async () => {
     } catch (err) {
         chatBox.innerHTML += `<div class="bot-msg error">Error al conectar con el servidor.</div>`;
         console.error
+// Escuchar respuesta
+document.getElementById("btn-tts").addEventListener("click", () => {
+    if (!lastReply) return;
+    const utterance = new SpeechSynthesisUtterance(lastReply);
+    utterance.lang = 'es-ES'; // Ajusta según idioma detectado si quieres
+    speechSynthesis.speak(utterance);
+});
