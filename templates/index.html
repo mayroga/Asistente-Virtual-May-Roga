@@ -1,119 +1,136 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>May Roga · Servicios</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://js.stripe.com/v3/"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Virtual May Roga 🌿</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: 'Helvetica', sans-serif; background-color: #f3f7f2; color: #1a1a1a; }
+        .container { max-width: 800px; margin: auto; padding: 20px; }
+        .service-card { background: #ffffff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+        .service-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; color: #2c7a7b; }
+        .service-desc { margin-bottom: 10px; }
+        .btn { background-color: #2c7a7b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background-color: #285e61; }
+        #specialServices { display: none; }
+        .code-input { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
+        .flex-center { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-6 text-center text-teal-700">Servicios May Roga 🌿</h1>
 
-  <div class="max-w-4xl mx-auto p-4">
-    <h1 class="text-3xl font-bold text-center mb-6">Servicios May Roga</h1>
-
-    <div id="basic-services" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Respuesta Rápida" data-price="2">
-        <h2 class="text-xl font-semibold">Respuesta Rápida</h2>
-        <p>Duración: 55 segundos</p>
-        <p>Precio: $2</p>
-      </div>
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Risoterapia y Bienestar Natural" data-price="12" data-special="true">
-        <h2 class="text-xl font-semibold">Risoterapia y Bienestar Natural</h2>
-        <p>Duración: 10 minutos</p>
-        <p>Precio: $12</p>
-      </div>
-      <div class="p-4 bg-white rounded shadow cursor-pointer service-card" data-service="Horóscopo y Consejos" data-price="5">
-        <h2 class="text-xl font-semibold">Horóscopo y Consejos</h2>
-        <p>Duración: 1 minuto 30 segundos</p>
-        <p>Precio: $5</p>
-      </div>
-    </div>
-
-    <div id="special-services-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-      <div class="bg-white p-6 rounded shadow max-w-lg w-full relative">
-        <button id="close-modal" class="absolute top-2 right-2 text-3xl text-gray-600 hover:text-gray-900 leading-none">&times;</button>
-        <h2 class="text-2xl font-bold mb-4">Servicios Especiales</h2>
-        <div id="special-services" class="grid grid-cols-1 gap-4">
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Risoterapia 20min" data-price="20">
-            <h3 class="font-semibold">Sesión Risoterapia 20min</h3>
-            <p>Precio: $20.00</p>
-          </div>
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Sesión Personalizada 30min" data-price="35">
-            <h3 class="font-semibold">Sesión Personalizada 30min</h3>
-            <p>Precio: $35.00</p>
-          </div>
-          <div class="p-4 bg-gray-100 rounded cursor-pointer special-service-card" data-service="Paquete Corporativo 20-40min" data-price="50">
-            <h3 class="font-semibold">Paquete Corporativo 20-40min</h3>
-            <p>Precio: $50.00</p>
-          </div>
+        <!-- Servicios Básicos -->
+        <div class="service-card">
+            <div class="service-title">Respuesta Rápida</div>
+            <div class="service-desc">Duración: 55 segundos</div>
+            <div class="service-desc">Precio: $2</div>
+            <button class="btn" onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
         </div>
-      </div>
+
+        <div class="service-card">
+            <div class="service-title">Risoterapia y Bienestar Natural</div>
+            <div class="service-desc">Duración: 10 minutos</div>
+            <div class="service-desc">Precio: $12</div>
+            <button class="btn" onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
+        </div>
+
+        <div class="service-card">
+            <div class="service-title">Horóscopo y Consejos</div>
+            <div class="service-desc">Duración: 1 minuto 30 segundos</div>
+            <div class="service-desc">Precio: $5</div>
+            <button class="btn" onclick="buyService('Horóscopo y Consejos', 500)">Comprar</button>
+        </div>
+
+        <!-- Código secreto para acceder a servicios especiales -->
+        <div class="flex-center">
+            <input id="accessCode" class="code-input" type="password" placeholder="Ingresa tu código secreto">
+            <button class="btn" onclick="checkCode()">Acceder</button>
+        </div>
+
+        <!-- Servicios Especiales -->
+        <div id="specialServices">
+            <h2 class="text-2xl font-bold mb-4 text-teal-700">Servicios Especiales</h2>
+
+            <div class="service-card">
+                <div class="service-title">Sesión de Risoterapia</div>
+                <div class="service-desc">Duración: 20 minutos</div>
+                <div class="service-desc">Precio: $30</div>
+                <div class="service-desc">Descripción: Una sesión grupal o individual para liberar el estrés y mejorar el estado de ánimo.</div>
+                <button class="btn" onclick="buyService('Sesión de Risoterapia', 3000)">Comprar</button>
+            </div>
+
+            <div class="service-card">
+                <div class="service-title">Sesión Personalizada</div>
+                <div class="service-desc">Duración: 30 minutos</div>
+                <div class="service-desc">Precio: $80</div>
+                <div class="service-desc">Descripción: Servicio exclusivo adaptado a las necesidades del cliente.</div>
+                <button class="btn" onclick="buyService('Sesión Personalizada', 8000)">Comprar</button>
+            </div>
+
+            <div class="service-card">
+                <div class="service-title">Paquete Corporativo</div>
+                <div class="service-desc">Duración: Sesiones de 20 a 40 minutos</div>
+                <div class="service-desc">Precio: $750</div>
+                <div class="service-desc">Descripción: Dos semanas de sesiones de risoterapia para equipos de trabajo.</div>
+                <button class="btn" onclick="buyService('Paquete Corporativo', 75000)">Comprar</button>
+            </div>
+        </div>
     </div>
 
-    <div class="mt-6">
-      <input type="password" id="access-code" placeholder="Ingresa tu código secreto" class="p-2 border rounded w-full">
-      <button id="access-btn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Acceder</button>
-      <p id="message" class="text-center mt-2"></p>
-    </div>
-  </div>
+    <script>
+        const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
+        const RENDER_URL = "https://asistente-virtual-may-roga.onrender.com";
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const stripe = Stripe("{{ stripe_key }}");
-      const ACCESS_CODE = "{{ access_code }}";
-
-      const basicServices = document.querySelectorAll('.service-card');
-      const specialServices = document.querySelectorAll('.special-service-card');
-      const modal = document.getElementById('special-services-modal');
-      const closeModalBtn = document.getElementById('close-modal');
-      const accessCodeInput = document.getElementById('access-code');
-      const accessBtn = document.getElementById('access-btn');
-      const messageEl = document.getElementById('message');
-
-      const showModal = () => modal.classList.remove('hidden');
-      const hideModal = () => modal.classList.add('hidden');
-
-      const createCheckout = async (serviceName, price) => {
-        const res = await fetch('/create-checkout-session', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({service: serviceName, price: price})
-        });
-        const data = await res.json();
-        if (data.url) window.location = data.url;
-        else messageEl.textContent = 'Error al crear sesión de pago.';
-      };
-
-      basicServices.forEach(card => {
-        card.addEventListener('click', () => {
-          const serviceName = card.getAttribute('data-service');
-          const price = parseFloat(card.getAttribute('data-price'));
-          if (card.hasAttribute('data-special')) showModal();
-          else createCheckout(serviceName, price);
-        });
-      });
-
-      specialServices.forEach(card => {
-        card.addEventListener('click', () => {
-          const serviceName = card.getAttribute('data-service');
-          const price = parseFloat(card.getAttribute('data-price'));
-          createCheckout(serviceName, price);
-          hideModal();
-        });
-      });
-
-      closeModalBtn.addEventListener('click', hideModal);
-
-      accessBtn.addEventListener('click', () => {
-        const code = accessCodeInput.value.trim();
-        if (code === ACCESS_CODE) showModal();
-        else {
-          messageEl.textContent = 'Código incorrecto. Intenta de nuevo.';
-          messageEl.className = 'text-center mt-2 text-red-600';
+        function checkCode() {
+            const code = document.getElementById('accessCode').value;
+            fetch(`${RENDER_URL}/validate-access-code`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.valid){
+                    document.getElementById('specialServices').style.display = 'block';
+                    alert("Código correcto. Acceso a servicios especiales habilitado.");
+                } else {
+                    alert("Código incorrecto.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error validando código.");
+            });
         }
-      });
-    });
-  </script>
+
+        function buyService(productName, amount) {
+            fetch(`${RENDER_URL}/create-checkout-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product: productName,
+                    amount: amount,
+                    success_url: `${window.location.href}success.html`,
+                    cancel_url: `${window.location.href}cancel.html`
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.id){
+                    stripe.redirectToCheckout({ sessionId: data.id });
+                } else {
+                    alert("Error creando sesión de pago.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error al procesar pago.");
+            });
+        }
+    </script>
 </body>
 </html>
