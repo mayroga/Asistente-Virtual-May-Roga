@@ -1,54 +1,121 @@
-Asistente de Bienestar Virtual con May Roga
-Este es un asistente de bienestar virtual profesional y escalable, diseñado para ser desplegado en la nube para múltiples usuarios.
+Asistente Virtual May Roga 🌿
 
-Características Principales
-Pagos Seguros: Integración completa con Stripe para procesar pagos de forma segura, redirigiendo al usuario para una experiencia de checkout confiable.
+Este proyecto es un asistente virtual de risoterapia y bienestar natural, que ofrece:
 
-Inteligencia Artificial: Utiliza la API de Gemini (y se puede expandir con otras como OpenAI) para generar respuestas de alta calidad, personalizadas para cada usuario.
+Respuestas rápidas de vida (55 segundos, $2)
 
-Servicios Exclusivos: Ofrece sesiones de risoterapia, horóscopo motivacional y un agente de respuesta rápida, basados en las exclusivas Técnicas de Vida (TVid).
+Risoterapia y bienestar natural (10 minutos, $12)
 
-Acceso Flexible: Permite el acceso mediante un pago o un código de acceso especial, gestionando el tiempo de sesión de cada cliente.
+Horóscopo y consejos (1 minuto 30 segundos, $5)
 
-Despliegue Profesional: Configurado para ser fácilmente desplegable en plataformas como Render usando el servidor de aplicaciones Gunicorn.
+El asistente utiliza IA profesional (Gemini/OpenAI), técnicas de vida TVid, escucha sin juzgar, y ofrece respuestas claras, respetuosas y motivadoras. Permite pagos Stripe, guarda historial en Firebase, y tiene voz TTS opcional para escuchar respuestas.
 
-Estructura del Proyecto
-main.py: El servidor backend de Python que maneja las rutas de la API de Stripe, el chat en tiempo real y la lógica de negocio.
+🚀 Características
 
-requirements.txt: Contiene todas las dependencias de Python necesarias para el proyecto.
+Multiusuario con cola de solicitudes y límite de solicitudes simultáneas.
 
-templates/: Carpeta que almacena los archivos HTML, incluyendo index.html (el frontend principal), success.html y cancel.html para el flujo de pagos.
+Detecta automáticamente el idioma del usuario.
 
-static/: Carpeta para los archivos estáticos como CSS y JavaScript.
+Guarda historial de mensajes y respuestas en Firebase.
 
-Despliegue en Render
-Sigue estos pasos para desplegar tu aplicación en la nube:
+Pagos integrados con Stripe (checkout por producto/servicio).
 
-Clonar el Repositorio:
-Asegúrate de que todo tu código (incluyendo main.py, requirements.txt, templates/ y static/) esté subido a un repositorio en GitHub o GitLab.
+Chat profesional siguiendo las técnicas TVid y la dualidad positivo/negativo.
 
-Configurar las Variables de Entorno en Render:
-En tu cuenta de Render, crea un nuevo "Web Service" y conéctalo a tu repositorio. Luego, ve a la sección de "Environment" (Entorno) y añade las siguientes variables:
+Text-to-speech (escuchar respuestas con un botón).
 
-STRIPE_SECRET_KEY: Tu clave secreta de Stripe (sk_test_...).
+Compatible con Render y otros hosting que soporten Flask.
 
-URL_SITE: La URL de tu servicio web en Render (por ejemplo, https://nombre-de-tu-app.onrender.com).
+🛠 Requisitos
 
-Configurar los Comandos de Render:
-Render necesita saber cómo construir y ejecutar tu aplicación. Configura los siguientes comandos:
+Python 3.11+
 
-Build Command (Comando de Construcción): pip install -r requirements.txt
+Claves de entorno:
 
-Start Command (Comando de Inicio): gunicorn main:app
+STRIPE_SECRET_KEY=<tu_stripe_secret>
+STRIPE_PUBLISHABLE_KEY=<tu_stripe_publishable>
+GEMINI_API_KEY=<tu_api_gemini>
+__firebase_config__=<tu_json_firebase>
 
-Actualizar el Código Frontend (index.html):
-Antes de desplegar, debes editar el archivo index.html para que se comunique con tu backend en la nube. Reemplaza los placeholders con tu URL de Render y tu clave pública de Stripe.
 
-// Reemplaza con tu clave pública de Stripe
-const stripe = Stripe('pk_test_tu_clave_publica_aqui'); 
+Librerías (ver requirements.txt):
 
-// Reemplaza con la URL de tu servicio web en Render
-const BACKEND_URL = "[https://tu-url-de-render.onrender.com](https://tu-url-de-render.onrender.com)";
+Flask==3.0.3
+Flask-CORS==4.0.1
+gunicorn==22.0.0
+stripe==11.4.0
+firebase-admin==6.5.0
+google-generativeai==0.7.1
+google-cloud-firestore==2.16.0
+httpx==0.28.1
 
-Créditos
-Maykel Rodríguez García: Creador de las exclusivas Técnicas de Vida (TVid) en las que se basan los servicios de este asistente.
+
+Instalar dependencias:
+
+pip install -r requirements.txt
+
+🖥 Estructura de archivos
+/main.py          -> Servidor Flask principal
+/templates/
+    index.html       -> Página principal y chat
+    success.html     -> Página de pago exitoso
+    cancel.html      -> Página de pago cancelado
+/static/
+    css/style.css
+    js/script.js
+requirements.txt
+README.md
+
+⚡ Despliegue en Render
+
+Subir repo a GitHub.
+
+Crear un Web Service en Render con Python 3.11+.
+
+Configurar variables de entorno mencionadas arriba.
+
+Configurar Build Command:
+
+pip install -r requirements.txt
+
+
+Configurar Start Command:
+
+gunicorn main:app --bind 0.0.0.0:$PORT
+
+
+Deploy. El servicio estará disponible 24/7 en la URL de Render.
+
+💬 Uso
+
+Visitar / para ver la página principal.
+
+Seleccionar un servicio y pagar con Stripe.
+
+Enviar mensajes en el chat.
+
+Presionar “Escuchar respuesta” para TTS.
+
+⚠️ Notas importantes
+
+Limite de solicitudes simultáneas por usuario: 3
+
+Cola automática para multiusuario
+
+Firebase registra historial de chat
+
+Respuestas de IA de 30 a 90 segundos, respetando Tvid
+
+Texto y voz en español (detecta idioma automáticamente)
+
+✅ Listo para producción
+
+Con este README y los archivos proporcionados, tu Asistente Virtual May Roga está listo para:
+
+Operar 24/7
+
+Atender muchos usuarios simultáneamente
+
+Cobrar automáticamente por servicios
+
+Mantener profesionalismo y coherencia con tus técnicas TVid
