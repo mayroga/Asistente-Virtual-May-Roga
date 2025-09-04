@@ -1,94 +1,62 @@
 import os
-import sys
-import json
+from flask import Flask, render_template, request, jsonify
 import stripe
-import firebase_admin
-from firebase_admin import credentials, firestore
-import google.generativeai as genai
-from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
-# --- Stripe ---
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-if not stripe.api_key:
-    print("Error: La variable de entorno 'STRIPE_SECRET_KEY' no está configurada.", file=sys.stderr)
-    sys.exit(1)
+# Claves de Stripe desde variables de entorno
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 
-productos = {
-    'rapida': {
-        'price_id': 'price_1OaX6qBOA5mT4t0PLXz7r7k5',
-        'name': 'Agente de Respuesta Rápida'
-    },
-    'risoterapia': {
-        'price_id': 'price_1OaX7LBOA5mT4t0P4Lz7d7e8',
-        'name': 'Risoterapia y Bienestar Natural'
-    },
-    'horoscopo': {
-        'price_id': 'price_1OaX8lBOA5mT4t0PHaVpQW8d',
-        'name': 'Horóscopo'
-    }
-}
+# Código secreto para acceso libre
+ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 
-# --- Firebase ---
-firebase_config_json = os.environ.get('__firebase_config__')
-if firebase_config_json:
-    try:
-        cred = credentials.Certificate(json.loads(firebase_config_json))
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        print("Firebase inicializado correctamente.")
-    except Exception as e:
-        print(f"Error al inicializar Firebase: {e}", file=sys.stderr)
-else:
-    print("Error: La variable de entorno '__firebase_config__' no está configurada.", file=sys.stderr)
+# Lista de servicios (puedes agregar o modificar)
+SERVICES = [
+    {"id": 1, "name": "Sesión de risoterapia 30 min", "price": 20},
+    {"id": 2, "name": "Sesión de bienestar 45 min", "price": 30},
+    {"id": 3, "name": "Paquete empresarial", "price": 50},
+]
 
-# --- Gemini ---
-gemini_api_key = os.environ.get('GEMINI_API_KEY')
-if gemini_api_key:
-    genai.configure(api_key=gemini_api_key)
-    print("Gemini configurado correctamente.")
-else:
-    print("Error: La variable de entorno 'GEMINI_API_KEY' no está configurada.", file=sys.stderr)
-
-# --- Rutas ---
-@app.route('/')
+@app.route("/")
 def index():
-    stripe_key = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
-    return render_template("index.html", stripe_key=stripe_key)
+    return render_template(
+        "index.html",
+        stripe_key=STRIPE_PUBLISHABLE_KEY,
+        services=SERVICES
+    )
 
-@app.route('/create-checkout-session', methods=['POST'])
+@app.route("/validate-code", methods=["POST"])
+def validate_code():
+    data = request.get_json()
+    code = data.get("code", "")
+    if code == ACCESS_CODE:
+        return jsonify({"success": True})
+    return jsonify({"success": False})
+
+@app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    try:
-        data = request.get_json()
-        service_id = data.get('serviceId')
-        
-        if service_id not in productos:
-            return jsonify({"error": "Servicio no válido"}), 400
+    data = request.get_json()
+    service_id = int(data.get("service_id"))
+    service = next((s for s in SERVICES if s["id"] == service_id), None)
+    if not service:
+        return jsonify({"error": "Servicio no encontrado"}), 400
 
-        product = productos[service_id]
-        success_url = request.url_root + '?payment_status=success'
-        cancel_url = request.url_root + '?payment_status=cancel'
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {'name': service["name"]},
+                'unit_amount': int(service["price"] * 100),  # en centavos
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=request.host_url + "?success=true",
+        cancel_url=request.host_url + "?canceled=true",
+    )
+    return jsonify({"id": session.id})
 
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price': product['price_id'],
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=success_url,
-            cancel_url=cancel_url,
-        )
-
-        return jsonify({'id': checkout_session.id})
-
-    except stripe.error.StripeError as e:
-        print(f"Error de Stripe: {e}", file=sys.stderr)
-        return jsonify(error=str(e)), 403
-    except Exception as e:
-        print(f"Error inesperado: {e}", file=sys.stderr)
-        return jsonify(error="Error inesperado en el servidor"), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+if __name__ == "__main__":
+    app.run(debug=True)
