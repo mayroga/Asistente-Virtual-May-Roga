@@ -2,29 +2,27 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-import stripe, asyncio, os, time
-
-# --- Configuración Stripe ---
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu llave secreta
-STRIPE_PUBLISHABLE_KEY = "pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz"
+import stripe, asyncio, os
 
 # --- FastAPI app ---
 app = FastAPI(title="Asistente May Roga 24/7")
 templates = Jinja2Templates(directory="templates")
 
-# --- CORS ---
+# --- CORS: permitir cualquier origen para que Google Sites pueda acceder ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Código secreto ---
-ADMIN_SECRET = "MI_CODIGO_SECRETO"
+# --- Claves desde variables de entorno ---
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # llave secreta
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")  # clave pública
+ADMIN_SECRET = os.getenv("MAYROGA_ACCESS_CODE")  # tu código secreto para desbloquear todos los servicios
 
-# --- Servicios y duración en minutos ---
+# --- Servicios regulares y duración en minutos ---
 SERVICIOS = {
     "Risoterapia y Bienestar Natural": 10,
     "Horóscopo": 2,
@@ -119,10 +117,12 @@ async def generate_messages(service: str):
 
 @app.get("/assistant-stream")
 async def assistant_stream(request: Request, service: str, secret: str = None):
+    # Permitir acceso completo con código secreto
     if secret and secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Código secreto incorrecto")
     if service not in SERVICIOS:
         raise HTTPException(status_code=400, detail="Servicio no encontrado")
+
     duration_minutes = SERVICIOS[service]
     total_seconds = int(duration_minutes * 60)
 
