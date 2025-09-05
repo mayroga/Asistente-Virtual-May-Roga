@@ -1,72 +1,120 @@
-import os
-import stripe
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_cors import CORS
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+import stripe, time, asyncio, json, os
 
-# Configuración base
-app = Flask(__name__)
-CORS(app)
+# Configuración de Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu llave secreta de Stripe
 
-# Stripe
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")  # en Render lo pones en Variables de Entorno
-DOMAIN = os.environ.get("DOMAIN", "https://asistente-virtual-may-roga.onrender.com")
+app = FastAPI(title="Asistente May Roga 24/7")
 
-# Página principal
-@app.route("/")
-def index():
-    return render_template("index.html")
+# CORS para permitir conexión desde frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Ajustar a tu dominio en producción
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Página de chat
-@app.route("/chat")
-def chat():
-    return render_template("may-roga-chat-assistant.html")
+# Código secreto para administración
+ADMIN_SECRET = "MI_CODIGO_SECRETO"
 
-# Crear sesión de pago
-@app.route("/create-checkout-session", methods=["POST"])
-def create_checkout_session():
+# Servicios y duración en minutos
+SERVICIOS = {
+    "Risoterapia y Bienestar Natural": 10,
+    "Horóscopo": 2,
+    "Respuesta Rápida": 0.9167  # 55 seg en minutos
+}
+
+# --- ENDPOINT: CREAR SESIÓN STRIPE ---
+@app.post("/create-checkout-session")
+async def create_checkout(data: dict):
+    product = data.get("product")
+    amount = data.get("amount")  # en centavos
+
+    if not product or not amount:
+        raise HTTPException(status_code=400, detail="Producto o monto faltante")
+
     try:
-        data = request.json
-        price_id = data.get("priceId")
-
-        checkout_session = stripe.checkout.Session.create(
+        session = stripe.checkout.Session.create(
             payment_method_types=["card"],
-            mode="payment",
             line_items=[{
-                "price": price_id,
-                "quantity": 1
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": product},
+                    "unit_amount": amount,
+                },
+                "quantity": 1,
             }],
-            success_url=f"{DOMAIN}/success",
-            cancel_url=f"{DOMAIN}/cancel",
+            mode="payment",
+            success_url=f"https://asistente-virtual-may-roga.onrender.com/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"https://asistente-virtual-may-roga.onrender.com/cancel",
         )
-        return jsonify({"url": checkout_session.url})
+        return {"id": session.id}
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
-# Rutas de confirmación
-@app.route("/success")
-def success():
-    return render_template("success.html")
+# --- FUNCION SIMULADA DE ASISTENTE 24/7 ---
+async def generate_messages(service: str):
+    # Aquí se conectaría OpenAI/Geminis
+    mensajes = []
+    if service == "Risoterapia y Bienestar Natural":
+        mensajes = [
+            "¡Hola! Bienvenido a tu sesión de Risoterapia y Bienestar Natural 😊",
+            "Vamos a realizar ejercicios TVid para mejorar tu energía y bienestar.",
+            "Recuerda mantener una respiración profunda y relajada.",
+            "Finalizando sesión, ¡gracias por participar!"
+        ]
+    elif service == "Horóscopo":
+        mensajes = [
+            "¡Hola! Revisemos tu horóscopo del día 🌟",
+            "Hoy es un buen día para reflexionar y tomar decisiones importantes.",
+            "Ejercicio TVid: escribe tres cosas positivas que sucedieron hoy.",
+            "Sesión de horóscopo finalizada ✅"
+        ]
+    elif service == "Respuesta Rápida":
+        mensajes = [
+            "¡Hola! Respuesta rápida activada ⚡",
+            "Pregunta sobre salud, educación, ejercicios, risoterapia, horóscopo o consejos.",
+            "Finalizando respuesta rápida, ¡gracias por usar el servicio!"
+        ]
+    return mensajes
 
-@app.route("/cancel")
-def cancel():
-    return render_template("cancel.html")
+# --- ENDPOINT SSE: ASISTENTE STREAM ---
+@app.get("/assistant-stream")
+async def assistant_stream(request: Request, service: str, secret: str = None):
+    if secret and secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Código secreto incorrecto")
+    if service not in SERVICIOS:
+        raise HTTPException(status_code=400, detail="Servicio no encontrado")
 
-@app.route("/failure")
-def failure():
-    return render_template("failure.html")
+    duration_minutes = SERVICIOS[service]
+    total_seconds = int(duration_minutes * 60)
 
-# --- API de Chat (simplificada) ---
-@app.route("/api/chat", methods=["POST"])
-def api_chat():
-    data = request.json
-    message = data.get("message", "")
-    if not message:
-        return jsonify({"error": "Mensaje vacío"}), 400
+    async def event_generator():
+        messages = await generate_messages(service)
+        start_time = time.time()
+        msg_index = 0
 
-    # Aquí podrías conectar con Google Generative AI, pero como demo:
-    reply = f"Entendido: {message}. Estoy aquí para ayudarte con risoterapia y bienestar natural."
-    return jsonify({"reply": reply})
+        while total_seconds > 0:
+            if await request.is_disconnected():
+                break
+            # Enviar mensaje cada cierto tiempo (simulado)
+            if msg_index < len(messages):
+                yield f"data: {messages[msg_index]}\n\n"
+                msg_index += 1
+            await asyncio.sleep(total_seconds / max(len(messages),1))  # repartir mensajes
+            total_seconds -= total_seconds / max(len(messages),1)
+        yield f"data: Sesión de {service} finalizada ✅\n\n"
 
-# Arranque
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+# --- ENDPOINTS SUCCESS / CANCEL (Opcional) ---
+@app.get("/success")
+async def success(session_id: str):
+    return {"message": f"Pago completado! ID de sesión: {session_id}"}
+
+@app.get("/cancel")
+async def cancel():
+    return {"message": "Pago cancelado."}
