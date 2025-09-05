@@ -46,7 +46,7 @@
 </div>
 
 <script>
-const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
+const stripe = Stripe("{{ stripe_key }}");
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
 async function buyService(serviceName, amount, duration){
