@@ -1,1 +1,59 @@
+# --- Ejercicios TDB (Técnica del Bien) ---
+TDB_exercises = [
+    {"title": "Respiración Consciente", "duration": 180, "instructions": [
+        "Siéntate cómodo con la espalda recta.",
+        "Cierra los ojos y respira profundamente 3 veces.",
+        "Inspira contando hasta 4, mantén 2, exhala 6.",
+        "Pausa 1 minuto para que el usuario respire."],
+    },
+    {"title": "Visualización Positiva", "duration": 240, "instructions": [
+        "Imagina un lugar que te haga sentir seguro y feliz.",
+        "Observa colores, sonidos y olores de ese lugar.",
+        "Pausa 2 minutos para la visualización."],
+    },
+    {"title": "Gratitud", "duration": 180, "instructions": [
+        "Piensa en 3 cosas que agradeces hoy.",
+        "Siente la emoción positiva de cada una.",
+        "Pausa 1 minuto para meditar cada agradecimiento."],
+    },
+    {"title": "Movimiento Ligero", "duration": 180, "instructions": [
+        "Levanta los brazos suavemente hacia el cielo y baja lentamente 5 veces.",
+        "Sincroniza el movimiento con la respiración.",
+        "Pausa 30 segundos entre repeticiones."],
+    },
+    {"title": "Mensaje Interno Positivo", "duration": 240, "instructions": [
+        "Repite mentalmente: 'Estoy en paz, soy capaz, merezco bienestar'.",
+        "Siente cada palabra como si fuera real.",
+        "Pausa 1 minuto al final para asimilar el mensaje."],
+    },
+]
+
+# --- Ejercicios TDM (Técnica del Mal) ---
+TDM_exercises = [
+    {"title": "Identificación de Emociones Negativas", "duration": 180, "instructions": [
+        "Piensa en una situación reciente que te haya molestado.",
+        "Identifica la emoción negativa sin juzgarla.",
+        "Pausa 1 minuto para reflexionar sobre ella."],
+    },
+    {"title": "Aceptación del Mal", "duration": 240, "instructions": [
+        "Acepta que el mal forma parte de la vida.",
+        "Visualiza cómo esa situación puede enseñarte algo.",
+        "Pausa 2 minutos para internalizar la lección."],
+    },
+    {"title": "Transformación de la Frustración", "duration": 180, "instructions": [
+        "Respira profundamente y reconoce tu frustración.",
+        "Piensa en una acción que transforme esa energía en algo positivo.",
+        "Pausa 1 minuto para practicar mentalmente la acción."],
+    },
+    {"title": "Liberación Emocional", "duration": 180, "instructions": [
+        "Exhala lentamente todo resentimiento y tensión.",
+        "Siente cómo tu cuerpo se libera de esa carga.",
+        "Pausa 30 segundos entre exhalaciones."],
+    },
+    {"title": "Mensaje Interno Realista", "duration": 240, "instructions": [
+        "Repite mentalmente: 'Acepto la vida tal como es, puedo aprender de cada situación'.",
+        "Siente la fuerza que esto te da.",
+        "Pausa 1 minuto al final para consolidar la aceptación."],
+    },
+]
 
