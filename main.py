@@ -2,50 +2,55 @@ import os
 import json
 import stripe
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
-import httpx
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-# --- Variables de entorno ---
-MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")
+# --- Variables de entorno de Render ---
+RENDER_URL = "https://asistente-virtual-may-roga.onrender.com"
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")  # Tu código secreto desde Render
 
+# --- Inicialización Stripe ---
 stripe.api_key = STRIPE_SECRET_KEY
 
+# --- FastAPI ---
 app = FastAPI()
 
-# --- CORS abierto para Google Sites ---
+# --- CORS para Google Sites y cualquier web ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # Permitir acceso desde cualquier web
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Usuarios (para ejemplos de seguimiento) ---
+# --- Static files y templates ---
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# --- Usuarios (para servicios bloqueados) ---
 USERS_FILE = "users.json"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w") as f:
         json.dump({}, f)
 
-# --- Endpoint principal ---
+# --- Ruta principal ---
 @app.get("/")
-async def home():
-    return {"status": "ok", "message": "Asistente May Roga activo"}
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "stripe_key": STRIPE_PUBLIC_KEY})
 
 # --- Crear sesión de pago Stripe ---
 @app.post("/create-checkout-session")
-async def create_checkout_session(req: Request):
-    data = await req.json()
+async def create_checkout_session(data: dict):
     product = data.get("product")
     amount = data.get("amount")
     if not product or not amount:
-        raise HTTPException(status_code=400, detail="Producto o monto inválido")
+        raise HTTPException(status_code=400, detail="Producto o monto no definido")
+
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -53,63 +58,25 @@ async def create_checkout_session(req: Request):
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": product},
-                    "unit_amount": int(amount),
+                    "unit_amount": amount,
                 },
                 "quantity": 1,
             }],
             mode="payment",
-            success_url=f"{req.headers.get('origin')}/success",
-            cancel_url=f"{req.headers.get('origin')}/cancel",
+            success_url=f"{RENDER_URL}/success",
+            cancel_url=f"{RENDER_URL}/cancel",
         )
         return JSONResponse({"id": session.id})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Validación de código secreto ---
-def validate_secret(code: str):
-    return code == MAYROGA_ACCESS_CODE
-
-# --- Generador de eventos SSE ---
-async def event_generator(service: str, secret: str):
-    total_seconds = 10  # inicializado correctamente
-    if secret == MAYROGA_ACCESS_CODE:
-        access = "granted"
-    else:
-        access = "denied"
-        yield json.dumps({"access": access}).encode()
-        return
-
-    yield json.dumps({"access": access, "service": service}).encode()
-
-    # Simulación de envío de mensajes (voz o texto)
-    messages = [f"Iniciando servicio: {service}", "Ejercicio 1", "Ejercicio 2", "Ejercicio 3"]
-    for msg in messages:
-        await asyncio.sleep(2)
-        yield json.dumps({"message": msg}).encode()
-
-# --- Endpoint SSE ---
+# --- Acceso a servicios con código secreto ---
 @app.get("/assistant-stream")
 async def assistant_stream(service: str, secret: str):
-    async def streamer():
-        async for event in event_generator(service, secret):
-            yield b"data: " + event + b"\n\n"
-    return StreamingResponse(streamer(), media_type="text/event-stream")
+    if secret != ACCESS_CODE:
+        return JSONResponse({"access": "denied"}, status_code=403)
 
-# --- Claves para frontend ---
-@app.get("/config")
-async def get_config():
-    return {"stripe_key": STRIPE_PUBLISHABLE_KEY}
+    # Todos los servicios desbloqueados si el código es correcto
+    return JSONResponse({"access": "granted", "service": service})
 
-# --- Run OpenAI o Gemini (ejemplo) ---
-async def call_openai(prompt: str):
-    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-    async with httpx.AsyncClient() as client:
-        response = await client.post("https://api.openai.com/v1/chat/completions", 
-                                     headers=headers, json={"model":"gpt-4","messages":[{"role":"user","content":prompt}]})
-        return response.json()
-
-async def call_gemini(prompt: str):
-    headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"}
-    async with httpx.AsyncClient() as client:
-        response = await client.post("https://gemini.api.ai/some_endpoint", headers=headers, json={"prompt": prompt})
-        return response.json()
+# --- Mensajes de prueba eliminados, listo para producción ---
