@@ -16,6 +16,7 @@
     button:hover { background:#43a047; }
     #assistant-output { border:1px solid #ddd; border-radius:8px; padding:10px; margin-top:20px; min-height:150px; max-height:300px; overflow-y:auto; background:#fafafa; }
     #timer { font-weight:bold; color:#f44336; margin-top:10px; }
+    button:disabled { background:#ccc; cursor:default; }
   </style>
 </head>
 <body>
@@ -32,7 +33,7 @@
   </div>
 
   <div class="service">
-    <h2>Horóscopo y Consejos de Vida</h2>
+    <h2>Horóscopo</h2>
     <p>Duración: 2 minutos</p>
     <p>Precio: $6</p>
     <button onclick="buyService('horoscopo')">Comprar</button>
@@ -54,18 +55,26 @@
 const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
-// Temporizador
 let timerInterval;
+let sessionActive = false;
+
+// Temporizador
 function startTimer(minutes) {
   clearInterval(timerInterval);
-  let time = minutes * 60;
+  let time = Math.ceil(minutes * 60);
   const timerDiv = document.getElementById("timer");
+  sessionActive = true;
 
   timerInterval = setInterval(() => {
     const m = Math.floor(time/60);
     const s = time % 60;
     timerDiv.textContent = `Tiempo restante: ${m}:${s<10?'0':''}${s}`;
-    if(time <= 0) clearInterval(timerInterval);
+    if(time <= 0){
+      clearInterval(timerInterval);
+      appendMessage("⏰ Sesión finalizada.");
+      sessionActive = false;
+      enableButtons();
+    }
     time--;
   },1000);
 }
@@ -79,20 +88,48 @@ function appendMessage(msg) {
   div.scrollTop = div.scrollHeight;
 }
 
+// Bloquear botones mientras dure la sesión
+function disableButtons(){
+  document.querySelectorAll(".service button").forEach(btn => btn.disabled = true);
+}
+function enableButtons(){
+  document.querySelectorAll(".service button").forEach(btn => btn.disabled = false);
+}
+
 // Comprar servicio
 async function buyService(serviceType){
-  let amount = 0;
-  switch(serviceType){
-    case 'risoterapia': amount = 1200; startTimer(10); break;
-    case 'horoscopo': amount = 600; startTimer(2); break;
-    case 'respuesta_rapida': amount = 200; startTimer(0.916); break; // 55s
+  if(sessionActive){
+    alert("⏳ Ya hay una sesión activa. Espera a que termine.");
+    return;
   }
+
+  let amount = 0;
+  let productName = "";
+  switch(serviceType){
+    case 'risoterapia':
+      amount = 1200;
+      startTimer(10);
+      productName = "Risoterapia y Bienestar Natural";
+      break;
+    case 'horoscopo':
+      amount = 600;
+      startTimer(2);
+      productName = "Horóscopo";
+      break;
+    case 'respuesta_rapida':
+      amount = 200;
+      startTimer(0.9167);
+      productName = "Respuesta Rápida";
+      break;
+  }
+
+  disableButtons();
 
   try{
     const res = await fetch(`${backendURL}/create-checkout-session`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({product:serviceType, amount})
+      body: JSON.stringify({product:productName, amount})
     });
     const data = await res.json();
     if(data.id){
@@ -100,18 +137,20 @@ async function buyService(serviceType){
       if(error) alert(error.message);
     }else{
       alert("Error creando sesión de pago");
+      enableButtons();
     }
   }catch(e){
     alert("Error conectando al servidor");
+    enableButtons();
   }
 }
 
-// SSE para recibir mensajes del asistente
+// Conectar SSE con el asistente
 function connectAssistant(serviceType){
   const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${serviceType}`);
   evtSource.onmessage = function(event){
     appendMessage(event.data);
-  }
+  };
   evtSource.onerror = function(){ evtSource.close(); }
 }
 </script>
