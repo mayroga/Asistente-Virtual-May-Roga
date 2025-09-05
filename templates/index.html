@@ -4,65 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asistente May Roga</title>
+<script src="https://js.stripe.com/v3/"></script>
 <style>
-  body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:40px; }
-  .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:500px; }
-  h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
-  .service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-  .service h2 { margin-top:0; color:#333; }
-  .service p { margin:5px 0; }
-  button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
-  button:hover { background:#43a047; }
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:40px; }
+.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:500px; }
+h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
+.service h2 { margin-top:0; color:#333; }
+.service p { margin:5px 0; }
+button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button:hover { background:#43a047; }
 </style>
 </head>
 <body>
+
 <div class="container">
-  <h1>Asistente May Roga</h1>
+<h1>Asistente May Roga</h1>
 
-  <!-- Servicios -->
-  <div class="service">
-    <h2>Risoterapia y Bienestar Natural</h2>
-    <p>Duración: 10 minutos</p>
-    <p>Precio: $12</p>
-    <button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
-  </div>
-
-  <div class="service">
-    <h2>Horóscopo y Consejos de Vida</h2>
-    <p>Duración: 2 minutos</p>
-    <p>Precio: $6</p>
-    <button onclick="buyService('Horóscopo', 600)">Comprar</button>
-  </div>
-
-  <div class="service">
-    <h2>Respuesta Rápida</h2>
-    <p>Duración: 55 segundos</p>
-    <p>Precio: $2</p>
-    <button onclick="buyService('Respuesta Rápida', 92)">Comprar</button>
-  </div>
+<div class="service">
+<h2>Risoterapia y Bienestar Natural</h2>
+<p>Duración: 10 minutos</p>
+<p>Precio: $12</p>
+<button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
 </div>
 
-<script src="https://js.stripe.com/v3/"></script>
+<div class="service">
+<h2>Horóscopo y Consejos de Vida</h2>
+<p>Duración: 2 minutos</p>
+<p>Precio: $6</p>
+<button onclick="buyService('Horóscopo', 600)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Respuesta Rápida</h2>
+<p>Duración: 55 segundos</p>
+<p>Precio: $2</p>
+<button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
+</div>
+
+</div>
+
 <script>
-const stripe = Stripe("{{ stripe_key }}");  // Clave pública de Stripe desde FastAPI
+const stripe = Stripe("{{ stripe_key }}");
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
 async function buyService(product, amount){
-  try {
-    const res = await fetch("/create-checkout-session", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({product, amount})
-    });
-    const data = await res.json();
-    if(data.id){
-      await stripe.redirectToCheckout({ sessionId: data.id });
-    } else {
-      alert("Error al crear la sesión de pago");
+    try {
+        const res = await fetch(`${backendURL}/create-checkout-session`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({product, amount})
+        });
+        const data = await res.json();
+        if(data.id){
+            await stripe.redirectToCheckout({ sessionId: data.id });
+        } else {
+            alert("Error al crear la sesión de pago");
+        }
+    } catch(e){
+        alert("Error conectando al servidor");
     }
-  } catch(e) {
-    alert("Error conectando al servidor");
-    console.error(e);
-  }
 }
 </script>
 </body>
