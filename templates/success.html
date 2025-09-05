@@ -4,90 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asistente May Roga - Sesión Activa</title>
-<style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; }
-.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
-h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
-#assistant-output { border:1px solid #ddd; border-radius:8px; padding:15px; min-height:200px; max-height:350px; overflow-y:auto; background:#fafafa; }
-#timer { font-weight:bold; color:#f44336; margin-top:10px; text-align:center; }
-.audio-btn { background:#2196F3; color:#fff; border:none; padding:8px 15px; border-radius:8px; font-size:14px; cursor:pointer; margin-top:10px; }
-.audio-btn:hover { background:#1976D2; }
-</style>
+<link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 <div class="container">
 <h1>Asistente May Roga</h1>
 <div id="assistant-output"></div>
 <div id="timer"></div>
-<button id="play-audio" class="audio-btn">Escuchar guía en audio</button>
+<button id="play-audio" style="display:none;">Reproducir Audio</button>
 </div>
 
+<script src="/static/js/script.js"></script>
 <script>
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 const sessionId = "{{ session_id }}";
-let service = null;
-let totalSeconds = 0;
-let messages = [];
+const secretCode = "{{ MAYROGA_ACCESS_CODE }}"; // Si quieres desbloqueo total
+init(sessionId, secretCode);
 
-// Función para iniciar SSE y mostrar mensajes
-async function init(){
-    try {
-        const res = await fetch(`${backendURL}/get-session?session_id=${sessionId}`);
-        const data = await res.json();
-        service = data.product;
-
-        // Definir duración según servicio
-        switch(service){
-            case "Risoterapia y Bienestar Natural": totalSeconds = 10*60; break;
-            case "Horóscopo": totalSeconds = 2*60; break;
-            case "Respuesta Rápida": totalSeconds = 60; break;
-            case "Servicio Personalizado": totalSeconds = 20*60; break;
-            case "Servicio Corporativo": totalSeconds = 20*60; break;
-            case "Servicio Grupal": totalSeconds = 15*60; break;
-            default: totalSeconds = 5*60;
-        }
-
-        startSSE(service);
-        startTimer(totalSeconds);
-    } catch(e){
-        document.getElementById("assistant-output").innerText = "Error obteniendo la sesión.";
-    }
-}
-
-// SSE para mostrar mensajes del asistente
-function startSSE(service){
-    const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${service}`);
-    const output = document.getElementById("assistant-output");
-    evtSource.onmessage = (e) => {
-        output.innerHTML += `<p>${e.data}</p>`;
-        output.scrollTop = output.scrollHeight;
-        messages.push(e.data);
-    }
-    evtSource.onerror = () => { evtSource.close(); }
-}
-
-// Cronómetro visual
-function startTimer(duration){
-    const display = document.getElementById("timer");
-    let timer = duration;
-    const interval = setInterval(() => {
-        let minutes = Math.floor(timer / 60);
-        let seconds = timer % 60;
-        display.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
-        if(--timer < 0){
-            clearInterval(interval);
-            display.textContent = "¡Ejercicio completado! 🎉";
-        }
-    }, 1000);
-}
-
-// Reproducir audio grabado (simulado)
-document.getElementById("play-audio").addEventListener("click", () => {
-    const audio = new Audio(`${backendURL}/static/audio/${service.replace(/ /g,"_")}.mp3`);
-    audio.play();
+document.getElementById("play-audio").addEventListener("click", ()=>{
+    playAudio("/static/audio/ejercicio.mp3"); // ruta de audio pregrabado
 });
-
-init();
 </script>
 </body>
 </html>
