@@ -10,7 +10,7 @@ STRIPE_PUBLISHABLE_KEY = "pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0h
 
 # --- FastAPI app ---
 app = FastAPI(title="Asistente May Roga 24/7")
-templates = Jinja2Templates(directory="templates")  # <-- Aquí le decimos que los templates están en /templates
+templates = Jinja2Templates(directory="templates")  # <-- templates en /templates
 
 # --- CORS ---
 app.add_middleware(
@@ -102,7 +102,6 @@ async def assistant_stream(request: Request, service: str, secret: str = None):
 
     async def event_generator():
         messages = await generate_messages(service)
-        start_time = time.time()
         msg_index = 0
         while total_seconds > 0:
             if await request.is_disconnected():
@@ -120,13 +119,9 @@ async def assistant_stream(request: Request, service: str, secret: str = None):
 @app.get("/get-session")
 async def get_session(session_id: str):
     try:
-        # Obtener información de la sesión desde Stripe
-        session = stripe.checkout.Session.retrieve(session_id)
-        if not session or "line_items" not in session:
-            return {"error": "Sesión no encontrada"}
-
-        # Stripe no devuelve automáticamente los line_items, se necesita expand
-        line_items = stripe.checkout.Session.list_line_items(session_id)
+        # Expandir line_items para obtener producto
+        session = stripe.checkout.Session.retrieve(session_id, expand=["line_items"])
+        line_items = session.line_items
         product_name = line_items.data[0].description if line_items.data else "Producto desconocido"
 
         # Mapear nombre de producto a servicio interno
@@ -143,4 +138,3 @@ async def get_session(session_id: str):
 
     except Exception as e:
         return {"error": str(e)}
-
