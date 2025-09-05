@@ -4,25 +4,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 import stripe, asyncio, os
 
+# --- Configuración Stripe ---
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # LLAVE SECRETA desde Render
+STRIPE_PUBLISHABLE_KEY = "pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz"
+
 # --- FastAPI app ---
 app = FastAPI(title="Asistente May Roga 24/7")
 templates = Jinja2Templates(directory="templates")
 
-# --- CORS: permitir cualquier origen para que Google Sites pueda acceder ---
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # permite acceso desde Google Sites
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Claves desde variables de entorno ---
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # llave secreta
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")  # clave pública
-ADMIN_SECRET = os.getenv("MAYROGA_ACCESS_CODE")  # tu código secreto para desbloquear todos los servicios
+# --- Código secreto ---
+ADMIN_SECRET = os.getenv("MAYROGA_ACCESS_CODE")  # desde Render
 
-# --- Servicios regulares y duración en minutos ---
+# --- Servicios y duración en minutos ---
 SERVICIOS = {
     "Risoterapia y Bienestar Natural": 10,
     "Horóscopo": 2,
@@ -91,6 +93,15 @@ async def get_session(session_id: str):
     except Exception as e:
         return {"error": str(e)}
 
+# --- OBTENER DURACIÓN (para cronómetro) ---
+@app.get("/get-duration")
+async def get_duration(service: str, secret: str = None):
+    if secret == ADMIN_SECRET:
+        # Acceso con código secreto: duración máxima
+        return {"duration": 3600}  # 1 hora por todos los servicios
+    duration = SERVICIOS.get(service, 5)  # default 5 minutos
+    return {"duration": int(duration * 60)}
+
 # --- ASSISTANT STREAM SSE ---
 async def generate_messages(service: str):
     if service == "Risoterapia y Bienestar Natural":
@@ -113,17 +124,19 @@ async def generate_messages(service: str):
             "Pregunta sobre salud, educación, ejercicios, risoterapia, horóscopo o consejos.",
             "Finalizando respuesta rápida, ¡gracias por usar el servicio!"
         ]
+    elif service == "Todos los servicios desbloqueados":
+        return ["Acceso completo con código secreto. Disfruta todos los servicios sin límites."]
     return []
 
 @app.get("/assistant-stream")
 async def assistant_stream(request: Request, service: str, secret: str = None):
-    # Permitir acceso completo con código secreto
+    # Verificar código secreto si se proporcionó
     if secret and secret != ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Código secreto incorrecto")
-    if service not in SERVICIOS:
+    if service not in SERVICIOS and service != "Todos los servicios desbloqueados":
         raise HTTPException(status_code=400, detail="Servicio no encontrado")
 
-    duration_minutes = SERVICIOS[service]
+    duration_minutes = 60 if secret == ADMIN_SECRET else SERVICIOS.get(service, 5)
     total_seconds = int(duration_minutes * 60)
 
     async def event_generator():
