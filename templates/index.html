@@ -26,35 +26,34 @@
     <h2>Risoterapia y Bienestar Natural</h2>
     <p>Duración: 10 minutos</p>
     <p>Precio: $12</p>
-    <button onclick="buyService('Risoterapia y Bienestar Natural', 1200, 10)">Comprar</button>
+    <button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
   </div>
 
   <div class="service">
     <h2>Horóscopo y Consejos de Vida</h2>
     <p>Duración: 2 minutos</p>
     <p>Precio: $6</p>
-    <button onclick="buyService('Horóscopo', 600, 2)">Comprar</button>
+    <button onclick="buyService('Horóscopo', 600)">Comprar</button>
   </div>
 
   <div class="service">
     <h2>Respuesta Rápida</h2>
     <p>Duración: 55 segundos</p>
     <p>Precio: $2</p>
-    <button onclick="buyService('Respuesta Rápida', 200, 0.9167)">Comprar</button>
+    <button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
   </div>
-
 </div>
 
 <script>
-const stripe = Stripe("{{ stripe_key }}");
+const stripe = Stripe("{{ stripe_key }}"); // Clave pública de Stripe pasada desde FastAPI
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
-async function buyService(serviceName, amount, duration){
-  try{
-    const res = await fetch(`${backendURL}/create-checkout-session`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({product: serviceName, amount})
+async function buyService(productName, amount){
+  try {
+    const res = await fetch(`${backendURL}/create-checkout-session`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({product: productName, amount})
     });
     const data = await res.json();
     if(data.id){
@@ -62,7 +61,7 @@ async function buyService(serviceName, amount, duration){
     } else {
       alert("Error al crear la sesión de pago");
     }
-  }catch(e){
+  } catch(e) {
     alert("Error conectando al servidor");
   }
 }
