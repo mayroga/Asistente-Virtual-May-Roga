@@ -1,510 +1,102 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual · May Roga</title>
-    <!-- Tailwind CSS para un diseño limpio y adaptable -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Stripe JS SDK para gestionar pagos -->
-    <script src="https://js.stripe.com/v3/"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f4f8f9;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            color: #333;
-        }
-        header {
-            background: #00897B;
-            color: white;
-            padding: 20px;
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-        .app-container {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-width: 640px;
-            margin: 20px auto;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            min-height: 80vh;
-        }
-        .btn {
-            display: block;
-            width: 90%;
-            margin: 10px auto;
-            padding: 15px;
-            font-size: 1.2em;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            color: white;
-            transition: opacity 0.3s;
-        }
-        .btn:hover { opacity: 0.9; }
-        .btn-code { background: #0288d1; }
-        .btn-stripe { background: #43a047; }
-        .chat-message { padding: 10px 15px; border-radius: 15px; max-width: 80%; margin-bottom: 10px; line-height: 1.5; }
-        .chat-message.user { background-color: #0288d1; color: white; align-self: flex-end; margin-left: auto; border-top-right-radius: 0; }
-        .chat-message.system { background-color: #e0e0e0; color: #333; align-self: flex-start; margin-right: auto; border-top-left-radius: 0; }
-        .chat-container { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; -ms-overflow-style: none; scrollbar-width: none; }
-        .chat-container::-webkit-scrollbar { display: none; }
-        .chat-input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; }
-        .chat-input { flex-grow: 1; border: 1px solid #ddd; border-radius: 20px; padding: 10px 15px; margin-right: 10px; }
-        .chat-send-btn { background: #00897B; color: white; border: none; border-radius: 20px; padding: 10px 20px; cursor: pointer; }
-        .loader { display: flex; align-items: center; justify-content: center; padding: 10px; color: #777; }
-        .loader .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #00897B; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin-right: 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga - Sesión Activa</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
+.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+h1 { text-align:center; color:#4CAF50; margin-bottom:20px; }
+#assistant-output { border:1px solid #ddd; border-radius:8px; padding:15px; min-height:250px; max-height:400px; overflow-y:auto; background:#fafafa; }
+#timer { font-weight:bold; color:#f44336; margin-top:15px; text-align:center; font-size:18px; }
+button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button:hover { background:#43a047; }
+.audio-btn { margin-top:5px; }
+</style>
 </head>
 <body>
 
-<header>Asistente Virtual · May Roga</header>
+<div class="container">
+<h1>Asistente May Roga 🌿</h1>
 
-<div class="app-container">
-
-    <div id="landingPage" class="p-5 flex flex-col justify-center items-center flex-grow">
-        <h2 class="text-2xl font-bold mb-4">Elige un servicio</h2>
-        <select id="serviceSelect" class="w-full max-w-sm p-3 mb-4 border rounded-lg shadow-sm">
-            <option value="rapida">Agente de Respuesta Rápida (55s - $2)</option>
-            <option value="risoterapia">Risoterapia y Bienestar Natural (10 min - $12)</option>
-            <option value="horoscopo">Horóscopo (1 min 30s - $5)</option>
-        </select>
-
-        <div id="languageSelectDiv" class="w-full max-w-sm mb-4 hidden">
-            <label for="languageSelect" class="block text-left mb-2 text-gray-700">Selecciona el idioma:</label>
-            <select id="languageSelect" class="w-full p-3 border rounded-lg shadow-sm">
-                <option value="es">Español</option>
-                <option value="en">English</option>
-            </select>
-        </div>
-
-        <button id="stripePayBtn" class="btn btn-stripe">💳 Pagar con Stripe</button>
-
-        <!-- Nuevo campo y botón para el código secreto -->
-        <div class="mt-8 w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-2 text-gray-800">¿Tienes un código secreto?</h3>
-            <input type="text" id="codeInput" placeholder="Introduce tu código" class="w-full p-3 mb-2 border rounded-lg shadow-sm" />
-            <button id="codeBtn" class="btn btn-code">Acceder Gratis</button>
-        </div>
-    </div>
-
-    <div id="servicePage" class="hidden flex-grow flex flex-col">
-        <div class="bg-gray-100 p-4 text-center">
-            <h2 id="serviceTitle" class="text-xl font-bold"></h2>
-            <p id="timerDisplay" class="text-lg font-mono text-gray-600"></p>
-        </div>
-
-        <div id="chatInterface" class="hidden flex-grow flex flex-col">
-            <div id="chatContainer" class="chat-container"></div>
-            <div id="loadingMessage" class="loader hidden">
-                <div class="spinner"></div>
-                <span>May Roga está escribiendo...</span>
-            </div>
-            <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." class="chat-input" />
-                <button id="sendBtn" class="chat-send-btn">Enviar</button>
-            </div>
-        </div>
-
-        <div id="voiceInterface" class="hidden flex-grow flex flex-col justify-center items-center p-8">
-            <p id="currentVoiceText" class="text-2xl font-semibold text-gray-700 mb-8 text-center"></p>
-            <div id="audioLoading" class="loader hidden mb-4">
-                <div class="spinner"></div>
-                <span>Generando audio...</span>
-            </div>
-            <div class="flex space-x-4">
-                <button id="startAutoBtn" class="btn bg-blue-500 hover:bg-blue-600"><span class="mr-2">▶️</span> Iniciar Sesión Automática</button>
-                <button id="startManualBtn" class="btn bg-green-500 hover:bg-green-600"><span class="mr-2">⏯️</span> Iniciar Sesión Manual</button>
-            </div>
-            <div id="manualControls" class="flex space-x-4 hidden mt-4">
-                <button id="playStepBtn" class="btn bg-blue-500 hover:bg-blue-600"><span class="mr-2">▶️</span> Reproducir</button>
-                <button id="nextStepBtn" class="btn bg-green-500 hover:bg-green-600"><span class="mr-2">⏩</span> Siguiente Paso</button>
-            </div>
-            <button id="stopVoiceBtn" class="btn bg-red-500 hover:bg-red-600 mt-4">⏹ Detener Sesión</button>
-        </div>
-
-        <div id="systemModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden">
-            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
-                <h2 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4"></h2>
-                <p id="modalMessage" class="text-gray-600 mb-6"></p>
-                <button id="modalCloseBtn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300">Aceptar</button>
-            </div>
-        </div>
-    </div>
+<div id="assistant-output"></div>
+<div id="timer"></div>
+<button id="play-voice" class="audio-btn">Escuchar mensajes grabados 🔊</button>
 </div>
 
-<footer>Disponible 24/7 · Atención profesional · Fácil y rápido</footer>
+<script>
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+const urlParams = new URLSearchParams(window.location.search);
+const sessionId = urlParams.get("session_id");
+let currentService = null;
+let timerInterval = null;
+let audioQueue = [];
 
-<script type="module">
-    // --- Configuración de Stripe y backend ---
-    const stripe = Stripe('pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz');
-    const BACKEND_URL = 'https://asistente-virtual-may-roga.onrender.com';
-
-    let currentService = null;
-    let timerInterval = null;
-    let timeLeft = 0;
-    let chatHistory = [];
-    let isServiceRunning = false;
-    let currentStepIndex = 0;
-    let currentAudio = null;
-    let timeoutId = null;
-    let currentLang = 'es';
-
-    // Se define el código secreto
-    const SECRET_CODE = "MAYROGA2024";
-
-    const landingPage = document.getElementById('landingPage');
-    const servicePage = document.getElementById('servicePage');
-    const serviceTitle = document.getElementById('serviceTitle');
-    const timerDisplay = document.getElementById('timerDisplay');
-    const chatInterface = document.getElementById('chatInterface');
-    const chatContainer = document.getElementById('chatContainer');
-    const chatInput = document.getElementById('chatInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const loadingMessage = document.getElementById('loadingMessage');
-    const voiceInterface = document.getElementById('voiceInterface');
-    const currentVoiceText = document.getElementById('currentVoiceText');
-    const audioLoading = document.getElementById('audioLoading');
-    const startAutoBtn = document.getElementById('startAutoBtn');
-    const startManualBtn = document.getElementById('startManualBtn');
-    const manualControls = document.getElementById('manualControls');
-    const playStepBtn = document.getElementById('playStepBtn');
-    const nextStepBtn = document.getElementById('nextStepBtn');
-    const stopVoiceBtn = document.getElementById('stopVoiceBtn');
-    const stripePayBtn = document.getElementById('stripePayBtn');
-    const systemModal = document.getElementById('systemModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMessage = document.getElementById('modalMessage');
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
-    const serviceSelect = document.getElementById('serviceSelect');
-    const languageSelect = document.getElementById('languageSelect');
-    const languageSelectDiv = document.getElementById('languageSelectDiv');
-    // Nuevas referencias a los elementos del código secreto
-    const codeInput = document.getElementById('codeInput');
-    const codeBtn = document.getElementById('codeBtn');
-
-    const services = {
-        'rapida': {
-            name: 'Agente de Respuesta Rápida',
-            duration: '55 segundos',
-            price: '$2',
-            durationInSeconds: 55,
-            type: 'chat',
-            prompt: {
-                systemInstruction: `Eres May Roga, un agente de respuesta rápida. Tu objetivo es proporcionar una respuesta directa, útil y concisa en un máximo de 2 a 4 frases. Debes incluir 1 acción siguiente concreta. El cierre debe ser "¿Deseas algo más?". Tu tono es profesional, empático, claro y limpio. No puedes dar diagnósticos médicos.`
-            },
-            initialMessage: 'Hola, ¿en qué puedo ayudarte hoy? / Hello, how can I help you today?'
-        },
-        'risoterapia': {
-            name: 'Risoterapia y Bienestar Natural',
-            duration: '10 minutos',
-            price: '$12',
-            durationInSeconds: 600,
-            type: 'voice',
-            voiceName_es: 'Kore',
-            voiceName_en: 'Zephyr',
-            steps: {
-                es: [
-                    { texto: "¡Hola! Bienvenido a tu sesión de risoterapia. Para comenzar, encuentra un lugar cómodo y siéntate o acuéstese.", pausa: 5 },
-                    { texto: "Ahora, cierra los ojos y respira profundamente. Inhala por la nariz...", pausa: 5 },
-                    { texto: "y exhala por la boca. Repite esto tres veces.", pausa: 15 },
-                    { texto: "Ahora, coloca tu mano sobre tu estómago y respira, sintiendo cómo se infla como un globo.", pausa: 10 },
-                    { texto: "Es el momento de reír. Comienza con una pequeña sonrisa y deja que la risa surja de forma natural.", pausa: 20 },
-                    { texto: "Puedes hacerlo. No te preocupes por el sonido. El objetivo es simplemente liberar la tensión.", pausa: 20 },
-                    { texto: "Muy bien. Ahora, reduce tu risa a una risa silenciosa, moviendo solo los músculos de la cara.", pausa: 15 },
-                    { texto: "Fantástico. Has completado el ejercicio. Abre los ojos lentamente cuando te sientas listo.", pausa: 10 },
-                    { texto: "Recuerda que la risa es una herramienta poderosa. Vuelve a visitarnos cuando lo necesites. ¡Has hecho un gran trabajo!", pausa: 0 }
-                ],
-                en: [
-                    { texto: "Hello! Welcome to your laughter therapy session. To begin, find a comfortable place and sit or lie down.", pausa: 5 },
-                    { texto: "Now, close your eyes and breathe deeply. Inhale through your nose...", pausa: 5 },
-                    { texto: "and exhale through your mouth. Repeat this three times.", pausa: 15 },
-                    { texto: "Now, place your hand on your stomach and breathe, feeling it inflate like a balloon.", pausa: 10 },
-                    { texto: "It's time to laugh. Start with a small smile and let the laughter arise naturally.", pausa: 20 },
-                    { texto: "You can do it. Don't worry about the sound. The goal is simply to release the tension.", pausa: 20 },
-                    { texto: "Very well. Now, reduce your laughter to a silent one, moving only the muscles of your face.", pausa: 15 },
-                    { texto: "Fantastic. You have completed the exercise. Open your eyes slowly when you feel ready.", pausa: 10 },
-                    { texto: "Remember that laughter is a powerful tool. Come back and visit us whenever you need. You did a great job!", pausa: 0 }
-                ]
-            }
-        },
-        'horoscopo': {
-            name: 'Horóscopo',
-            duration: '1 min 30s',
-            price: '$5',
-            durationInSeconds: 90,
-            type: 'chat',
-            prompt: {
-                systemInstruction: `Eres un asistente de horóscopo. Tu objetivo es proporcionar lecturas del horóscopo. Debes responder de manera misteriosa y dar un consejo que inspire a tu usuario. Tu tono es místico y enigmático. Solo respondes a preguntas sobre horóscopos o el futuro.`
-            },
-            initialMessage: 'Bienvenido. ¿Qué misterio de tu futuro deseas que los astros te revelen hoy?'
-        }
-    };
-    
-    // --- Lógica de la UI ---
-    function showModal(title, message, callback) {
-        modalTitle.textContent = title;
-        modalMessage.textContent = message;
-        systemModal.classList.remove('hidden');
-        if (callback) {
-            modalCloseBtn.onclick = () => {
-                systemModal.classList.add('hidden');
-                callback();
-            };
-        } else {
-            modalCloseBtn.onclick = () => systemModal.classList.add('hidden');
-        }
+async function init(){
+    try{
+        // Obtener el servicio comprado
+        const res = await fetch(`${backendURL}/get-session?session_id=${sessionId}`);
+        const data = await res.json();
+        currentService = data.product;
+        startSSE(currentService);
+    } catch(e){
+        document.getElementById("assistant-output").innerText = "Error obteniendo la sesión.";
     }
+}
 
-    function switchPage(pageId) {
-        landingPage.classList.add('hidden');
-        servicePage.classList.add('hidden');
-        document.getElementById(pageId).classList.remove('hidden');
-    }
-
-    function startService() {
-        currentService = services[serviceSelect.value];
-        serviceTitle.textContent = currentService.name;
-        
-        switchPage('servicePage');
-        if (currentService.type === 'chat') {
-            chatInterface.classList.remove('hidden');
-            chatHistory = [{ role: 'system', parts: [{ text: currentService.initialMessage }] }];
-            displayMessages();
-        } else if (currentService.type === 'voice') {
-            voiceInterface.classList.remove('hidden');
-            manualControls.classList.add('hidden');
-            currentLang = languageSelect.value;
+function startTimer(durationMinutes){
+    clearInterval(timerInterval);
+    let seconds = Math.ceil(durationMinutes * 60);
+    const timerDiv = document.getElementById("timer");
+    timerDiv.innerText = `Tiempo restante: ${seconds}s`;
+    timerInterval = setInterval(()=> {
+        seconds--;
+        timerDiv.innerText = `Tiempo restante: ${seconds}s`;
+        if(seconds <= 0){
+            clearInterval(timerInterval);
+            timerDiv.innerText = "Sesión finalizada ✅";
         }
+    },1000);
+}
 
-        // Inicia el temporizador
-        timeLeft = currentService.durationInSeconds;
-        timerDisplay.textContent = `Tiempo restante: ${formatTime(timeLeft)}`;
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            timerDisplay.textContent = `Tiempo restante: ${formatTime(timeLeft)}`;
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                stopVoiceSession();
-                showModal('Tiempo Terminado', 'Tu sesión ha finalizado. Puedes volver a la página principal para elegir otro servicio.', () => {
-                    location.reload();
-                });
-            }
-        }, 1000);
+async function startSSE(service){
+    // Obtener duración
+    const durationRes = await fetch(`${backendURL}/get-duration?service=${service}`);
+    const durationData = await durationRes.json();
+    startTimer(durationData.duration);
+
+    const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${service}`);
+    const output = document.getElementById("assistant-output");
+    evtSource.onmessage = (e) => {
+        const p = document.createElement("p");
+        p.textContent = e.data;
+        output.appendChild(p);
+        output.scrollTop = output.scrollHeight;
+        // Agregar mensaje a la cola de audio
+        audioQueue.push(e.data);
     }
-    
-    // --- Lógica del pago con Stripe (ahora con llamada al backend) ---
-    async function startCheckout() {
-        const serviceId = serviceSelect.value;
-        showModal('Procesando pago...', 'Conectando con el servicio de pagos. Por favor, espera.');
-        
-        try {
-            const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ serviceId: serviceId })
-            });
+    evtSource.onerror = () => { evtSource.close(); }
+}
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al crear la sesión de pago.');
-            }
+// Función para reproducir TTS de los mensajes grabados
+document.getElementById("play-voice").addEventListener("click", () => {
+    if(audioQueue.length === 0) return;
+    playNext(0);
+});
 
-            const session = await response.json();
+function playNext(index){
+    if(index >= audioQueue.length) return;
+    const msg = audioQueue[index];
+    const utter = new SpeechSynthesisUtterance(msg);
+    utter.lang = "es-ES";
+    utter.rate = 1;
+    utter.pitch = 1;
+    utter.onend = () => { playNext(index+1); }
+    speechSynthesis.speak(utter);
+}
 
-            // Redirigir al usuario a la página de pago de Stripe
-            const result = await stripe.redirectToCheckout({
-                sessionId: session.id,
-            });
-
-            if (result.error) {
-                showModal('Error en el pago', result.error.message);
-            }
-        } catch (error) {
-            console.error('Error durante el proceso de pago:', error);
-            showModal('Error de Conexión', `Error: ${error.message}. Por favor, revisa la consola para más detalles.`);
-        }
-    }
-
-    // --- Lógica del código secreto ---
-    function checkSecretCode() {
-        const codeEntered = codeInput.value.trim();
-        if (codeEntered === SECRET_CODE) {
-            showModal('Código Correcto', '¡Acceso concedido! Disfruta de tu sesión gratuita.', startService);
-        } else {
-            showModal('Código Incorrecto', 'El código que ingresaste no es válido. Por favor, inténtalo de nuevo.');
-        }
-    }
-    
-    // --- Funciones de chat y voz ---
-    function displayMessages() {
-        chatContainer.innerHTML = '';
-        chatHistory.forEach(message => {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('chat-message', message.role);
-            messageElement.textContent = message.parts[0].text;
-            chatContainer.appendChild(messageElement);
-        });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-
-    // Función de chat ahora simulada
-    async function sendMessage() {
-        const userMessage = chatInput.value.trim();
-        if (!userMessage) return;
-
-        chatInput.value = '';
-        const userChat = { role: 'user', parts: [{ text: userMessage }] };
-        chatHistory.push(userChat);
-        displayMessages();
-
-        loadingMessage.classList.remove('hidden');
-        chatInput.disabled = true;
-        sendBtn.disabled = true;
-
-        try {
-            // Se simula la respuesta de la IA
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simula un retraso de 1.5 segundos
-            
-            const assistantMessage = { role: 'system', parts: [{ text: `¡Hola! He recibido tu mensaje. Gracias por usar nuestro servicio. ¿Hay algo más en lo que pueda ayudarte? (Esta es una respuesta de prueba simulada).` }] };
-            chatHistory.push(assistantMessage);
-
-        } catch (error) {
-            console.error('Error al enviar mensaje:', error);
-            const errorMessage = { role: 'system', parts: [{ text: 'Lo siento, hubo un error al procesar tu solicitud. Por favor, revisa la consola para más detalles.' }] };
-            chatHistory.push(errorMessage);
-        } finally {
-            loadingMessage.classList.add('hidden');
-            chatInput.disabled = false;
-            sendBtn.disabled = false;
-            displayMessages();
-            chatInput.focus();
-        }
-    }
-
-    // Función de voz ahora simulada
-    async function playStep(step) {
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.src = '';
-        }
-        audioLoading.classList.remove('hidden');
-        currentVoiceText.textContent = step.texto;
-
-        try {
-            // Se simula la generación del audio sin un backend
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Simula 2 segundos de generación
-
-            console.log(`[AUDIO SIMULADO] Reproduciendo: "${step.texto}"`);
-            
-            // Simular que el audio se ha reproducido para que la lógica de la sesión automática continúe
-            const simulatedDuration = step.texto.length * 60; // Estimar duración del audio
-            
-            setTimeout(() => {
-                // Si la sesión es automática, pasa al siguiente paso
-                if (isServiceRunning) {
-                    currentStepIndex++;
-                    if (currentStepIndex < currentService.steps[currentLang].length) {
-                        timeoutId = setTimeout(() => {
-                            playStep(currentService.steps[currentLang][currentStepIndex]);
-                        }, currentService.steps[currentLang][currentStepIndex].pausa * 1000);
-                    }
-                }
-            }, simulatedDuration);
-            
-        } catch (error) {
-            console.error('Error al reproducir audio:', error);
-            showModal('Error', 'No se pudo generar el audio. Por favor, inténtalo de nuevo más tarde.');
-        } finally {
-            audioLoading.classList.add('hidden');
-        }
-    }
-
-    function startAutoSession() {
-        isServiceRunning = true;
-        currentStepIndex = 0;
-        playStep(currentService.steps[currentLang][currentStepIndex]);
-        startAutoBtn.disabled = true;
-        startManualBtn.disabled = true;
-    }
-
-    function startManualSession() {
-        manualControls.classList.remove('hidden');
-        startAutoBtn.disabled = true;
-        startManualBtn.disabled = true;
-        currentStepIndex = 0;
-        currentVoiceText.textContent = currentService.steps[currentLang][currentStepIndex].texto;
-    }
-
-    function stopVoiceSession() {
-        isServiceRunning = false;
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.src = '';
-        }
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-    }
-    
-    // --- Event Listeners ---
-    stripePayBtn.addEventListener('click', startCheckout);
-    codeBtn.addEventListener('click', checkSecretCode);
-    serviceSelect.addEventListener('change', (e) => {
-      if (e.target.value === 'risoterapia') {
-        languageSelectDiv.classList.remove('hidden');
-      } else {
-        languageSelectDiv.classList.add('hidden');
-      }
-    });
-
-    sendBtn.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-    startAutoBtn.addEventListener('click', startAutoSession);
-    startManualBtn.addEventListener('click', startManualSession);
-    playStepBtn.addEventListener('click', () => playStep(currentService.steps[currentLang][currentStepIndex]));
-    nextStepBtn.addEventListener('click', () => {
-      currentStepIndex++;
-      if (currentStepIndex < currentService.steps[currentLang].length) {
-        currentVoiceText.textContent = currentService.steps[currentLang][currentStepIndex].texto;
-      } else {
-        showModal('Sesión Completada', 'Has completado todos los pasos de la sesión manual.', () => stopVoiceSession());
-      }
-    });
-    stopVoiceBtn.addEventListener('click', () => {
-        stopVoiceSession();
-        location.reload();
-    });
-
-    // Función para manejar el éxito del pago
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('payment_status') === 'success') {
-            // Este es el flujo para cuando el usuario es redirigido de vuelta después de un pago exitoso
-            showModal('Pago Exitoso', '¡Tu pago ha sido procesado! Ahora puedes iniciar tu sesión.', startService);
-            history.replaceState(null, '', window.location.pathname);
-        }
-    };
+init();
 </script>
 
 </body>
