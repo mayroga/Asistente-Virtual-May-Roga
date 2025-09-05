@@ -2,20 +2,20 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-import stripe, time, asyncio, os
+import stripe, asyncio, os, time
 
 # --- Configuración Stripe ---
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu llave secreta de Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Tu llave secreta
 STRIPE_PUBLISHABLE_KEY = "pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz"
 
 # --- FastAPI app ---
 app = FastAPI(title="Asistente May Roga 24/7")
-templates = Jinja2Templates(directory="templates")  # <-- templates en /templates
+templates = Jinja2Templates(directory="templates")
 
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cambiar al dominio real en producción
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,13 +34,19 @@ SERVICIOS = {
 # --- ENDPOINTS HTML ---
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "stripe_key": STRIPE_PUBLISHABLE_KEY})
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "stripe_key": STRIPE_PUBLISHABLE_KEY}
+    )
 
 @app.get("/success", response_class=HTMLResponse)
 async def read_success(request: Request, session_id: str):
-    return templates.TemplateResponse("success.html", {"request": request, "session_id": session_id})
+    return templates.TemplateResponse(
+        "success.html",
+        {"request": request, "session_id": session_id}
+    )
 
-# --- ENDPOINT: CREAR SESIÓN STRIPE ---
+# --- CREATE CHECKOUT SESSION ---
 @app.post("/create-checkout-session")
 async def create_checkout(data: dict):
     product = data.get("product")
@@ -54,7 +60,7 @@ async def create_checkout(data: dict):
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": product},
-                    "unit_amount": amount,
+                    "unit_amount": int(amount),
                 },
                 "quantity": 1,
             }],
@@ -66,30 +72,50 @@ async def create_checkout(data: dict):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# --- ENDPOINT SSE: ASISTENTE STREAM ---
+# --- GET PURCHASED SESSION ---
+@app.get("/get-session")
+async def get_session(session_id: str):
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+        line_items = stripe.checkout.Session.list_line_items(session_id)
+        product_name = line_items.data[0].description if line_items.data else "Producto desconocido"
+
+        if "Risoterapia" in product_name:
+            service = "Risoterapia y Bienestar Natural"
+        elif "Horóscopo" in product_name:
+            service = "Horóscopo"
+        elif "Respuesta Rápida" in product_name:
+            service = "Respuesta Rápida"
+        else:
+            service = "Desconocido"
+
+        return {"product": service}
+    except Exception as e:
+        return {"error": str(e)}
+
+# --- ASSISTANT STREAM SSE ---
 async def generate_messages(service: str):
-    mensajes = []
     if service == "Risoterapia y Bienestar Natural":
-        mensajes = [
+        return [
             "¡Hola! Bienvenido a tu sesión de Risoterapia y Bienestar Natural 😊",
             "Vamos a realizar ejercicios TVid para mejorar tu energía y bienestar.",
             "Recuerda mantener una respiración profunda y relajada.",
             "Finalizando sesión, ¡gracias por participar!"
         ]
     elif service == "Horóscopo":
-        mensajes = [
+        return [
             "¡Hola! Revisemos tu horóscopo del día 🌟",
             "Hoy es un buen día para reflexionar y tomar decisiones importantes.",
             "Ejercicio TVid: escribe tres cosas positivas que sucedieron hoy.",
             "Sesión de horóscopo finalizada ✅"
         ]
     elif service == "Respuesta Rápida":
-        mensajes = [
+        return [
             "¡Hola! Respuesta rápida activada ⚡",
             "Pregunta sobre salud, educación, ejercicios, risoterapia, horóscopo o consejos.",
             "Finalizando respuesta rápida, ¡gracias por usar el servicio!"
         ]
-    return mensajes
+    return []
 
 @app.get("/assistant-stream")
 async def assistant_stream(request: Request, service: str, secret: str = None):
@@ -114,27 +140,3 @@ async def assistant_stream(request: Request, service: str, secret: str = None):
         yield f"data: Sesión de {service} finalizada ✅\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-# --- ENDPOINT: OBTENER PRODUCTO DE SESIÓN ---
-@app.get("/get-session")
-async def get_session(session_id: str):
-    try:
-        # Expandir line_items para obtener producto
-        session = stripe.checkout.Session.retrieve(session_id, expand=["line_items"])
-        line_items = session.line_items
-        product_name = line_items.data[0].description if line_items.data else "Producto desconocido"
-
-        # Mapear nombre de producto a servicio interno
-        if "Risoterapia" in product_name:
-            service = "Risoterapia y Bienestar Natural"
-        elif "Horóscopo" in product_name:
-            service = "Horóscopo"
-        elif "Respuesta Rápida" in product_name:
-            service = "Respuesta Rápida"
-        else:
-            service = "Desconocido"
-
-        return {"product": service}
-
-    except Exception as e:
-        return {"error": str(e)}
