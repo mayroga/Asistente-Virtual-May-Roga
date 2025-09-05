@@ -21,38 +21,34 @@
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-const session_id = "{{ session_id }}";  // Jinja2 pasa automáticamente el session_id
+const session_id = "{{ session_id }}";  // Pasado desde FastAPI
 
-// Obtener el servicio comprado desde el backend
 async function getPurchasedService(session_id){
   try {
     const res = await fetch(`${backendURL}/get-session?session_id=${session_id}`);
     const data = await res.json();
-    return data.product; // debe ser "Risoterapia y Bienestar Natural", "Horóscopo" o "Respuesta Rápida"
+    return data.product;
   } catch(e){
     console.error("Error obteniendo servicio:", e);
     return null;
   }
 }
 
-// Temporizador
 let timerInterval;
-function startTimer(minutes) {
+function startTimer(minutes){
   clearInterval(timerInterval);
   let time = minutes * 60;
   const timerDiv = document.getElementById("timer");
-
   timerInterval = setInterval(() => {
     const m = Math.floor(time/60);
-    const s = Math.floor(time % 60);
+    const s = Math.floor(time%60);
     timerDiv.textContent = `Tiempo restante: ${m}:${s<10?'0':''}${s}`;
     if(time <= 0) clearInterval(timerInterval);
     time--;
   },1000);
 }
 
-// Mostrar mensajes del asistente
-function appendMessage(msg) {
+function appendMessage(msg){
   const div = document.getElementById("assistant-output");
   const p = document.createElement("p");
   p.textContent = msg;
@@ -60,26 +56,23 @@ function appendMessage(msg) {
   div.scrollTop = div.scrollHeight;
 }
 
-// Conectar con el asistente 24/7 vía SSE
 function connectAssistant(serviceType){
   const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${serviceType}`);
-  evtSource.onmessage = function(event){
-    appendMessage(event.data);
-  }
+  evtSource.onmessage = function(event){ appendMessage(event.data); }
   evtSource.onerror = function(){ evtSource.close(); }
 }
 
-// Iniciar sesión automáticamente
 (async function(){
   if(!session_id) return alert("No se encontró sesión");
   const serviceType = await getPurchasedService(session_id);
   if(!serviceType) return alert("Servicio no encontrado");
-  
+
   const durations = {
     "Risoterapia y Bienestar Natural": 10,
     "Horóscopo": 2,
     "Respuesta Rápida": 0.9167
   };
+
   startTimer(durations[serviceType]);
   connectAssistant(serviceType);
 })();
