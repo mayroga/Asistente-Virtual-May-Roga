@@ -1,1 +1,29 @@
+# --- Ejercicios TDG (Técnica de la Guerra) ---
+TDG_exercises = [
+    {"title": "Transformar Conflictos", "duration": 180, "instructions": [
+        "Visualiza un conflicto o desafío reciente.",
+        "Respira profundamente y convierte la tensión en energía positiva.",
+        "Pausa 1 minuto para sentir la transformación y claridad interna."],
+    },
+    {"title": "Control de la Agresividad", "duration": 240, "instructions": [
+        "Imagina cualquier sentimiento de agresión contenida.",
+        "Usa respiración profunda y enfoque para transformarlo en motivación constructiva.",
+        "Pausa 2 minutos para sentir calma y fuerza equilibrada."],
+    },
+    {"title": "Defensa Personal Emocional", "duration": 180, "instructions": [
+        "Visualiza establecer límites claros sin dañar a otros.",
+        "Siente cómo tu protección y autocontrol crecen con cada respiración.",
+        "Pausa 1 minuto para integrar sensación de seguridad y autocontrol."],
+    },
+    {"title": "Estrategia para la Vida", "duration": 240, "instructions": [
+        "Imagina planificar tus acciones con inteligencia y determinación.",
+        "Siente cómo cada decisión fortalece tu bienestar y éxito.",
+        "Pausa 2 minutos para internalizar la claridad y visión estratégica."],
+    },
+    {"title": "Resiliencia Activa", "duration": 300, "instructions": [
+        "Cierra los ojos y visualiza superar cualquier obstáculo con calma y firmeza.",
+        "Siente la fuerza interior y la capacidad de adaptación.",
+        "Pausa 3 minutos para consolidar resiliencia y confianza personal."],
+    },
+]
 
