@@ -21,14 +21,14 @@
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-const session_id = "{{ session_id }}";  // Pasado desde FastAPI
+const session_id = "{{ session_id }}";  // Jinja2 pasa el session_id
 
 async function getPurchasedService(session_id){
   try {
     const res = await fetch(`${backendURL}/get-session?session_id=${session_id}`);
     const data = await res.json();
     return data.product;
-  } catch(e){
+  } catch(e) {
     console.error("Error obteniendo servicio:", e);
     return null;
   }
@@ -39,11 +39,12 @@ function startTimer(minutes){
   clearInterval(timerInterval);
   let time = minutes * 60;
   const timerDiv = document.getElementById("timer");
-  timerInterval = setInterval(() => {
+
+  timerInterval = setInterval(()=>{
     const m = Math.floor(time/60);
     const s = Math.floor(time%60);
     timerDiv.textContent = `Tiempo restante: ${m}:${s<10?'0':''}${s}`;
-    if(time <= 0) clearInterval(timerInterval);
+    if(time<=0) clearInterval(timerInterval);
     time--;
   },1000);
 }
@@ -56,9 +57,11 @@ function appendMessage(msg){
   div.scrollTop = div.scrollHeight;
 }
 
-function connectAssistant(serviceType){
-  const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${serviceType}`);
-  evtSource.onmessage = function(event){ appendMessage(event.data); }
+function connectAssistant(service){
+  const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(service)}`);
+  evtSource.onmessage = function(event){
+    appendMessage(event.data);
+  }
   evtSource.onerror = function(){ evtSource.close(); }
 }
 
@@ -72,7 +75,6 @@ function connectAssistant(serviceType){
     "Horóscopo": 2,
     "Respuesta Rápida": 0.9167
   };
-
   startTimer(durations[serviceType]);
   connectAssistant(serviceType);
 })();
