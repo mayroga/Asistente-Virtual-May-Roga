@@ -1,108 +1,31 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente Virtual · May Roga</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Stripe -->
-    <script src="https://js.stripe.com/v3/"></script>
-</head>
-<body class="bg-gray-50 text-gray-900">
-    <div class="max-w-3xl mx-auto p-6">
-        <h1 class="text-3xl font-bold text-center text-green-700 mb-6">🌿 Asistente May Roga</h1>
+<script>
+  // --- Mapa de audios por Técnica de Vida ---
+  const audioMap = {
+    TDB: "/static/audio/TDB.mp3",   // Técnica del Bien
+    TDM: "/static/audio/TDM.mp3",   // Técnica del Mal
+    TDN: "/static/audio/TDN.mp3",   // Técnica del Niño
+    TDK: "/static/audio/TDK.mp3",   // Técnica del Beso
+    TDMM: "/static/audio/TDMM.mp3", // Técnica de la Madre
+    TDP: "/static/audio/TDP.mp3",   // Técnica del Padre
+    TDG: "/static/audio/TDG.mp3",   // Técnica de la Guerra
+  };
 
-        <!-- Código secreto -->
-        <div class="bg-white shadow-md rounded-2xl p-4 mb-6">
-            <label for="secret" class="block mb-2 font-semibold">Ingresa tu código secreto</label>
-            <input id="secret" type="password" class="w-full p-2 border rounded mb-3">
-            <button onclick="unlockServices()" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700">
-                Desbloquear Servicios
-            </button>
-            <p id="unlockResult" class="mt-2 text-sm text-gray-600"></p>
-        </div>
+  // --- Función para reproducir audio ---
+  function playAudio(tvid) {
+    const audio = new Audio(audioMap[tvid]);
+    audio.play().catch(err => console.error("Error al reproducir audio:", err));
+  }
 
-        <!-- Servicios -->
-        <h2 class="text-2xl font-semibold text-green-800 mb-4">🌿 Servicios Regulares</h2>
+  // --- Vincular botones de servicios a audios ---
+  document.addEventListener("DOMContentLoaded", () => {
+    // Servicios Regulares
+    document.getElementById("btn-risoterapia").addEventListener("click", () => playAudio("TDB"));
+    document.getElementById("btn-horoscopo").addEventListener("click", () => playAudio("TDN"));
+    document.getElementById("btn-respuesta-rapida").addEventListener("click", () => playAudio("TDM"));
 
-        <div class="space-y-4">
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Risoterapia y Bienestar Natural</h3>
-                <p>Duración: 10 minutos</p>
-                <p class="font-bold">Precio: $12</p>
-                <button onclick="buyService('Risoterapia y Bienestar Natural', 1200)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Horóscopo y Consejos de Vida</h3>
-                <p>Duración: 2 minutos</p>
-                <p class="font-bold">Precio: $6</p>
-                <button onclick="buyService('Horóscopo y Consejos de Vida', 600)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Respuesta Rápida</h3>
-                <p>Duración: 55 segundos</p>
-                <p class="font-bold">Precio: $2</p>
-                <button onclick="buyService('Respuesta Rápida', 200)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-        </div>
-
-        <h2 class="text-2xl font-semibold text-green-800 mt-8 mb-4">🌟 Servicios Especiales</h2>
-
-        <div class="space-y-4">
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Servicio Personalizado</h3>
-                <p>Atención individual</p>
-                <p>Duración: 20 minutos</p>
-                <p class="font-bold">Precio: $50</p>
-                <button onclick="buyService('Servicio Personalizado', 5000)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Servicio Corporativo</h3>
-                <p>3 sesiones en 15 días para equipos</p>
-                <p>Duración: 15–25 minutos cada sesión</p>
-                <p class="font-bold">Precio: $750 (paquete completo)</p>
-                <button onclick="buyService('Servicio Corporativo', 75000)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-
-            <div class="bg-white shadow rounded-xl p-4">
-                <h3 class="text-lg font-semibold">Servicio Grupal</h3>
-                <p>De 5 a 10 personas</p>
-                <p>Duración: 15 minutos</p>
-                <p class="font-bold">Precio: $450</p>
-                <button onclick="buyService('Servicio Grupal', 45000)" class="bg-blue-600 text-white px-4 py-2 rounded mt-2">Comprar</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const stripe = Stripe("{{ stripe_key }}");
-
-        async function buyService(product, amount) {
-            const res = await fetch("/create-checkout-session", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ product, amount })
-            });
-            const data = await res.json();
-            if (data.id) {
-                stripe.redirectToCheckout({ sessionId: data.id });
-            } else {
-                alert("Error al iniciar el pago");
-            }
-        }
-
-        async function unlockServices() {
-            const secret = document.getElementById("secret").value;
-            const res = await fetch(`/assistant-stream?service=all&secret=${secret}`);
-            const data = await res.json();
-            document.getElementById("unlockResult").innerText =
-                data.access === "granted"
-                    ? "✅ Acceso garantizado a todos los servicios"
-                    : "❌ Código incorrecto";
-        }
-    </script>
-</body>
-</html>
+    // Servicios Especiales
+    document.getElementById("btn-personalizado").addEventListener("click", () => playAudio("TDG"));
+    document.getElementById("btn-corporativo").addEventListener("click", () => playAudio("TDG"));
+    document.getElementById("btn-grupal").addEventListener("click", () => playAudio("TDG"));
+  });
+</script>
