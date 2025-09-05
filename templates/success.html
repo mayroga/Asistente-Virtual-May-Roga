@@ -21,17 +21,14 @@
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+const session_id = "{{ session_id }}";  // Jinja2 pasa automáticamente el session_id
 
-// Tomar el parámetro del servicio desde la URL de Stripe
-const urlParams = new URLSearchParams(window.location.search);
-const session_id = urlParams.get('session_id');
-
-// Función para obtener el producto comprado desde tu backend
+// Obtener el servicio comprado desde el backend
 async function getPurchasedService(session_id){
   try {
     const res = await fetch(`${backendURL}/get-session?session_id=${session_id}`);
     const data = await res.json();
-    return data.product; // debe ser "risoterapia", "horoscopo" o "respuesta_rapida"
+    return data.product; // debe ser "Risoterapia y Bienestar Natural", "Horóscopo" o "Respuesta Rápida"
   } catch(e){
     console.error("Error obteniendo servicio:", e);
     return null;
@@ -78,11 +75,10 @@ function connectAssistant(serviceType){
   const serviceType = await getPurchasedService(session_id);
   if(!serviceType) return alert("Servicio no encontrado");
   
-  // Duración en minutos según servicio
   const durations = {
-    "risoterapia": 10,
-    "horoscopo": 2,
-    "respuesta_rapida": 0.9167
+    "Risoterapia y Bienestar Natural": 10,
+    "Horóscopo": 2,
+    "Respuesta Rápida": 0.9167
   };
   startTimer(durations[serviceType]);
   connectAssistant(serviceType);
