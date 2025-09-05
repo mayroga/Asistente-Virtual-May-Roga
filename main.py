@@ -115,3 +115,32 @@ async def assistant_stream(request: Request, service: str, secret: str = None):
         yield f"data: Sesión de {service} finalizada ✅\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+# --- ENDPOINT: OBTENER PRODUCTO DE SESIÓN ---
+@app.get("/get-session")
+async def get_session(session_id: str):
+    try:
+        # Obtener información de la sesión desde Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+        if not session or "line_items" not in session:
+            return {"error": "Sesión no encontrada"}
+
+        # Stripe no devuelve automáticamente los line_items, se necesita expand
+        line_items = stripe.checkout.Session.list_line_items(session_id)
+        product_name = line_items.data[0].description if line_items.data else "Producto desconocido"
+
+        # Mapear nombre de producto a servicio interno
+        if "Risoterapia" in product_name:
+            service = "Risoterapia y Bienestar Natural"
+        elif "Horóscopo" in product_name:
+            service = "Horóscopo"
+        elif "Respuesta Rápida" in product_name:
+            service = "Respuesta Rápida"
+        else:
+            service = "Desconocido"
+
+        return {"product": service}
+
+    except Exception as e:
+        return {"error": str(e)}
+
