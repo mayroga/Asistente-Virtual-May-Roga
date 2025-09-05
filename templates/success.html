@@ -1,28 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga - Sesión Activa</title>
-<link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-<div class="container">
-<h1>Asistente May Roga</h1>
-<div id="assistant-output"></div>
-<div id="timer"></div>
-<button id="play-audio" style="display:none;">Reproducir Audio</button>
-</div>
-
-<script src="/static/js/script.js"></script>
-<script>
-const sessionId = "{{ session_id }}";
-const secretCode = "{{ MAYROGA_ACCESS_CODE }}"; // Si quieres desbloqueo total
-init(sessionId, secretCode);
-
-document.getElementById("play-audio").addEventListener("click", ()=>{
-    playAudio("/static/audio/ejercicio.mp3"); // ruta de audio pregrabado
-});
-</script>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pago Exitoso</title></head>
+<body style="font-family:Arial;text-align:center;padding:40px">
+  <h1>Pago recibido</h1>
+  <p>Gracias. En un momento te redirigiremos al servicio.</p>
+  <p><a id="goto" href="/">Ir al servicio</a></p>
+  <script>
+    // Si Stripe te redirige aquí, preferimos que use success_url directo a /servicio con session_id
+  </script>
 </body>
 </html>
