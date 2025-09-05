@@ -1,31 +1,70 @@
-<script>
-  // --- Mapa de audios por Técnica de Vida ---
-  const audioMap = {
-    TDB: "/static/audio/TDB.mp3",   // Técnica del Bien
-    TDM: "/static/audio/TDM.mp3",   // Técnica del Mal
-    TDN: "/static/audio/TDN.mp3",   // Técnica del Niño
-    TDK: "/static/audio/TDK.mp3",   // Técnica del Beso
-    TDMM: "/static/audio/TDMM.mp3", // Técnica de la Madre
-    TDP: "/static/audio/TDP.mp3",   // Técnica del Padre
-    TDG: "/static/audio/TDG.mp3",   // Técnica de la Guerra
-  };
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
+.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
+.service h2 { margin-top:0; color:#333; }
+.service p { margin:5px 0; }
+button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button:hover { background:#43a047; }
+#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
+#secret-button { background:#2196F3; }
+#secret-button:hover { background:#1976D2; }
+audio { width:100%; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Asistente May Roga</h1>
 
-  // --- Función para reproducir audio ---
-  function playAudio(tvid) {
-    const audio = new Audio(audioMap[tvid]);
-    audio.play().catch(err => console.error("Error al reproducir audio:", err));
-  }
+<!-- Acceso con Código Secreto -->
+<div style="margin-bottom:20px; text-align:center;">
+<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
+</div>
 
-  // --- Vincular botones de servicios a audios ---
-  document.addEventListener("DOMContentLoaded", () => {
-    // Servicios Regulares
-    document.getElementById("btn-risoterapia").addEventListener("click", () => playAudio("TDB"));
-    document.getElementById("btn-horoscopo").addEventListener("click", () => playAudio("TDN"));
-    document.getElementById("btn-respuesta-rapida").addEventListener("click", () => playAudio("TDM"));
+<h2>🌿 Servicios Regulares</h2>
 
-    // Servicios Especiales
-    document.getElementById("btn-personalizado").addEventListener("click", () => playAudio("TDG"));
-    document.getElementById("btn-corporativo").addEventListener("click", () => playAudio("TDG"));
-    document.getElementById("btn-grupal").addEventListener("click", () => playAudio("TDG"));
-  });
-</script>
+<div class="service">
+<h2>Risoterapia y Bienestar Natural</h2>
+<p>Duración: 10 minutos</p>
+<p>Precio: $12</p>
+<button onclick="startService('TDB')">Iniciar Servicio</button>
+<audio id="audio-TDB" controls></audio>
+<button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Horóscopo y Consejos de Vida</h2>
+<p>Duración: 2 minutos</p>
+<p>Precio: $6</p>
+<button onclick="startService('TDM')">Iniciar Servicio</button>
+<audio id="audio-TDM" controls></audio>
+<button onclick="buyService('Horóscopo', 600)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Respuesta Rápida</h2>
+<p>Duración: 55 segundos</p>
+<p>Precio: $2</p>
+<button onclick="startService('TDN')">Iniciar Servicio</button>
+<audio id="audio-TDN" controls></audio>
+<button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
+</div>
+
+<h2>🌟 Servicios Especiales</h2>
+
+<div class="service">
+<h2>Servicio Personalizado</h2>
+<p>Atención individual</p>
+<p>Duración: 20 minutos</p>
+<button onclick="startService('TDK')">Iniciar Servicio</button>
+<audio id="audio-TDK" controls></audio>
+<button onclick=
