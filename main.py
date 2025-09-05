@@ -1,77 +1,72 @@
 import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 import stripe
-import google.generativeai as genai
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_cors import CORS
 
-# =========================
-# CONFIGURACIONES
-# =========================
+# Configuración base
 app = Flask(__name__)
 CORS(app)
 
 # Stripe
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")  # en Render lo pones en Variables de Entorno
+DOMAIN = os.environ.get("DOMAIN", "https://asistente-virtual-may-roga.onrender.com")
 
-# Google Generative AI
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
-
-# =========================
-# RUTAS PRINCIPALES
-# =========================
-
+# Página principal
 @app.route("/")
-def home():
-    return jsonify({"message": "🌿 Asistente Virtual May Roga activo"})
+def index():
+    return render_template("index.html")
 
-# Validación del código de acceso
-@app.route("/validate-access-code", methods=["POST"])
-def validate_access_code():
-    data = request.json
-    access_code = data.get("code")
+# Página de chat
+@app.route("/chat")
+def chat():
+    return render_template("may-roga-chat-assistant.html")
 
-    if access_code == os.environ.get("ACCESS_CODE"):
-        return jsonify({"valid": True})
-    return jsonify({"valid": False}), 401
-
-# Crear sesión de pago con Stripe
+# Crear sesión de pago
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     try:
         data = request.json
-        session = stripe.checkout.Session.create(
+        price_id = data.get("priceId")
+
+        checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": data.get("product", "Servicio de bienestar")},
-                    "unit_amount": int(data.get("amount", 1000)),  # en centavos
-                },
-                "quantity": 1,
-            }],
             mode="payment",
-            success_url=data.get("success_url", "https://tu-web.com/success"),
-            cancel_url=data.get("cancel_url", "https://tu-web.com/cancel"),
+            line_items=[{
+                "price": price_id,
+                "quantity": 1
+            }],
+            success_url=f"{DOMAIN}/success",
+            cancel_url=f"{DOMAIN}/cancel",
         )
-        return jsonify({"id": session.id})
+        return jsonify({"url": checkout_session.url})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Respuestas del asistente con Gemini
-@app.route("/assistant", methods=["POST"])
-def assistant():
-    try:
-        data = request.json
-        user_message = data.get("message", "")
+# Rutas de confirmación
+@app.route("/success")
+def success():
+    return render_template("success.html")
 
-        response = model.generate_content(user_message)
-        return jsonify({"response": response.text})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.route("/cancel")
+def cancel():
+    return render_template("cancel.html")
 
-# =========================
-# EJECUCIÓN LOCAL
-# =========================
+@app.route("/failure")
+def failure():
+    return render_template("failure.html")
+
+# --- API de Chat (simplificada) ---
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    data = request.json
+    message = data.get("message", "")
+    if not message:
+        return jsonify({"error": "Mensaje vacío"}), 400
+
+    # Aquí podrías conectar con Google Generative AI, pero como demo:
+    reply = f"Entendido: {message}. Estoy aquí para ayudarte con risoterapia y bienestar natural."
+    return jsonify({"reply": reply})
+
+# Arranque
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
