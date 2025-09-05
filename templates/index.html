@@ -1,117 +1,131 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Asistente May Roga</title>
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
-.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
-h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
-.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-.service h2 { margin-top:0; color:#333; }
-.service p { margin:5px 0; }
-button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
-button:hover { background:#43a047; }
-#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
-#secret-button { background:#2196F3; }
-#secret-button:hover { background:#1976D2; }
+  body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
+  .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+  h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+  .service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
+  .service h2 { margin-top:0; color:#333; }
+  .service p { margin:5px 0; }
+  button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+  button:hover { background:#43a047; }
+  #secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
+  #secret-button { background:#2196F3; }
+  #secret-button:hover { background:#1976D2; }
+  .note { font-size:13px; color:#666; margin-top:6px; }
 </style>
 </head>
 <body>
 <div class="container">
-<h1>Asistente May Roga</h1>
+  <h1>Asistente May Roga</h1>
 
-<!-- Acceso con Código Secreto -->
-<div style="margin-bottom:20px; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
+  <!-- Acceso con Código Secreto -->
+  <div style="margin-bottom:20px; text-align:center;">
+    <input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+    <button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
+    <div class="note">También puedes pagar cualquier servicio. Stripe Checkout no se modifica.</div>
+  </div>
 
-<h2>🌿 Servicios Regulares</h2>
-<div class="service">
-<h2>Risoterapia y Bienestar Natural</h2>
-<p>Duración: 10 minutos</p>
-<p>Precio: $12</p>
-<button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
-</div>
-<div class="service">
-<h2>Horóscopo y Consejos de Vida</h2>
-<p>Duración: 2 minutos</p>
-<p>Precio: $6</p>
-<button onclick="buyService('Horóscopo', 600)">Comprar</button>
-</div>
-<div class="service">
-<h2>Respuesta Rápida</h2>
-<p>Duración: 55 segundos</p>
-<p>Precio: $2</p>
-<button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
-</div>
+  <h2>🌿 Servicios Regulares</h2>
 
-<h2>🌟 Servicios Especiales</h2>
-<div class="service">
-<h2>Servicio Personalizado</h2>
-<p>Atención individual</p>
-<p>Duración: 20 minutos</p>
-<p>Precio: $50</p>
-<button onclick="buyService('Servicio Personalizado', 5000)">Comprar</button>
-</div>
-<div class="service">
-<h2>Servicio Corporativo</h2>
-<p>3 sesiones en 15 días para equipos</p>
-<p>Duración: 15–25 minutos cada sesión</p>
-<p>Precio: $750 (paquete completo)</p>
-<button onclick="buyService('Servicio Corporativo', 75000)">Comprar</button>
-</div>
-<div class="service">
-<h2>Servicio Grupal</h2>
-<p>De 5 a 10 personas</p>
-<p>Duración: 15 minutos</p>
-<p>Precio: $450</p>
-<button onclick="buyService('Servicio Grupal', 45000)">Comprar</button>
-</div>
+  <div class="service">
+    <h2>Risoterapia y Bienestar Natural</h2>
+    <p>Duración: 10 minutos</p>
+    <p>Precio: $12</p>
+    <button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
+  </div>
+
+  <div class="service">
+    <h2>Horóscopo y Consejos de Vida</h2>
+    <p>Duración: 2 minutos</p>
+    <p>Precio: $6</p>
+    <button onclick="buyService('Horóscopo', 600)">Comprar</button>
+  </div>
+
+  <div class="service">
+    <h2>Respuesta Rápida</h2>
+    <p>Duración: 55 segundos</p>
+    <p>Precio: $2</p>
+    <button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
+  </div>
+
+  <h2>🌟 Servicios Especiales</h2>
+
+  <div class="service">
+    <h2>Servicio Personalizado</h2>
+    <p>Atención individual</p>
+    <p>Duración: 20 minutos</p>
+    <p>Precio: $50</p>
+    <button onclick="buyService('Servicio Personalizado', 5000)">Comprar</button>
+  </div>
+
+  <div class="service">
+    <h2>Servicio Corporativo</h2>
+    <p>3 sesiones en 15 días para equipos</p>
+    <p>Duración: 15–25 minutos cada sesión</p>
+    <p>Precio: $750 (paquete completo)</p>
+    <button onclick="buyService('Servicio Corporativo', 75000)">Comprar</button>
+  </div>
+
+  <div class="service">
+    <h2>Servicio Grupal</h2>
+    <p>De 5 a 10 personas</p>
+    <p>Duración: 15 minutos</p>
+    <p>Precio: $450</p>
+    <button onclick="buyService('Servicio Grupal', 45000)">Comprar</button>
+  </div>
 
 </div>
 
 <script>
+/* stripe_key será inyectada por main.py: {{ stripe_key }} */
 const stripe = Stripe("{{ stripe_key }}");
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
-// Compra vía Stripe
+/* Compra: llama al endpoint /create-checkout-session que deja Stripe intacto */
 async function buyService(product, amount){
-    try {
-        const res = await fetch(`${backendURL}/create-checkout-session`, {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({product, amount})
-        });
-        const data = await res.json();
-        if(data.id){
-            await stripe.redirectToCheckout({ sessionId: data.id });
-        } else {
-            alert("Error al crear la sesión de pago");
-        }
-    } catch(e){
-        alert("Error conectando al servidor");
+  try {
+    const res = await fetch(`${backendURL}/create-checkout-session`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({product, amount})
+    });
+    const data = await res.json();
+    if(data.id){
+      await stripe.redirectToCheckout({ sessionId: data.id });
+    } else {
+      alert("Error creando sesión de pago.");
+      console.error("create-checkout-session response:", data);
     }
+  } catch(err){
+    alert("Error de conexión con el servidor.");
+    console.error(err);
+  }
 }
 
-// Desbloquear todos los servicios con código secreto
+/* Unlock por código secreto: llama a /unlock (backend valida y devuelve access) */
 async function unlockAllServices(){
-    const code = document.getElementById("secret-input").value.trim();
-    if(!code) { alert("Ingresa tu código secreto"); return; }
-    try {
-        const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
-        const data = await res.json();
-        if(data.access === "granted"){
-            alert("Todos los servicios desbloqueados ✅");
-        } else {
-            alert("Código incorrecto ❌");
-        }
-    } catch(e){
-        alert("Error de conexión con el servidor");
+  const code = document.getElementById('secret-input').value.trim();
+  if(!code){ alert("Ingresa tu código secreto"); return; }
+  try {
+    const res = await fetch(`${backendURL}/unlock?code=${encodeURIComponent(code)}`);
+    const data = await res.json();
+    if(data.access === "granted"){
+      alert("Acceso autorizado. Puedes ahora acceder a tus servicios.");
+      // opcional: redirigir a dashboard o abrir página de servicios
+      window.location.href = backendURL; // el usuario puede abrir la URL del asistente
+    } else {
+      alert("Código incorrecto.");
     }
+  } catch(e){
+    alert("Error de conexión con el servidor.");
+    console.error(e);
+  }
 }
 </script>
 </body>
