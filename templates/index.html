@@ -3,137 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Servicios May Roga</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-    }
-    h1 { text-align: center; color: #4CAF50; }
-    .service {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 15px 0;
-      padding: 15px;
-      border-radius: 8px;
-      background: #e8f5e9;
-    }
-    .service button {
-      background: #4CAF50;
-      color: #fff;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .service button:hover {
-      background: #43a047;
-    }
-    .access-code {
-      margin: 20px 0;
-      text-align: center;
-    }
-    .access-code input {
-      padding: 8px;
-      width: 60%;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      margin-right: 8px;
-    }
-    .access-code button {
-      background: #f57c00;
-    }
-    .access-code button:hover {
-      background: #ef6c00;
-    }
-  </style>
+  <title>Servicios · May Roga</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <div class="container">
+    <h1>🌿 Bienvenido a May Roga</h1>
+    <h2>Selecciona tu servicio</h2>
 
-<div class="container">
-  <h1>Servicios May Roga</h1>
+    <div class="service">
+      <h3>Risoterapia y Bienestar Natural</h3>
+      <button onclick="checkout('{{ 'price_123' }}')">Pagar $10</button>
+    </div>
 
-  <!-- Servicios -->
-  <div id="services">
     <div class="service">
-      <div>
-        <strong>Respuesta Rápida</strong><br>
-        Duración: 55 segundos<br>
-        Precio: $2
-      </div>
-      <button onclick="payService('Respuesta Rápida', 200)">Pagar</button>
+      <h3>Horóscopo y Consejos</h3>
+      <button onclick="checkout('{{ 'price_456' }}')">Pagar $5</button>
     </div>
+
     <div class="service">
-      <div>
-        <strong>Risoterapia y Bienestar Natural</strong><br>
-        Duración: 10 minutos<br>
-        Precio: $12
-      </div>
-      <button onclick="payService('Risoterapia y Bienestar Natural', 1200)">Pagar</button>
+      <h3>Respuesta Rápida</h3>
+      <button onclick="checkout('{{ 'price_789' }}')">Pagar $3</button>
     </div>
-    <div class="service">
-      <div>
-        <strong>Horóscopo y Consejos</strong><br>
-        Duración: 1 minuto 30 segundos<br>
-        Precio: $5
-      </div>
-      <button onclick="payService('Horóscopo y Consejos', 500)">Pagar</button>
-    </div>
+
+    <a href="/chat">Ir al asistente virtual</a>
   </div>
 
-  <!-- Código secreto -->
-  <div class="access-code">
-    <input type="password" id="accessCode" placeholder="Ingresa tu código secreto">
-    <button onclick="validateCode()">Acceder</button>
-  </div>
-
-</div>
-
-<script>
-  const stripe = Stripe('pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3NMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz');
-  const backendURL = 'https://asistente-virtual-may-roga.onrender.com';
-
-  async function payService(product, amount) {
-    try {
-      const response = await axios.post(`${backendURL}/create-checkout-session`, { product, amount });
-      const sessionId = response.data.id;
-      const { error } = await stripe.redirectToCheckout({ sessionId });
-      if (error) alert(error.message);
-    } catch (err) {
-      alert('Error al procesar el pago: ' + err.message);
-    }
-  }
-
-  async function validateCode() {
-    const code = document.getElementById('accessCode').value;
-    if (!code) return alert('Ingresa un código');
-    try {
-      const response = await axios.post(`${backendURL}/validate-access-code`, { code });
-      if (response.data.valid) {
-        alert('Código válido. Acceso directo habilitado.');
-        // Aquí podrías habilitar todos los servicios sin pago
+  <script>
+    async function checkout(priceId){
+      const res = await fetch("/create-checkout-session", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({priceId})
+      });
+      const data = await res.json();
+      if(data.url){
+        window.location.href = data.url;
       } else {
-        alert('Código inválido.');
+        alert("Error al crear el pago: " + data.error);
       }
-    } catch (err) {
-      alert('Error al validar código: ' + err.message);
     }
-  }
-</script>
-
+  </script>
 </body>
 </html>
