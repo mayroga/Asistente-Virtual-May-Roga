@@ -9,9 +9,9 @@ from fastapi.templating import Jinja2Templates
 
 # --- Variables de entorno de Render ---
 RENDER_URL = "https://asistente-virtual-may-roga.onrender.com"
-STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")  # Tu código secreto desde Render
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")  # Clave pública de Stripe
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")        # Clave secreta de Stripe
+ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")           # Código secreto
 
 # --- Inicialización Stripe ---
 stripe.api_key = STRIPE_SECRET_KEY
@@ -19,10 +19,14 @@ stripe.api_key = STRIPE_SECRET_KEY
 # --- FastAPI ---
 app = FastAPI()
 
-# --- CORS para Google Sites y cualquier web ---
+# --- CORS para Google Sites y tu web ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir acceso desde cualquier web
+    allow_origins=[
+        "https://sites.google.com",
+        "https://sites.google.com/view/felicidad",
+        "https://asistente-virtual-may-roga.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,7 +45,10 @@ if not os.path.exists(USERS_FILE):
 # --- Ruta principal ---
 @app.get("/")
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "stripe_key": STRIPE_PUBLIC_KEY})
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "stripe_key": STRIPE_PUBLIC_KEY}
+    )
 
 # --- Crear sesión de pago Stripe ---
 @app.post("/create-checkout-session")
@@ -78,5 +85,3 @@ async def assistant_stream(service: str, secret: str):
 
     # Todos los servicios desbloqueados si el código es correcto
     return JSONResponse({"access": "granted", "service": service})
-
-# --- Mensajes de prueba eliminados, listo para producción ---
