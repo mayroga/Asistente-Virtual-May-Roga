@@ -1,0 +1,86 @@
+{
+  "TDB": {
+    "name": "Técnica del Bien (TDB)",
+    "description": "Traer al frente lo que sostiene, agradecer lo pequeño, orientar la energía hacia lo que sí funciona.",
+    "exercises": [
+      "Inventario del Bien mínimo",
+      "Microacto de cuidado inmediato",
+      "Risa semilla",
+      "Bitácora de victoria pequeña",
+      "Paisaje ancla"
+    ],
+    "audio": "/static/audio/TDB.mp3"
+  },
+  "TDM": {
+    "name": "Técnica del Mal (TDM)",
+    "description": "Mirar de frente lo difícil para extraer el aprendizaje y convertirlo en fuerza.",
+    "exercises": [
+      "Nombrar sin adornos",
+      "Exhalo y desarmo",
+      "Mapa del obstáculo → opción",
+      "Agradecimiento paradójico",
+      "Caja de contención temporal"
+    ],
+    "audio": "/static/audio/TDM.mp3"
+  },
+  "TDN": {
+    "name": "Técnica del Niño (TDN)",
+    "description": "Curiosidad, juego sobrio y permiso para explorar sin juzgar.",
+    "exercises": [
+      "Pregunta imposible",
+      "Risa muda",
+      "Sonidos del mundo",
+      "Dibujo con ojos cerrados",
+      "Salto imaginario"
+    ],
+    "audio": "/static/audio/TDN.mp3"
+  },
+  "TDK": {
+    "name": "Técnica del Beso (TDK)",
+    "description": "Afecto simbólico y caricia emocional que dignifica.",
+    "exercises": [
+      "Beso al corazón (simbólico)",
+      "Beso al paisaje",
+      "Beso-palabra",
+      "Ritual 4–4–4",
+      "Beso al recuerdo"
+    ],
+    "audio": "/static/audio/TDK.mp3"
+  },
+  "TDMM": {
+    "name": "Técnica de la Madre (TDMM)",
+    "description": "Nutrición emocional, calor que sostiene, permiso para descansar sin culpa.",
+    "exercises": [
+      "Manta de voz",
+      "Sopa de letras amables",
+      "Pausa nutritiva",
+      "Manos tibias (a distancia)",
+      "Agenda de abrigo"
+    ],
+    "audio": "/static/audio/TDMM.mp3"
+  },
+  "TDP": {
+    "name": "Técnica del Padre (TDP)",
+    "description": "Dirección, límites con respeto y claridad que impulsa.",
+    "exercises": [
+      "Paso siguiente",
+      "Regla amable",
+      "Cuenta firme 1→5",
+      "Proyecto semilla (24 h)",
+      "Risa de logro"
+    ],
+    "audio": "/static/audio/TDP.mp3"
+  },
+  "TDG": {
+    "name": "Técnica de la Guerra (TDG)",
+    "description": "Canalizar energía intensa en coraje orientado y respeto (sin violencia).",
+    "exercises": [
+      "Tambor suave del pecho",
+      "Pisada consciente",
+      "Grito silencioso",
+      "Estrategia de 3 movimientos",
+      "Risa valiente hacia adelante"
+    ],
+    "audio": "/static/audio/TDG.mp3"
+  }
+}
