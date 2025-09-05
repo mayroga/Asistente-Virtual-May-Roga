@@ -1,1 +1,29 @@
+# --- Ejercicios TDP (Técnica del Padre) ---
+TDP_exercises = [
+    {"title": "Guía y Protección", "duration": 180, "instructions": [
+        "Cierra los ojos e imagina que tu figura paterna te guía con firmeza y seguridad.",
+        "Siente la protección y el apoyo en cada respiración.",
+        "Pausa 1 minuto para absorber la sensación de confianza y estabilidad."],
+    },
+    {"title": "Palabras de Sabiduría", "duration": 240, "instructions": [
+        "Visualiza recibir consejos positivos y constructivos de tu padre o mentor.",
+        "Repite mentalmente frases de orientación y fortaleza.",
+        "Pausa 2 minutos para internalizar la claridad y seguridad proporcionadas."],
+    },
+    {"title": "Abrazo Protector", "duration": 180, "instructions": [
+        "Imagina recibir un abrazo firme y seguro que te transmite calma y apoyo.",
+        "Siente cómo tu cuerpo y mente se relajan completamente.",
+        "Pausa 1 minuto para disfrutar la sensación de estabilidad emocional."],
+    },
+    {"title": "Bendición Paternal", "duration": 240, "instructions": [
+        "Visualiza recibir una bendición que te llena de confianza y energía positiva.",
+        "Siente cómo las preocupaciones se disuelven y la motivación crece.",
+        "Pausa 2 minutos para integrar la energía protectora."],
+    },
+    {"title": "Meditación de Fortaleza", "duration": 300, "instructions": [
+        "Cierra los ojos y respira profundamente, conectándote con la guía paterna.",
+        "Siente fuerza, seguridad y determinación en cada inhalación.",
+        "Pausa 3 minutos para fortalecer la confianza interior y el equilibrio emocional."],
+    },
+]
 
