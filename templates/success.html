@@ -3,14 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pago Exitoso</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <title>Asistente May Roga - Sesión Iniciada</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding-top:40px; }
+    .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+    h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+    #assistant-output { border:1px solid #ddd; border-radius:8px; padding:10px; margin-top:20px; min-height:150px; max-height:300px; overflow-y:auto; background:#fafafa; }
+    #timer { font-weight:bold; color:#f44336; margin-top:10px; text-align:center; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>✅ ¡Pago realizado con éxito!</h1>
-    <p>Gracias por confiar en May Roga. Ahora puedes acceder a tu servicio.</p>
-    <a href="/chat">Ir al asistente</a>
-  </div>
+
+<div class="container">
+  <h1>Tu sesión ha iniciado ✅</h1>
+  <div id="assistant-output"></div>
+  <div id="timer"></div>
+</div>
+
+<script>
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+const urlParams = new URLSearchParams(window.location.search);
+const service = urlParams.get('service') || 'Risoterapia y Bienestar Natural';
+const duration = parseFloat(urlParams.get('duration')) || 10; // minutos
+
+// Temporizador
+let timer = duration * 60;
+const timerDiv = document.getElementById("timer");
+const interval = setInterval(() => {
+  const m = Math.floor(timer/60);
+  const s = Math.floor(timer%60);
+  timerDiv.textContent = `Tiempo restante: ${m}:${s<10?'0':''}${s}`;
+  timer--;
+  if(timer < 0) clearInterval(interval);
+}, 1000);
+
+// SSE para asistente
+function appendMessage(msg){
+  const div = document.getElementById("assistant-output");
+  const p = document.createElement("p");
+  p.textContent = msg;
+  div.appendChild(p);
+  div.scrollTop = div.scrollHeight;
+}
+
+const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${service}`);
+evtSource.onmessage = (event) => { appendMessage(event.data); }
+evtSource.onerror = () => { evtSource.close(); }
+</script>
+
 </body>
 </html>
