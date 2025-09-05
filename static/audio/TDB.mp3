@@ -27,33 +27,3 @@ TDB_exercises = [
         "Pausa 1 minuto al final para asimilar el mensaje."],
     },
 ]
-
-# --- Ejercicios TDM (Técnica del Mal) ---
-TDM_exercises = [
-    {"title": "Identificación de Emociones Negativas", "duration": 180, "instructions": [
-        "Piensa en una situación reciente que te haya molestado.",
-        "Identifica la emoción negativa sin juzgarla.",
-        "Pausa 1 minuto para reflexionar sobre ella."],
-    },
-    {"title": "Aceptación del Mal", "duration": 240, "instructions": [
-        "Acepta que el mal forma parte de la vida.",
-        "Visualiza cómo esa situación puede enseñarte algo.",
-        "Pausa 2 minutos para internalizar la lección."],
-    },
-    {"title": "Transformación de la Frustración", "duration": 180, "instructions": [
-        "Respira profundamente y reconoce tu frustración.",
-        "Piensa en una acción que transforme esa energía en algo positivo.",
-        "Pausa 1 minuto para practicar mentalmente la acción."],
-    },
-    {"title": "Liberación Emocional", "duration": 180, "instructions": [
-        "Exhala lentamente todo resentimiento y tensión.",
-        "Siente cómo tu cuerpo se libera de esa carga.",
-        "Pausa 30 segundos entre exhalaciones."],
-    },
-    {"title": "Mensaje Interno Realista", "duration": 240, "instructions": [
-        "Repite mentalmente: 'Acepto la vida tal como es, puedo aprender de cada situación'.",
-        "Siente la fuerza que esto te da.",
-        "Pausa 1 minuto al final para consolidar la aceptación."],
-    },
-]
-
