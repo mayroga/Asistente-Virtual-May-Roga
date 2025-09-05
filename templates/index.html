@@ -6,7 +6,7 @@
 <title>Asistente May Roga</title>
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; }
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
 .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
 h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
 .service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
@@ -14,71 +14,71 @@ h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
 .service p { margin:5px 0; }
 button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
 button:hover { background:#43a047; }
-#timer { font-weight:bold; color:#f44336; margin-top:10px; text-align:center; }
+#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
+#secret-button { background:#2196F3; }
+#secret-button:hover { background:#1976D2; }
 </style>
 </head>
 <body>
-
 <div class="container">
 <h1>Asistente May Roga</h1>
 
-<h2>🌿 Servicios Regulares</h2>
+<!-- Acceso con Código Secreto -->
+<div style="margin-bottom:20px; text-align:center;">
+<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
+</div>
 
+<h2>🌿 Servicios Regulares</h2>
 <div class="service">
-<h3>Risoterapia y Bienestar Natural</h3>
+<h2>Risoterapia y Bienestar Natural</h2>
 <p>Duración: 10 minutos</p>
 <p>Precio: $12</p>
 <button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
 </div>
-
 <div class="service">
-<h3>Horóscopo y Consejos de Vida</h3>
+<h2>Horóscopo y Consejos de Vida</h2>
 <p>Duración: 2 minutos</p>
 <p>Precio: $6</p>
 <button onclick="buyService('Horóscopo', 600)">Comprar</button>
 </div>
-
 <div class="service">
-<h3>Respuesta Rápida</h3>
-<p>Duración: 1 minuto</p>
+<h2>Respuesta Rápida</h2>
+<p>Duración: 55 segundos</p>
 <p>Precio: $2</p>
 <button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
 </div>
 
 <h2>🌟 Servicios Especiales</h2>
-
 <div class="service">
-<h3>Servicio Personalizado</h3>
+<h2>Servicio Personalizado</h2>
 <p>Atención individual</p>
 <p>Duración: 20 minutos</p>
 <p>Precio: $50</p>
 <button onclick="buyService('Servicio Personalizado', 5000)">Comprar</button>
 </div>
-
 <div class="service">
-<h3>Servicio Corporativo</h3>
-<p>3 sesiones en 15 días para equipos de empresa</p>
+<h2>Servicio Corporativo</h2>
+<p>3 sesiones en 15 días para equipos</p>
 <p>Duración: 15–25 minutos cada sesión</p>
-<p>Precio: $750</p>
+<p>Precio: $750 (paquete completo)</p>
 <button onclick="buyService('Servicio Corporativo', 75000)">Comprar</button>
 </div>
-
 <div class="service">
-<h3>Servicio Grupal</h3>
+<h2>Servicio Grupal</h2>
 <p>De 5 a 10 personas</p>
 <p>Duración: 15 minutos</p>
 <p>Precio: $450</p>
 <button onclick="buyService('Servicio Grupal', 45000)">Comprar</button>
 </div>
 
-<div id="timer"></div>
-
 </div>
 
 <script>
-const stripe = Stripe("{{ stripe_key }}");  // clave pública desde Render
+const stripe = Stripe("{{ stripe_key }}");
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
+// Compra vía Stripe
 async function buyService(product, amount){
     try {
         const res = await fetch(`${backendURL}/create-checkout-session`, {
@@ -97,20 +97,21 @@ async function buyService(product, amount){
     }
 }
 
-// --- Cronómetro visual ---
-// Función para mostrar tiempo restante (solo ejemplo, se puede integrar con SSE más adelante)
-function startTimer(durationMinutes){
-    const display = document.getElementById("timer");
-    let timer = durationMinutes * 60;
-    const interval = setInterval(() => {
-        let minutes = Math.floor(timer / 60);
-        let seconds = timer % 60;
-        display.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
-        if(--timer < 0){
-            clearInterval(interval);
-            display.textContent = "¡Ejercicio completado! 🎉";
+// Desbloquear todos los servicios con código secreto
+async function unlockAllServices(){
+    const code = document.getElementById("secret-input").value.trim();
+    if(!code) { alert("Ingresa tu código secreto"); return; }
+    try {
+        const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
+        const data = await res.json();
+        if(data.access === "granted"){
+            alert("Todos los servicios desbloqueados ✅");
+        } else {
+            alert("Código incorrecto ❌");
         }
-    }, 1000);
+    } catch(e){
+        alert("Error de conexión con el servidor");
+    }
 }
 </script>
 </body>
