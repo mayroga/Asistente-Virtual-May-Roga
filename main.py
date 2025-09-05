@@ -1,99 +1,115 @@
 import os
-from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from jinja2 import Environment, FileSystemLoader
-import stripe
-import httpx
 import json
+import stripe
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import httpx
 
-# ----------------- CONFIG -----------------
-RENDER_URL = "https://asistente-virtual-may-roga.onrender.com"
-STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+# --- Variables de entorno ---
+MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")  # código secreto directo desde Render
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 stripe.api_key = STRIPE_SECRET_KEY
 
-# ----------------- APP -----------------
 app = FastAPI()
 
-# Permitir a Google Sites y cualquier origen conectarse
+# --- CORS abierto para Google Sites ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ----------------- PLANTILLAS Y ESTÁTICOS -----------------
-templates = Environment(loader=FileSystemLoader("templates"))
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# ----------------- USUARIOS -----------------
+# --- Usuarios (para ejemplos de seguimiento) ---
 USERS_FILE = "users.json"
+if not os.path.exists(USERS_FILE):
+    with open(USERS_FILE, "w") as f:
+        json.dump({}, f)
 
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        return {}
-    with open(USERS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+# --- Endpoint principal ---
+@app.get("/")
+async def home():
+    return {"status": "ok", "message": "Asistente May Roga activo"}
 
-def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, indent=4, ensure_ascii=False)
-
-# ----------------- RUTAS -----------------
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    template = templates.get_template("index.html")
-    return template.render(stripe_public_key=STRIPE_PUBLIC_KEY)
-
-@app.post("/access")
-async def access_service(code: str = Form(...)):
-    if code != ACCESS_CODE:
-        raise HTTPException(status_code=403, detail="Código incorrecto")
-    return JSONResponse({"status": "ok", "message": "Acceso autorizado"})
-
-@app.post("/create-payment-intent")
-async def create_payment(amount: int = Form(...)):
-    # Stripe requiere cantidad en centavos
+# --- Crear sesión de pago Stripe ---
+@app.post("/create-checkout-session")
+async def create_checkout_session(req: Request):
+    data = await req.json()
+    product = data.get("product")
+    amount = data.get("amount")
+    if not product or not amount:
+        raise HTTPException(status_code=400, detail="Producto o monto inválido")
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=amount * 100,
-            currency="usd",
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": product},
+                    "unit_amount": int(amount),
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=f"{req.headers.get('origin')}/success",
+            cancel_url=f"{req.headers.get('origin')}/cancel",
         )
-        return JSONResponse({"client_secret": intent.client_secret})
+        return JSONResponse({"id": session.id})
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ----------------- SERVICIO DE MENSAJES (TEXTO Y AUDIO) -----------------
-@app.post("/assistant")
-async def assistant(request: Request):
-    data = await request.json()
-    user_message = data.get("message")
-    user_id = data.get("user_id")
+# --- Validación de código secreto ---
+def validate_secret(code: str):
+    return code == MAYROGA_ACCESS_CODE
 
-    if not user_message or not user_id:
-        raise HTTPException(status_code=400, detail="Datos incompletos")
+# --- Generador de eventos SSE ---
+async def event_generator(service: str, secret: str):
+    total_seconds = 10  # inicializado correctamente
+    if secret == MAYROGA_ACCESS_CODE:
+        access = "granted"
+    else:
+        access = "denied"
+        yield json.dumps({"access": access}).encode()
+        return
 
-    # Aquí se haría la llamada a OpenAI y Gemini
+    yield json.dumps({"access": access, "service": service}).encode()
+
+    # Simulación de envío de mensajes (voz o texto)
+    messages = [f"Iniciando servicio: {service}", "Ejercicio 1", "Ejercicio 2", "Ejercicio 3"]
+    for msg in messages:
+        await asyncio.sleep(2)
+        yield json.dumps({"message": msg}).encode()
+
+# --- Endpoint SSE ---
+@app.get("/assistant-stream")
+async def assistant_stream(service: str, secret: str):
+    async def streamer():
+        async for event in event_generator(service, secret):
+            yield b"data: " + event + b"\n\n"
+    return StreamingResponse(streamer(), media_type="text/event-stream")
+
+# --- Claves para frontend ---
+@app.get("/config")
+async def get_config():
+    return {"stripe_key": STRIPE_PUBLISHABLE_KEY}
+
+# --- Run OpenAI o Gemini (ejemplo) ---
+async def call_openai(prompt: str):
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
     async with httpx.AsyncClient() as client:
-        # Ejemplo de llamada a OpenAI
-        ai_response = f"Respuesta simulada para '{user_message}' usando OpenAI/Gemini"
+        response = await client.post("https://api.openai.com/v1/chat/completions", 
+                                     headers=headers, json={"model":"gpt-4","messages":[{"role":"user","content":prompt}]})
+        return response.json()
 
-    # Guardar historial usuario
-    users = load_users()
-    if user_id not in users:
-        users[user_id] = []
-    users[user_id].append({"user": user_message, "assistant": ai_response})
-    save_users(users)
-
-    return JSONResponse({"response": ai_response})
-
-# ----------------- FIN -----------------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+async def call_gemini(prompt: str):
+    headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.post("https://gemini.api.ai/some_endpoint", headers=headers, json={"prompt": prompt})
+        return response.json()
