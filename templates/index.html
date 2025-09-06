@@ -4,159 +4,131 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asistente May Roga</title>
+<script src="https://js.stripe.com/v3/"></script>
 <style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
-.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
-h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+body { font-family: Arial; background:#f5f5f5; display:flex; justify-content:center; padding-top:40px; }
+.container { background:#fff; padding:30px; border-radius:12px; width:90%; max-width:600px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+h1 { text-align:center; color:#4CAF50; }
 .service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-.service h2 { margin-top:0; color:#333; }
-button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button { background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:10px; }
 button:hover { background:#43a047; }
-#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
-#secret-button { background:#2196F3; }
-#secret-button:hover { background:#1976D2; }
-#assistant-output p { color:#2980b9; background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0; }
-#chat-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; }
+#chat-output p { background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0; color:#2980b9; }
+#chat-input { width:80%; padding:8px; border-radius:6px; border:1px solid #ccc; }
 #chat-send { padding:8px 16px; border-radius:6px; border:none; background:#4CAF50; color:white; cursor:pointer; }
 #chat-send:hover { background:#43a047; }
-#timer { font-size:1.1em; margin-top:10px; text-align:center; color:#e67e22; }
+#timer { text-align:center; margin-top:10px; font-size:1.2em; }
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Asistente May Roga</h1>
 
-<!-- Acceso con Código Secreto -->
 <div style="margin-bottom:20px; text-align:center;">
 <input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
+<button onclick="unlockAllServices()">Desbloquear Servicios</button>
 </div>
 
-<h2>Servicios</h2>
-<div class="service">
-<h2>Risoterapia y Bienestar Natural</h2>
-<button onclick="startService('Risoterapia y Bienestar Natural', 600)">Iniciar Chat</button>
-</div>
-
-<div class="service">
-<h2>Horóscopo y Consejos de Vida</h2>
-<button onclick="startService('Horóscopo y Consejos de Vida', 120)">Iniciar Chat</button>
-</div>
-
-<div class="service">
-<h2>Respuesta Rápida</h2>
-<button onclick="startService('Respuesta Rápida', 55)">Iniciar Chat</button>
-</div>
-
-<div class="service">
-<h2>Servicio Personalizado</h2>
-<button onclick="startService('Servicio Personalizado', 1200)">Iniciar Chat</button>
-</div>
-
-<div class="service">
-<h2>Servicio Corporativo</h2>
-<button onclick="startService('Servicio Corporativo', 1800)">Iniciar Chat</button>
-</div>
-
-<div class="service">
-<h2>Servicio Grupal</h2>
-<button onclick="startService('Servicio Grupal', 900)">Iniciar Chat</button>
+<div id="services">
+<!-- Aquí se listan los servicios -->
 </div>
 
 <h2>Chat del Servicio</h2>
-<div id="assistant-output" style="height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; border-radius:8px;"></div>
+<div id="chat-output"></div>
 <input id="chat-input" type="text" placeholder="Escribe tu mensaje">
 <button id="chat-send" onclick="sendChat()">Enviar</button>
 <div id="timer"></div>
-
 </div>
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+const stripe = Stripe("{{ stripe_public_key }}");
 let evtSource = null;
-let currentSecret = null;
-let countdownTimer = null;
-let remainingSeconds = 0;
+let currentService = null;
 
-// --- Desbloqueo de servicios con código secreto ---
+// --- Lista de servicios ---
+const services = [
+    {name:"Risoterapia y Bienestar Natural", price:12, duration:600},
+    {name:"Horóscopo y Consejos de Vida", price:6, duration:120},
+    {name:"Respuesta Rápida", price:2, duration:55},
+    {name:"Servicio Personalizado", price:50, duration:1200},
+    {name:"Servicio Corporativo", price:750, duration:1800},
+    {name:"Servicio Grupal", price:450, duration:900}
+];
+
+const servicesDiv = document.getElementById("services");
+services.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='service';
+    div.innerHTML=`<h2>${s.name}</h2><p>Precio: $${s.price}</p>
+    <button onclick="startService('${s.name}')">Iniciar Chat</button>
+    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;
+    servicesDiv.appendChild(div);
+});
+
+// --- Stripe Compra ---
+async function buyService(product, amount){
+    const res = await fetch(`${backendURL}/create-checkout-session`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({product, amount})
+    });
+    const data = await res.json();
+    if(data.id) await stripe.redirectToCheckout({sessionId:data.id});
+    else alert("Error al crear sesión de pago");
+}
+
+// --- Desbloqueo servicios ---
 async function unlockAllServices(){
-    const code = document.getElementById("secret-input").value.trim();
-    if(!code){ alert("Ingresa tu código secreto"); return; }
-    try{
-        const res = await fetch(`${backendURL}/assistant-unlock`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ secret: code })
-        });
-        const data = await res.json();
-        if(res.status === 200 && data.success){
-            alert("Todos los servicios desbloqueados ✅");
-            currentSecret = code;
-        } else {
-            alert("Código incorrecto ❌");
-        }
-    }catch(e){
-        alert("Error de conexión con el servidor");
-        console.error(e);
-    }
+    const code=document.getElementById("secret-input").value.trim();
+    if(!code){ alert("Ingresa tu código"); return; }
+    const res=await fetch(`${backendURL}/assistant-unlock`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({secret: code})
+    });
+    const data = await res.json();
+    if(data.success) alert("Servicios desbloqueados ✅");
+    else alert("Código incorrecto ❌");
 }
 
-// --- Inicio de chat por servicio ---
-function startService(serviceName, duration){
-    const output = document.getElementById("assistant-output");
-    const timerEl = document.getElementById("timer");
-    output.innerHTML = `<p>Conectando con ${serviceName}...</p>`;
-    remainingSeconds = duration;
-    startCountdown(timerEl);
-    startSSE(serviceName);
-}
-
-// --- Temporizador ---
-function startCountdown(timerEl){
-    if(countdownTimer) clearInterval(countdownTimer);
-    countdownTimer = setInterval(()=>{
-        const mins = Math.floor(remainingSeconds/60);
-        const secs = remainingSeconds % 60;
-        timerEl.textContent = `Tiempo restante: ${mins}:${secs<10?'0'+secs:secs}`;
-        if(remainingSeconds<=0){ clearInterval(countdownTimer); timerEl.textContent="Sesión finalizada ⏰"; if(evtSource) evtSource.close(); }
-        remainingSeconds--;
-    },1000);
-}
-
-// --- SSE para el asistente ---
-function startSSE(serviceName){
+// --- Inicio servicio ---
+function startService(serviceName){
+    currentService = serviceName;
     if(evtSource) evtSource.close();
-    let url = `${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}`;
-    if(currentSecret) url += `&secret=${currentSecret}`;
-    evtSource = new EventSource(url);
-    const output = document.getElementById("assistant-output");
+    document.getElementById("chat-output").innerHTML=`<p>Conectando con ${serviceName}...</p>`;
+    evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}`);
     evtSource.onmessage = (e)=>{
-        const p = document.createElement('p');
+        const p=document.createElement('p');
         p.textContent = e.data;
-        output.appendChild(p);
-        output.scrollTop = output.scrollHeight;
+        document.getElementById("chat-output").appendChild(p);
+        document.getElementById("chat-output").scrollTop = document.getElementById("chat-output").scrollHeight;
     };
     evtSource.onerror = ()=>{
         evtSource.close();
         const p=document.createElement('p');
         p.textContent="Sesión finalizada o desconectada";
-        output.appendChild(p);
+        document.getElementById("chat-output").appendChild(p);
     };
 }
 
-// --- Chat simple del cliente ---
+// --- Enviar mensaje ---
 function sendChat(){
-    const input=document.getElementById("chat-input");
-    const message=input.value.trim();
-    if(!message) return;
-    const output=document.getElementById("assistant-output");
-    const p=document.createElement('p');
-    p.textContent = "Tú: " + message;
-    output.appendChild(p);
-    output.scrollTop = output.scrollHeight;
+    const input = document.getElementById("chat-input");
+    const msg = input.value.trim();
+    if(!msg || !currentService) return;
+    const out = document.getElementById("chat-output");
+    const p = document.createElement('p'); p.textContent="Tú: "+msg;
+    out.appendChild(p);
     input.value="";
+    // Reabrir SSE con mensaje enviado
+    if(evtSource) evtSource.close();
+    evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(currentService)}&message=${encodeURIComponent(msg)}`);
+    evtSource.onmessage = (e)=>{
+        const p=document.createElement('p');
+        p.textContent=e.data;
+        out.appendChild(p);
+        out.scrollTop = out.scrollHeight;
+    };
+    evtSource.onerror = ()=>{ evtSource.close(); };
 }
-
 </script>
 </body>
 </html>
