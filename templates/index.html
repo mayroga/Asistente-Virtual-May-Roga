@@ -6,6 +6,7 @@
 <title>Asistente May Roga</title>
 <script src="https://js.stripe.com/v3/"></script>
 <style>
+/* --- estilos como antes --- */
 body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
 .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
 h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
@@ -31,6 +32,7 @@ button:hover { background:#43a047; }
 <button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
 </div>
 
+<!-- Servicios -->
 <h2>🌿 Servicios Regulares</h2>
 <div class="service">
 <h2>Risoterapia y Bienestar Natural</h2>
@@ -75,9 +77,8 @@ button:hover { background:#43a047; }
 </div>
 
 <script>
-// Flask inyecta las variables desde backend
 const stripe = Stripe("{{ stripe_key }}");
-const backendURL = "{{ url_site }}";
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
 async function buyService(product, amount){
     try {
@@ -90,7 +91,7 @@ async function buyService(product, amount){
         if(data.id){
             await stripe.redirectToCheckout({ sessionId: data.id });
         } else {
-            alert("Error al crear la sesión de pago: " + (data.error || ""));
+            alert("Error al crear la sesión de pago");
         }
     } catch(e){
         alert("Error conectando al servidor");
@@ -102,16 +103,47 @@ async function unlockAllServices(){
     if(!code){ alert("Ingresa tu código secreto"); return; }
     try {
         const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
-        const data = await res.json();
         if(res.status === 200){
-            document.getElementById("assistant-output").innerText = data.reply || "Servicios desbloqueados ✅";
+            startSSE("all", code);
             alert("Todos los servicios desbloqueados ✅");
         } else {
-            alert(data.error || "Código incorrecto ❌");
+            alert("Código incorrecto ❌");
         }
     } catch(e){
         alert("Error de conexión con el servidor");
     }
+}
+
+function startSSE(service, secret=null){
+    const outputEl = document.getElementById("assistant-output");
+    outputEl.innerHTML = "";
+    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + secret : ''}`;
+    const evtSource = new EventSource(url);
+
+    evtSource.onmessage = (e) => {
+        const msg = e.data;
+        if(msg.startsWith("🎵")){
+            const audioSrc = msg.replace("🎵","").trim();
+            const audioBtn = document.createElement("button");
+            audioBtn.className = "audio-btn";
+            audioBtn.innerText = "Escuchar respuesta";
+            audioBtn.onclick = ()=>{ new Audio(audioSrc).play(); }
+            outputEl.appendChild(audioBtn);
+            outputEl.appendChild(document.createElement("br"));
+        } else {
+            const p = document.createElement("p");
+            p.innerText = msg;
+            outputEl.appendChild(p);
+        }
+        outputEl.scrollTop = outputEl.scrollHeight;
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        const p = document.createElement("p");
+        p.innerText = "Sesión finalizada o desconectada";
+        outputEl.appendChild(p);
+    };
 }
 </script>
 </body>
