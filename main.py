@@ -1,61 +1,64 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Response, status
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import stripe
-import time
-import asyncio
+import os, uuid, asyncio
+import openai
 
 app = FastAPI()
-stripe.api_key = "TU_STRIPE_SECRET_KEY"
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+# CORS para Google Sites
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "https://sites.google.com"],
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# Duraciones por servicio en segundos
-SERVICES_DURATION = {
+MAYROGA_ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
+SERVICES = {
     "Risoterapia y Bienestar Natural": 600,
     "Horóscopo y Consejos de Vida": 120,
     "Respuesta Rápida": 55,
     "Servicio Personalizado": 1200,
-    "Paquete VIP": 2400
+    "Servicio Corporativo": 20*60,
+    "Servicio Grupal": 900
 }
 
 @app.post("/create-checkout-session")
 async def create_checkout_session(req: Request):
     data = await req.json()
     product = data.get("product")
-    amount = data.get("amount") * 100  # centavos
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{'price_data':{'currency':'usd','product_data':{'name':product},'unit_amount':amount}, 'quantity':1}],
-            mode='payment',
-            success_url="https://tusitio.com/success.html",
-            cancel_url="https://tusitio.com/cancel.html"
-        )
-        return JSONResponse({"id": session.id})
-    except Exception as e:
-        return JSONResponse({"error": str(e)})
-
-@app.get("/get-duration")
-async def get_duration(service: str, secret: str = None):
-    duration = SERVICES_DURATION.get(service, 300)
-    return {"duration": duration}
+    amount = int(data.get("amount")) * 100
+    return JSONResponse({"id":"sesion_de_pago_demo"})
 
 @app.get("/assistant-stream")
 async def assistant_stream(service: str, secret: str = None):
+    if secret and secret != MAYROGA_ACCESS_CODE:
+        return Response("Forbidden", status_code=status.HTTP_403_FORBIDDEN)
+
     async def event_generator():
         messages = [
             f"Bienvenido al servicio {service}.",
-            "Aplicando Técnicas de Vida (TVid)...",
+            "Aplicando Técnicas de Vida (TVid) de May Roga LLC...",
             "Escuchando tu estado y adaptando la sesión...",
             "Sesión en progreso..."
         ]
         for msg in messages:
-            yield f"data: {msg}\n\n"
+            # Generar TTS real con OpenAI/Gemini
+            response = openai.audio.speech.create(
+                model="gpt-4o-mini-tts",
+                voice="alloy",
+                input=msg
+            )
+            audio_filename = f"/static/audios/{uuid.uuid4()}.mp3"
+            with open(f".{audio_filename}", "wb") as f:
+                f.write(response.audio_data)
+            yield f"data: {msg}|{audio_filename}\n\n"
             await asyncio.sleep(2)
-    return JSONResponse(content=event_generator())
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/get-duration")
+async def get_duration(service: str):
+    return {"duration": SERVICES.get(service, 300)}
