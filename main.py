@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify 
 from flask_cors import CORS
 import stripe
 import os
@@ -45,7 +45,7 @@ def create_checkout():
             success_url=f'{URL_SITE}/success?service={product}',
             cancel_url=f'{URL_SITE}/cancel',
         )
-        return jsonify({'id': session.id})
+        return jsonify({'url': session.url})   # ✅ ahora devuelve la URL
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
