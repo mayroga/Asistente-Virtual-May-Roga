@@ -1,32 +1,34 @@
-Asistente Virtual May Roga 🌿
+Asistente Virtual May Roga 🌿 (Versión Definitiva)
 
-Este proyecto es un asistente virtual de risoterapia y bienestar natural, que ofrece:
+Asistente virtual de risoterapia y bienestar natural, diseñado para atender múltiples usuarios simultáneamente, ofrecer servicios instantáneos tras pago, y aplicar las Técnicas de Vida (TVid) de May Roga LLC, su fundador Maykel Rodríguez García (Licenciado en Enfermería y MBA).
 
-Respuestas rápidas de vida (55 segundos, $2)
-
-Risoterapia y bienestar natural (10 minutos, $12)
-
-Horóscopo y consejos (1 minuto 30 segundos, $5)
-
-El asistente utiliza IA profesional (Gemini/OpenAI), técnicas de vida TVid, escucha sin juzgar, y ofrece respuestas claras, respetuosas y motivadoras. Permite pagos Stripe, guarda historial en Firebase, y tiene voz TTS opcional para escuchar respuestas.
-
-🚀 Características
+Servicios
+Servicio	Duración	Precio	Qué ofrece
+Respuesta Rápida	55 seg	$2	Respuesta inmediata a preguntas de vida o estado emocional
+Risoterapia y Bienestar Natural	10 min	$12	Sesión guiada de risa y bienestar aplicando TVid
+Horóscopo y Consejos de Vida	2 min	$6	Consejos personalizados y motivación diaria
+Servicio Personalizado	20 min	$50	Sesión individual adaptada a necesidades del usuario
+Servicio Corporativo	3 sesiones de 15–25 min	$750	Atención a empresas con varias sesiones programadas
+Servicio Grupal	15 min	$450	Sesión grupal de hasta 10 personas con interacción dinámica
+Características
 
 Multiusuario con cola de solicitudes y límite de solicitudes simultáneas.
 
-Detecta automáticamente el idioma del usuario.
+Detección automática de idioma y generación de voz TTS con acento local.
 
-Guarda historial de mensajes y respuestas en Firebase.
+Mensajes en vivo con opción de reproducir audio inmediato.
 
-Pagos integrados con Stripe (checkout por producto/servicio).
+Respuestas siempre basadas en técnicas TVid y dualidad positiva/negativa.
 
-Chat profesional siguiendo las técnicas TVid y la dualidad positivo/negativo.
+Pagos integrados con Stripe (checkout por servicio).
 
-Text-to-speech (escuchar respuestas con un botón).
+Historial de mensajes registrado en Firebase.
 
-Compatible con Render y otros hosting que soporten Flask.
+Pantalla limpia y adaptada a móviles y cualquier dispositivo.
 
-🛠 Requisitos
+Código secreto personal para acceso total al sistema (administrador).
+
+Requisitos
 
 Python 3.11+
 
@@ -35,87 +37,105 @@ Claves de entorno:
 STRIPE_SECRET_KEY=<tu_stripe_secret>
 STRIPE_PUBLISHABLE_KEY=<tu_stripe_publishable>
 GEMINI_API_KEY=<tu_api_gemini>
-__firebase_config__=<tu_json_firebase>
+MAYROGA_ACCESS_CODE=<tu_codigo_secreto>
+FIREBASE_CONFIG=<tu_json_firebase>
 
 
-Librerías (ver requirements.txt):
+Librerías (requirements.txt):
 
-Flask==3.0.3
-Flask-CORS==4.0.1
-gunicorn==22.0.0
+fastapi==0.111.0
+uvicorn==0.23.0
 stripe==11.4.0
 firebase-admin==6.5.0
-google-generativeai==0.7.1
-google-cloud-firestore==2.16.0
 httpx==0.28.1
+openai==1.27.0
 
 
 Instalar dependencias:
 
 pip install -r requirements.txt
 
-🖥 Estructura de archivos
-/main.py          -> Servidor Flask principal
-/templates/
-    index.html       -> Página principal y chat
-    success.html     -> Página de pago exitoso
-    cancel.html      -> Página de pago cancelado
-/static/
-    css/style.css
-    js/script.js
+Estructura de archivos
+/main.py           -> Servidor principal FastAPI con TTS y SSE
+/templates/index.html -> Página principal y chat
+/templates/success.html -> Página de pago exitoso
+/templates/cancel.html  -> Página de pago cancelado
+/static/css/style.css
+/static/js/script.js
+/static/audios/  -> Audios generados automáticamente
 requirements.txt
 README.md
 
-⚡ Despliegue en Render
+Despliegue en Render
 
 Subir repo a GitHub.
 
-Crear un Web Service en Render con Python 3.11+.
+Crear Web Service en Render con Python 3.11+.
 
-Configurar variables de entorno mencionadas arriba.
+Configurar variables de entorno mencionadas.
 
-Configurar Build Command:
+Build Command: pip install -r requirements.txt
 
-pip install -r requirements.txt
+Start Command: gunicorn main:app --bind 0.0.0.0:$PORT
+
+Deploy y tu servicio estará 24/7 listo para uso.
+
+Uso
+
+Visitar / para abrir la página principal.
+
+Seleccionar un servicio y pagar con Stripe (o usar código secreto si eres administrador).
+
+Iniciar la sesión de chat.
+
+Recibir mensajes del asistente con opción de audio TTS para escuchar cada respuesta.
+
+Finalizar sesión con evaluación y sugerencias de próximas sesiones.
+
+Notas importantes
+
+Límite de solicitudes simultáneas: 3 por usuario, con cola automática.
+
+Firebase guarda historial de chat.
+
+Respuestas IA entre 30 y 90 segundos, respetando técnicas TVid.
+
+Texto y voz detectan automáticamente el idioma del usuario.
+
+Listo para producción definitiva, sin pruebas ni placeholders.
+
+🔹 Diagrama de flujo del sistema
+flowchart TD
+    A[Usuario entra a la web] --> B{Selecciona servicio}
+    B --> |Stripe| C[Crear sesión de pago]
+    B --> |Código secreto admin| D[Acceso total al sistema]
+    C --> E[Pagar con Stripe]
+    E --> F[Pago exitoso -> inicia chat]
+    D --> F
+    F --> G[Asistente genera mensaje en texto]
+    G --> H[Detecta idioma automáticamente]
+    H --> I[Genera audio TTS con acento local]
+    I --> J[Mensaje en pantalla + botón "Escuchar"]
+    J --> K[Usuario lee o escucha mensaje]
+    K --> L[Aplica Técnicas TVid y dualidad positivo/negativo]
+    L --> M[Temporizador de sesión en vivo]
+    M --> N[Fin de sesión]
+    N --> O[Evaluación de satisfacción]
+    O --> P[Sugerencias futuras y gamificación]
 
 
-Configurar Start Command:
+Con este README tienes todo documentado:
 
-gunicorn main:app --bind 0.0.0.0:$PORT
+Servicios, precios y duración.
 
+Multiusuario y detección de idioma.
 
-Deploy. El servicio estará disponible 24/7 en la URL de Render.
+TTS en vivo con acento nativo.
 
-💬 Uso
+Código secreto y Stripe.
 
-Visitar / para ver la página principal.
+Flujo de interacción completo.
 
-Seleccionar un servicio y pagar con Stripe.
+Compatible con Render y Google Sites.
 
-Enviar mensajes en el chat.
-
-Presionar “Escuchar respuesta” para TTS.
-
-⚠️ Notas importantes
-
-Limite de solicitudes simultáneas por usuario: 3
-
-Cola automática para multiusuario
-
-Firebase registra historial de chat
-
-Respuestas de IA de 30 a 90 segundos, respetando Tvid
-
-Texto y voz en español (detecta idioma automáticamente)
-
-✅ Listo para producción
-
-Con este README y los archivos proporcionados, tu Asistente Virtual May Roga está listo para:
-
-Operar 24/7
-
-Atender muchos usuarios simultáneamente
-
-Cobrar automáticamente por servicios
-
-Mantener profesionalismo y coherencia con tus técnicas TVid
+✅ Proyecto listo para producción definitiva.
