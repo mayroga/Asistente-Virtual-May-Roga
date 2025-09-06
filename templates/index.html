@@ -4,64 +4,146 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asistente May Roga</title>
-<link rel="stylesheet" href="static/css/style.css">
 <script src="https://js.stripe.com/v3/"></script>
+<style>
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
+.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
+.service h2 { margin-top:0; color:#333; }
+.service p { margin:5px 0; }
+button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button:hover { background:#43a047; }
+#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
+#secret-button { background:#2196F3; }
+#secret-button:hover { background:#1976D2; }
+#assistant-output { margin-top:20px; max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:10px; background:#f0f8ff; color:#0000ff; }
+.audio-btn { margin-left:10px; background:#2196F3; border-radius:5px; padding:2px 8px; font-size:14px; cursor:pointer; color:#fff; border:none; }
+</style>
 </head>
 <body>
 <div class="container">
-    <h1>Asistente May Roga</h1>
-    <button onclick="accessWithCode()">🔑 Ingresar Código Secreto</button>
+<h1>Asistente May Roga</h1>
 
-    <div id="services">
-        <h2>🌿 Servicios Regulares</h2>
-        <div class="service">
-            <h3>Risoterapia y Bienestar Natural</h3>
-            <p>Duración: 10 minutos</p>
-            <p>Precio: $12</p>
-            <button onclick="startService('Risoterapia y Bienestar Natural')">Iniciar Servicio</button>
-            <button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
-        </div>
-        <div class="service">
-            <h3>Horóscopo y Consejos de Vida</h3>
-            <p>Duración: 2 minutos</p>
-            <p>Precio: $6</p>
-            <button onclick="startService('Horóscopo y Consejos de Vida')">Iniciar Servicio</button>
-            <button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
-        </div>
-        <div class="service">
-            <h3>Respuesta Rápida</h3>
-            <p>Duración: 55 segundos</p>
-            <p>Precio: $2</p>
-            <button onclick="startService('Respuesta Rápida')">Iniciar Servicio</button>
-            <button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
-        </div>
-
-        <h2>🌟 Servicios Especiales</h2>
-        <div class="service">
-            <h3>Servicio Personalizado</h3>
-            <p>Duración: 20 minutos</p>
-            <p>Precio: $50</p>
-            <button onclick="startService('Servicio Personalizado')">Iniciar Servicio</button>
-            <button onclick="buyService('Servicio Personalizado', 50)">Comprar</button>
-        </div>
-        <div class="service">
-            <h3>Servicio Corporativo</h3>
-            <p>3 sesiones de 15–25 minutos</p>
-            <p>Precio: $750</p>
-            <button onclick="startService('Servicio Corporativo')">Iniciar Servicio</button>
-            <button onclick="buyService('Servicio Corporativo', 750)">Comprar</button>
-        </div>
-        <div class="service">
-            <h3>Servicio Grupal</h3>
-            <p>Duración: 15 minutos</p>
-            <p>Precio: $450</p>
-            <button onclick="startService('Servicio Grupal')">Iniciar Servicio</button>
-            <button onclick="buyService('Servicio Grupal', 450)">Comprar</button>
-        </div>
-    </div>
-
-    <div id="assistant-output"></div>
+<!-- Acceso con Código Secreto -->
+<div style="margin-bottom:20px; text-align:center;">
+<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
 </div>
-<script src="static/js/script.js"></script>
+
+<h2>🌿 Servicios Regulares</h2>
+<div class="service">
+<h2>Risoterapia y Bienestar Natural</h2>
+<p>Duración: 10 minutos</p>
+<p>Precio: $12</p>
+<button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
+</div>
+<div class="service">
+<h2>Horóscopo y Consejos de Vida</h2>
+<p>Duración: 2 minutos</p>
+<p>Precio: $6</p>
+<button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
+</div>
+<div class="service">
+<h2>Respuesta Rápida</h2>
+<p>Duración: 55 segundos</p>
+<p>Precio: $2</p>
+<button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
+</div>
+
+<h2>🌟 Servicios Especiales</h2>
+<div class="service">
+<h2>Servicio Personalizado</h2>
+<p>Duración: 20 minutos</p>
+<p>Precio: $50</p>
+<button onclick="buyService('Servicio Personalizado', 50)">Comprar</button>
+</div>
+<div class="service">
+<h2>Servicio Corporativo</h2>
+<p>3 sesiones de 15–25 min</p>
+<p>Precio: $750</p>
+<button onclick="buyService('Servicio Corporativo', 750)">Comprar</button>
+</div>
+<div class="service">
+<h2>Servicio Grupal</h2>
+<p>Duración: 15 minutos</p>
+<p>Precio: $450</p>
+<button onclick="buyService('Servicio Grupal', 450)">Comprar</button>
+</div>
+
+<div id="assistant-output"></div>
+
+</div>
+
+<script>
+const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+
+async function buyService(product, amount){
+    try {
+        const res = await fetch(`${backendURL}/create-checkout-session`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({product, amount})
+        });
+        const data = await res.json();
+        if(data.id){
+            await stripe.redirectToCheckout({ sessionId: data.id });
+        } else {
+            alert("Error al crear la sesión de pago");
+        }
+    } catch(e){
+        alert("Error conectando al servidor");
+    }
+}
+
+async function unlockAllServices(){
+    const code = document.getElementById("secret-input").value.trim();
+    if(!code){ alert("Ingresa tu código secreto"); return; }
+    try {
+        const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
+        if(res.status === 200){
+            startSSE("all", code);
+            alert("Todos los servicios desbloqueados ✅");
+        } else {
+            alert("Código incorrecto ❌");
+        }
+    } catch(e){
+        alert("Error de conexión con el servidor");
+    }
+}
+
+function startSSE(service, secret=null){
+    const outputEl = document.getElementById("assistant-output");
+    outputEl.innerHTML = "";
+    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + secret : ''}`;
+    const evtSource = new EventSource(url);
+
+    evtSource.onmessage = (e) => {
+        const msg = e.data;
+        if(msg.startsWith("🎵")){
+            const audioSrc = msg.replace("🎵","").trim();
+            const audioBtn = document.createElement("button");
+            audioBtn.className = "audio-btn";
+            audioBtn.innerText = "Escuchar respuesta";
+            audioBtn.onclick = ()=>{ new Audio(audioSrc).play(); }
+            outputEl.appendChild(audioBtn);
+            outputEl.appendChild(document.createElement("br"));
+        } else {
+            const p = document.createElement("p");
+            p.innerText = msg;
+            outputEl.appendChild(p);
+        }
+        outputEl.scrollTop = outputEl.scrollHeight;
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        const p = document.createElement("p");
+        p.innerText = "Sesión finalizada o desconectada";
+        outputEl.appendChild(p);
+    };
+}
+</script>
 </body>
 </html>
