@@ -6,6 +6,7 @@ import stripe
 from time import sleep
 import openai
 import tempfile
+import atexit
 
 app = Flask(__name__)
 CORS(app)
@@ -17,9 +18,21 @@ YOUR_DOMAIN = os.environ.get("URL_SITE")
 # --- Variables importantes ---
 ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")  # Para generación de audio
 
 openai.api_key = OPENAI_KEY
+
+# Almacenamiento temporal para archivos de audio
+audio_cache = {}
+
+# Limpiar archivos temporales al salir
+@atexit.register
+def cleanup_files():
+    for file_path in audio_cache.values():
+        try:
+            os.remove(file_path)
+            print(f"Archivo temporal eliminado: {file_path}")
+        except OSError as e:
+            print(f"Error al eliminar el archivo temporal {file_path}: {e}")
 
 # --- Endpoint raíz ---
 @app.route("/")
@@ -67,23 +80,31 @@ def create_checkout_session():
     except Exception as e:
         return jsonify(error=str(e)), 403
 
-# --- Generación de audio con Gemini o OpenAI ---
+# --- Generación de audio con OpenAI ---
 def generate_audio(text):
-    # Genera un archivo de audio temporal
     try:
         response = openai.audio.speech.create(
-            model="gpt-4o-mini-tts",
-            voice="alloy",  # puedes cambiar la voz
+            model="tts-1",
+            voice="alloy",
             input=text
         )
-        # Guardar audio en archivo temporal
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        temp_file.write(response.read())
+        response.stream_to_file(temp_file.name)
         temp_file.close()
-        return temp_file.name
+        audio_cache[os.path.basename(temp_file.name)] = temp_file.name
+        return os.path.basename(temp_file.name)
     except Exception as e:
         print("Error generando audio:", e)
         return None
+
+# --- Endpoint para servir archivos de audio ---
+@app.route("/get-audio")
+def get_audio():
+    filename = request.args.get('file')
+    if filename and filename in audio_cache:
+        file_path = audio_cache[filename]
+        return send_file(file_path, mimetype="audio/mpeg")
+    return "Archivo no encontrado", 404
 
 # --- SSE para el asistente ---
 @app.route("/assistant-stream")
@@ -131,8 +152,8 @@ def assistant_stream():
 
         for msg in messages:
             sleep(1)
-            audio_file = generate_audio(msg)
-            yield f"data:{msg}|{audio_file}\n\n"
+            audio_filename = generate_audio(msg)
+            yield f"data:{msg}|{audio_filename}\n\n"
 
     return Response(event_stream(), mimetype="text/event-stream")
 
