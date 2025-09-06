@@ -1,175 +1,98 @@
-import os
-import json
-from flask import Flask, jsonify, request, redirect, Response, send_file
+import os, json, tempfile, atexit
+from time import sleep
+from flask import Flask, jsonify, request, Response, send_file
 from flask_cors import CORS
 import stripe
-from time import sleep
 import openai
-import tempfile
-import atexit
 
 app = Flask(__name__)
 CORS(app)
 
-# --- Configuración Stripe ---
+# --- Config ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 YOUR_DOMAIN = os.environ.get("URL_SITE")
-
-# --- Variables importantes ---
 ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-
 openai.api_key = OPENAI_KEY
 
-# Almacenamiento temporal para archivos de audio
 audio_cache = {}
 
-# Limpiar archivos temporales al salir
 @atexit.register
 def cleanup_files():
-    for file_path in audio_cache.values():
-        try:
-            os.remove(file_path)
-            print(f"Archivo temporal eliminado: {file_path}")
-        except OSError as e:
-            print(f"Error al eliminar el archivo temporal {file_path}: {e}")
+    for f in audio_cache.values():
+        try: os.remove(f)
+        except: pass
 
-# --- Endpoint raíz ---
+# --- Inicio ---
 @app.route("/")
-def home():
-    return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
+def home(): return "Asistente Virtual May Roga activo"
 
-# --- Configuración segura ---
-@app.route("/config")
-def get_config():
-    return jsonify({
-        "STRIPE_PUBLISHABLE_KEY": os.environ.get("STRIPE_PUBLISHABLE_KEY"),
-        "URL_SITE": YOUR_DOMAIN
-    })
-
-# --- Desbloqueo con código secreto ---
+# --- Desbloqueo ---
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock_services():
     data = request.json
-    if data.get("secret") == ACCESS_CODE:
-        return jsonify({"success": True})
+    if data.get("secret") == ACCESS_CODE: return jsonify({"success": True})
     return jsonify({"success": False}), 403
 
-# --- Crear sesión de pago con Stripe ---
+# --- Stripe ---
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': data['product'],
-                    },
-                    'unit_amount': int(data['amount']*100),
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=YOUR_DOMAIN + '/success.html',
-            cancel_url=YOUR_DOMAIN + '/cancel.html',
-        )
-        return jsonify({"url": session.url})
-    except Exception as e:
-        return jsonify(error=str(e)), 403
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency':'usd',
+                'product_data': {'name': data['product']},
+                'unit_amount': int(data['amount']*100)
+            },
+            'quantity': 1
+        }],
+        mode='payment',
+        success_url=YOUR_DOMAIN + '/success.html',
+        cancel_url=YOUR_DOMAIN + '/cancel.html'
+    )
+    return jsonify({"url": session.url})
 
-# --- Generación de audio con OpenAI ---
+# --- Generar audio opcional ---
 def generate_audio(text):
     try:
-        response = openai.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=text
-        )
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        response.stream_to_file(temp_file.name)
-        temp_file.close()
-        audio_cache[os.path.basename(temp_file.name)] = temp_file.name
-        return os.path.basename(temp_file.name)
-    except Exception as e:
-        print("Error generando audio:", e)
-        return None
+        r = openai.audio.speech.create(model="tts-1", voice="alloy", input=text)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        r.stream_to_file(tmp.name)
+        tmp.close()
+        audio_cache[os.path.basename(tmp.name)] = tmp.name
+        return os.path.basename(tmp.name)
+    except: return None
 
-# --- Endpoint para servir archivos de audio ---
+@app.route("/generate-voice")
+def generate_voice():
+    text = request.args.get("text")
+    if not text: return "Texto no recibido",400
+    filename = generate_audio(text)
+    if filename: return jsonify({"file": filename, "url": f"/get-audio?file={filename}"})
+    return "Error generando audio",500
+
 @app.route("/get-audio")
 def get_audio():
-    filename = request.args.get('file')
-    if filename and filename in audio_cache:
-        file_path = audio_cache[filename]
-        return send_file(file_path, mimetype="audio/mpeg")
-    return "Archivo no encontrado", 404
+    f = request.args.get("file")
+    if f in audio_cache: return send_file(audio_cache[f], mimetype="audio/mpeg")
+    return "Archivo no encontrado",404
 
-# --- SSE para el asistente ---
+# --- SSE ---
 @app.route("/assistant-stream")
 def assistant_stream():
     service = request.args.get("service")
     secret = request.args.get("secret")
-
-    if service == "Todos los servicios desbloqueados" and secret != ACCESS_CODE:
-        return "Forbidden", 403
+    if service=="Todos los servicios desbloqueados" and secret!=ACCESS_CODE: return "Forbidden",403
 
     def event_stream():
-        if service == "Risoterapia y Bienestar Natural":
-            messages = [
-                "¡Hola! Prepárate para una sesión de risoterapia y bienestar natural.",
-                "Inhalamos paz, exhalamos estrés. ¡Siente la calma!",
-                "La risa es la mejor medicina. ¡Ja, ja, ja! ¡Sigue así!",
-                "Sesión completa. Espero que te sientas renovado/a."
-            ]
-        elif service == "Horóscopo y Consejos de Vida":
-            messages = [
-                "Bienvenido/a a tu lectura de horóscopo y consejos de vida.",
-                "Hoy, los astros se alinean para darte un mensaje especial...",
-                "Recuerda, tu poder está en ti. Sigue tu intuición.",
-                "Tu sesión ha finalizado. ¡Que tengas un día lleno de éxitos!"
-            ]
-        elif service == "Respuesta Rápida":
-            messages = [
-                "Buscando la respuesta a tu pregunta...",
-                "Procesando la información en tiempo real...",
-                "¡Listo! Aquí está tu respuesta rápida."
-            ]
-        elif service == "Todos los servicios desbloqueados":
-            messages = [
-                "¡Acceso completo a todos los servicios!",
-                "El código secreto es correcto. Bienvenido/a.",
-                "Disfruta de una experiencia ilimitada. ¡Estoy a tu disposición!"
-            ]
-        else:
-            messages = [
-                f"Iniciando servicio: {service}",
-                "Procesando tus datos...",
-                "Servicio en curso, disfruta de la experiencia.",
-                "Finalizando sesión, gracias por usar Asistente May Roga."
-            ]
-
-        for msg in messages:
+        msgs = ["Iniciando servicio: "+service, "Procesando...", "Servicio en curso", "Finalizando sesión"]
+        for m in msgs:
             sleep(1)
-            audio_filename = generate_audio(msg)
-            yield f"data:{msg}|{audio_filename}\n\n"
-
+            yield f"data:{m}|\n\n"
     return Response(event_stream(), mimetype="text/event-stream")
 
-# --- Webhook Stripe opcional ---
-@app.route("/stripe-webhook", methods=["POST"])
-def stripe_webhook():
-    payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
-    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except Exception as e:
-        return str(e), 400
-    return "", 200
-
 # --- Ejecutar ---
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__=="__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)))
