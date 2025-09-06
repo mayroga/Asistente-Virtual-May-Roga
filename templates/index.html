@@ -1,158 +1,138 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga</title>
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
-.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
-h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
-.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-.service h2 { margin-top:0; color:#333; }
-.service p { margin:5px 0; }
-button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
-button:hover { background:#43a047; }
-#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
-#secret-button { background:#2196F3; }
-#secret-button:hover { background:#1976D2; }
-#assistant-output { margin-top:20px; max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:10px; background:#f0f8ff; color:#0000ff; }
-.audio-btn { margin-left:10px; background:#2196F3; border-radius:5px; padding:2px 8px; font-size:14px; cursor:pointer; color:#fff; border:none; }
-</style>
-</head>
-<body>
-<div class="container">
-<h1>Asistente May Roga</h1>
+import os
+import json
+from flask import Flask, jsonify, request, redirect, Response
+from flask_cors import CORS
+import stripe
+from time import sleep
 
-<!-- Acceso con Código Secreto -->
-<div style="margin-bottom:20px; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
+app = Flask(__name__)
+CORS(app)
 
-<h2>🌿 Servicios Regulares</h2>
-<div class="service">
-<h2>Risoterapia y Bienestar Natural</h2>
-<p>Duración: 10 minutos</p>
-<p>Precio: $12</p>
-<button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
-</div>
-<div class="service">
-<h2>Horóscopo y Consejos de Vida</h2>
-<p>Duración: 2 minutos</p>
-<p>Precio: $6</p>
-<button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
-</div>
-<div class="service">
-<h2>Respuesta Rápida</h2>
-<p>Duración: 55 segundos</p>
-<p>Precio: $2</p>
-<button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
-</div>
+# Configuración de Stripe
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+YOUR_DOMAIN = os.environ.get("URL_SITE")
 
-<h2>🌟 Servicios Especiales</h2>
-<div class="service">
-<h2>Servicio Personalizado</h2>
-<p>Duración: 20 minutos</p>
-<p>Precio: $50</p>
-<button onclick="buyService('Servicio Personalizado', 50)">Comprar</button>
-</div>
-<div class="service">
-<h2>Servicio Corporativo</h2>
-<p>3 sesiones de 15–25 min</p>
-<p>Precio: $750</p>
-<button onclick="buyService('Servicio Corporativo', 750)">Comprar</button>
-</div>
-<div class="service">
-<h2>Servicio Grupal</h2>
-<p>Duración: 15 minutos</p>
-<p>Precio: $450</p>
-<button onclick="buyService('Servicio Grupal', 450)">Comprar</button>
-</div>
+# Variables de entorno importantes
+ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 
-<div id="assistant-output"></div>
+# --- Endpoint para la raíz ---
+@app.route("/")
+def home():
+    return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
 
-</div>
+# --- Endpoint para config segura ---
+@app.route("/config")
+def get_config():
+    return jsonify({
+        "STRIPE_PUBLISHABLE_KEY": os.environ.get("STRIPE_PUBLISHABLE_KEY"),
+        "URL_SITE": YOUR_DOMAIN
+    })
 
-<script>
-const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+# --- Endpoint para desbloqueo con código secreto ---
+@app.route("/assistant-unlock", methods=["POST"])
+def unlock_services():
+    data = request.json
+    if data.get("secret") == ACCESS_CODE:
+        return jsonify({"success": True})
+    return jsonify({"success": False}), 403
 
-async function buyService(product, amount){
-    try {
-        const res = await fetch(`${backendURL}/create-checkout-session`, {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({product, amount})
-        });
-        const data = await res.json();
-        if(data.id){
-            await stripe.redirectToCheckout({ sessionId: data.id });
-        } else {
-            alert("Error al crear la sesión de pago");
-        }
-    } catch(e){
-        alert("Error conectando al servidor");
-    }
-}
+# --- Crear sesión de pago con Stripe ---
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    data = request.json
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': data['product'],
+                    },
+                    'unit_amount': int(data['amount']*100),
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=YOUR_DOMAIN + '/success.html',
+            cancel_url=YOUR_DOMAIN + '/cancel.html',
+        )
+        return jsonify({"url": session.url})
+    except Exception as e:
+        return jsonify(error=str(e)), 403
 
-async function unlockAllServices(){
-    const code = document.getElementById("secret-input").value.trim();
-    if(!code){ 
-        alert("Ingresa tu código secreto"); 
-        return; 
-    }
-    try {
-        const res = await fetch(`${backendURL}/assistant-stream`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ service: "all", secret: code })
-        });
+# --- SSE para el asistente (texto y audio simulado) ---
+@app.route("/assistant-stream")
+def assistant_stream():
+    service = request.args.get("service")
+    secret = request.args.get("secret")
 
-        const data = await res.json();
-        if(res.status === 200 && data.success){
-            alert(data.message);  // "Servicios desbloqueados ✅"
-            startSSE("all", code); // iniciar SSE opcional
-        } else {
-            alert("Código incorrecto ❌");
-        }
-    } catch(e){
-        alert("Error de conexión con el servidor");
-    }
-}
+    # Validar código secreto si se solicita "all"
+    if service == "Todos los servicios desbloqueados" and secret != ACCESS_CODE:
+        return "Forbidden", 403
 
-function startSSE(service, secret=null){
-    const outputEl = document.getElementById("assistant-output");
-    outputEl.innerHTML = "";
-    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + encodeURIComponent(secret) : ''}`;
-    const evtSource = new EventSource(url);
+    def event_stream():
+        # Mensajes dinámicos según el servicio
+        if service == "Risoterapia y Bienestar Natural":
+            messages = [
+                "¡Hola! Prepárate para una sesión de risoterapia y bienestar natural.",
+                "Inhalamos paz, exhalamos estrés. ¡Siente la calma!",
+                "La risa es la mejor medicina. ¡Ja, ja, ja! ¡Sigue así!",
+                "Sesión completa. Espero que te sientas renovado/a."
+            ]
+        elif service == "Horóscopo y Consejos de Vida":
+            messages = [
+                "Bienvenido/a a tu lectura de horóscopo y consejos de vida.",
+                "Hoy, los astros se alinean para darte un mensaje especial...",
+                "Recuerda, tu poder está en ti. Sigue tu intuición.",
+                "Tu sesión ha finalizado. ¡Que tengas un día lleno de éxitos!"
+            ]
+        elif service == "Respuesta Rápida":
+            messages = [
+                "Buscando la respuesta a tu pregunta...",
+                "Procesando la información en tiempo real...",
+                "¡Listo! Aquí está tu respuesta rápida."
+            ]
+        elif service == "Todos los servicios desbloqueados":
+            messages = [
+                "¡Acceso completo a todos los servicios!",
+                "El código secreto es correcto. Bienvenido/a.",
+                "Disfruta de una experiencia ilimitada. ¡Estoy a tu disposición!"
+            ]
+        else:
+            messages = [
+                f"Iniciando servicio: {service}",
+                "Procesando tus datos...",
+                "Servicio en curso, disfruta de la experiencia.",
+                "Finalizando sesión, gracias por usar Asistente May Roga."
+            ]
 
-    evtSource.onmessage = (e) => {
-        const msg = e.data;
-        if(msg.startsWith("🎵")){
-            const audioSrc = msg.replace("🎵","").trim();
-            const audioBtn = document.createElement("button");
-            audioBtn.className = "audio-btn";
-            audioBtn.innerText = "Escuchar respuesta";
-            audioBtn.onclick = ()=>{ new Audio(audioSrc).play(); }
-            outputEl.appendChild(audioBtn);
-            outputEl.appendChild(document.createElement("br"));
-        } else {
-            const p = document.createElement("p");
-            p.innerText = msg;
-            outputEl.appendChild(p);
-        }
-        outputEl.scrollTop = outputEl.scrollHeight;
-    };
+        # Simular un flujo de mensajes con un archivo de audio
+        for msg in messages:
+            sleep(2)  # simula tiempo de procesamiento
+            # Enviar el mensaje de texto y un nombre de archivo de audio simulado
+            yield f"data:{msg}|simulated_audio.mp3\n\n"
 
-    evtSource.onerror = () => {
-        evtSource.close();
-        const p = document.createElement("p");
-        p.innerText = "Sesión finalizada o desconectada";
-        outputEl.appendChild(p);
-    };
-}
-</script>
-</body>
-</html>
+    return Response(event_stream(), mimetype="text/event-stream")
+
+# --- Webhook de Stripe (opcional) ---
+@app.route("/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except Exception as e:
+        return str(e), 400
+    # Aquí se podrían procesar pagos completados
+    return "", 200
+
+# --- Ejecutar ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
