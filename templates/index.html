@@ -19,17 +19,12 @@ button:hover { background:#43a047; }
 #secret-button:hover { background:#1976D2; }
 #assistant-output p { color:#2980b9; background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0;}
 #timer { font-size: 1.2em; margin-top:10px; text-align:center; }
-#message-box { text-align: center; margin-bottom: 20px; font-weight: bold; }
-.success { color: #4CAF50; }
-.error { color: #f44336; }
 audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Asistente May Roga</h1>
-
-<div id="message-box"></div>
 
 <div style="margin-bottom:20px; text-align:center;">
 <input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
@@ -61,6 +56,33 @@ audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
 <button onclick="buyService('Respuesta Rápida',2)">Comprar</button>
 </div>
 
+<h2>🌟 Servicios Especiales</h2>
+<div class="service">
+<h2>Servicio Personalizado</h2>
+<p>Atención individual con TVid</p>
+<p>Duración: 20 minutos</p>
+<p>Precio: $50</p>
+<button onclick="startService('Servicio Personalizado',50,1200)">Iniciar</button>
+<button onclick="buyService('Servicio Personalizado',50)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Servicio Corporativo</h2>
+<p>3 sesiones de 15–25 min para equipos</p>
+<p>Precio: $750</p>
+<button onclick="startService('Servicio Corporativo',750,1800)">Iniciar</button>
+<button onclick="buyService('Servicio Corporativo',750)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Servicio Grupal</h2>
+<p>De 5 a 10 personas</p>
+<p>Duración: 15 minutos</p>
+<p>Precio: $450</p>
+<button onclick="startService('Servicio Grupal',450,900)">Iniciar</button>
+<button onclick="buyService('Servicio Grupal',450)">Comprar</button>
+</div>
+
 <h2>Chat con el Asistente</h2>
 <div id="assistant-output"></div>
 <div id="timer"></div>
@@ -69,44 +91,48 @@ audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 let currentTimer = null;
 
-function showMessage(message, type='success'){
-    const messageBox=document.getElementById('message-box');
-    messageBox.textContent=message;
-    messageBox.className=type;
-}
-
+// --- Stripe ---
 async function buyService(product, amount){
     try{
-        const res=await fetch(`${backendURL}/create-checkout-session`,{
+        const res = await fetch(`${backendURL}/create-checkout-session`,{
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({product, amount})
+            body: JSON.stringify({product, amount})
         });
-        const data=await res.json();
-        if(data.url){ window.open(data.url,'_blank'); }
-        else{ showMessage("Error al crear la sesión de pago",'error'); }
-    }catch(e){ showMessage("Error conectando al servidor",'error'); console.error(e);}
+        const data = await res.json();
+        if(data.url) window.open(data.url,'_blank');
+        else alert("Error al crear la sesión de pago");
+    }catch(e){alert("Error conectando al servidor"); console.error(e);}
 }
 
+// --- Código secreto ---
 async function unlockAllServices(){
-    const code=document.getElementById("secret-input").value.trim();
-    if(!code){ showMessage("Ingresa tu código secreto",'error'); return; }
+    const code = document.getElementById("secret-input").value.trim();
+    if(!code){ alert("Ingresa tu código secreto"); return; }
+
     try{
-        const res=await fetch(`${backendURL}/assistant-unlock`, {
+        const res = await fetch(`${backendURL}/assistant-unlock`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ secret: code })
         });
-        const data=await res.json();
-        if(res.status===200 && data.success){
-            showMessage("Todos los servicios desbloqueados ✅",'success');
+        const data = await res.json();
+        if(res.status === 200 && data.success){
+            alert("Todos los servicios desbloqueados ✅");
             startSession("Todos los servicios desbloqueados", code);
-        } else { showMessage("Código incorrecto ❌",'error'); }
-    }catch(e){ showMessage("Error de conexión con el servidor",'error'); console.error(e);}
+        } else {
+            alert("Código incorrecto ❌");
+        }
+    }catch(e){
+        alert("Error de conexión con el servidor");
+        console.error(e);
+    }
 }
 
+// --- Servicios ---
 function startService(serviceName, price, duration){ startSession(serviceName,null,duration); }
 
 function startSession(serviceName, secret=null, duration=null){
@@ -119,6 +145,7 @@ function startSession(serviceName, secret=null, duration=null){
     startSSE(serviceName, output, secret);
 }
 
+// --- Temporizador ---
 function startCountdown(seconds, displayEl){
     if(currentTimer) clearInterval(currentTimer);
     currentTimer=setInterval(()=>{
@@ -130,19 +157,30 @@ function startCountdown(seconds, displayEl){
     },1000);
 }
 
+// --- SSE con texto + botón de voz ---
 function startSSE(serviceName, outputEl, secret=null){
     const url=`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret?'&secret='+secret:''}`;
     const evtSource=new EventSource(url);
-    evtSource.onmessage=(e)=>{
-        let [msg,audioFile]=e.data.split('|');
-        const p=document.createElement('p'); p.textContent=msg; outputEl.appendChild(p);
-        if(audioFile){
-            const audio=document.createElement('audio');
-            audio.controls=true;
-            audio.src=`${backendURL}/get-audio?file=${encodeURIComponent(audioFile)}`;
-            outputEl.appendChild(audio);
-        }
-        outputEl.scrollTop=outputEl.scrollHeight;
+    evtSource.onmessage=async (e)=>{
+        const [msg] = e.data.split('|');
+        const p=document.createElement('p');
+        p.textContent = msg;
+
+        // Botón de escuchar
+        const button = document.createElement('button');
+        button.textContent = "🔊 Escuchar";
+        button.onclick = async () => {
+            const res = await fetch(`${backendURL}/generate-voice?text=${encodeURIComponent(msg)}`);
+            const data = await res.json();
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = data.url;
+            p.appendChild(audio);
+        };
+
+        p.appendChild(button);
+        outputEl.appendChild(p);
+        outputEl.scrollTop = outputEl.scrollHeight;
     };
     evtSource.onerror=()=>{
         evtSource.close();
@@ -152,10 +190,10 @@ function startSSE(serviceName, outputEl, secret=null){
     };
 }
 
+// --- Exportar funciones ---
 window.buyService=buyService;
 window.unlockAllServices=unlockAllServices;
 window.startService=startService;
 </script>
 </body>
 </html>
-
