@@ -16,11 +16,11 @@ CORS(app)
 
 # Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-PUBLISHABLE_KEY = os.getenv("PUBLISHABLE_KEY")
+PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 URL_SITE = os.getenv("URL_SITE")
 
 # Código secreto
-SECRET_CODE = os.getenv("SECRET_CODE")
+SECRET_CODE = os.getenv("MAYROGA_ACCESS_CODE")
 
 # Firebase
 firebase_config = json.loads(os.getenv("__firebase_config__"))
@@ -40,7 +40,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # -------------------------
 @app.route("/")
 def index():
-    return render_template("index.html", stripe_key=PUBLISHABLE_KEY)
+    return render_template("index.html", stripe_key=PUBLISHABLE_KEY, url_site=URL_SITE)
 
 @app.route("/success")
 def success():
@@ -57,14 +57,13 @@ def cancel():
 def create_checkout_session():
     data = request.get_json()
     try:
-        amount_cents = int(float(data["amount"]) * 100)  # convertir a centavos
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": data["product"]},
-                    "unit_amount": amount_cents,
+                    "unit_amount": int(float(data["amount"]) * 100),  # en centavos
                 },
                 "quantity": 1,
             }],
@@ -74,23 +73,27 @@ def create_checkout_session():
         )
         return jsonify({"id": session.id})
     except Exception as e:
-        print("❌ Error Stripe:", e)
-        return jsonify(error=str(e)), 500
+        return jsonify({"error": str(e)}), 500
 
 # -------------------------
-# Chat con IA y verificación de código secreto
+# Chat con IA y código secreto
 # -------------------------
 @app.route("/assistant-stream", methods=["GET", "POST"])
 def assistant_stream():
     try:
-        data = request.get_json() if request.method == "POST" else request.args
-        user_message = data.get("message", "")
-        service = data.get("service", "general")
+        if request.method == "POST":
+            data = request.get_json()
+        else:
+            data = request.args
+
         secret = data.get("secret", "")
 
-        # Verificar código secreto
+        # ✅ Validar código secreto
         if secret != SECRET_CODE:
-            return jsonify({"error": "Código secreto incorrecto"}), 401
+            return jsonify({"error":"Código incorrecto"}), 401
+
+        user_message = data.get("message", "")
+        service = data.get("service", "general")
 
         # Guardar en Firebase
         db.collection("chats").add({
@@ -99,12 +102,12 @@ def assistant_stream():
             "secret": secret
         })
 
-        # Intentar Gemini
+        # 1️⃣ Intentar con Gemini
         try:
             response = gemini_model.generate_content(user_message)
             respuesta = response.text
         except Exception:
-            # Fallback a OpenAI
+            # 2️⃣ Fallback a OpenAI
             completion = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -117,7 +120,6 @@ def assistant_stream():
         return jsonify({"reply": respuesta})
 
     except Exception as e:
-        print("❌ Error assistant-stream:", e)
         return jsonify({"error": str(e)}), 500
 
 # -------------------------
@@ -144,4 +146,5 @@ def webhook():
 # Run
 # -------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
