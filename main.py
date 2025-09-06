@@ -1,118 +1,140 @@
 import os
 import json
 import stripe
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from google.cloud import firestore
-from google.generativeai import TextGenerationClient, text
-from gtts import gTTS
-from io import BytesIO
-import base64
+import firebase_admin
+from firebase_admin import credentials, firestore
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+import google.generativeai as genai
+from openai import OpenAI
 
-app = FastAPI()
+# -------------------------
+# Configuración inicial
+# -------------------------
+app = Flask(__name__)
+CORS(app)
 
-# CORS
-origins = [os.getenv("URL_SITE", "https://asistente-virtual-may-roga.onrender.com")]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+URL_SITE = os.getenv("URL_SITE")
 
-# Firestore
+# Firebase
 firebase_config = json.loads(os.getenv("__firebase_config__"))
-db = firestore.Client.from_service_account_info(firebase_config)
+cred = credentials.Certificate(firebase_config)
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-# Gemini/OpenAI
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Código secreto
-MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")
+# OpenAI fallback
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Servicios
-SERVICES = {
-    "Risoterapia y Bienestar Natural": {"duration": 600, "price": 1200},
-    "Horóscopo y Consejos de Vida": {"duration": 120, "price": 600},
-    "Respuesta Rápida": {"duration": 55, "price": 200},
-    "Servicio Personalizado": {"duration": 1200, "price": 5000},
-    "Servicio Corporativo": {"duration": 1500, "price": 75000},
-    "Servicio Grupal": {"duration": 900, "price": 45000},
-}
+# -------------------------
+# Rutas principales
+# -------------------------
+@app.route("/")
+def index():
+    return render_template("index.html", stripe_key=PUBLISHABLE_KEY)
 
-@app.post("/create-checkout-session")
-async def create_checkout_session(request: Request):
-    data = await request.json()
-    product = data.get("product")
-    amount = data.get("amount")
+@app.route("/success")
+def success():
+    return render_template("success.html")
 
-    if not product or not amount:
-        raise HTTPException(status_code=400, detail="Producto o monto faltante")
+@app.route("/cancel")
+def cancel():
+    return render_template("cancel.html")
 
+# -------------------------
+# Crear sesión de pago Stripe
+# -------------------------
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    data = request.get_json()
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "usd",
-                    "product_data": {"name": product},
-                    "unit_amount": amount,
+                    "product_data": {"name": data["product"]},
+                    "unit_amount": int(data["amount"]),  # en centavos
                 },
                 "quantity": 1,
             }],
             mode="payment",
-            success_url=os.getenv("URL_SITE") + "/success.html",
-            cancel_url=os.getenv("URL_SITE") + "/cancel.html",
+            success_url=f"{URL_SITE}/success",
+            cancel_url=f"{URL_SITE}/cancel",
         )
-        return {"id": session.id}
+        return jsonify({"id": session.id})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify(error=str(e)), 500
 
-@app.get("/assistant-stream")
-async def assistant_stream(service: str, secret: str = None):
-    # Verificar acceso
-    access_granted = False
-    if secret and secret.strip() == MAYROGA_ACCESS_CODE:
-        access_granted = True
-    elif service not in SERVICES:
-        raise HTTPException(status_code=400, detail="Servicio no válido")
-
-    # Generar respuesta
-    prompt = f"Usuario solicitó: {service}. Aplicar TVid, dualidad positivo/negativo, voz clara y motivadora."
-
-    # Llamada a Gemini/OpenAI
+# -------------------------
+# Chat con IA
+# -------------------------
+@app.route("/assistant-stream", methods=["GET", "POST"])
+def assistant_stream():
     try:
-        client = TextGenerationClient(api_key=GEMINI_API_KEY)
-        response = client.generate_text(
-            model="gemini-1.5-t",
-            prompt=prompt,
-            max_output_tokens=500
-        )
-        text_response = response.result
-    except Exception:
-        text_response = f"[Asistente May Roga]: Lo siento, no pude generar la respuesta para {service}."
+        if request.method == "POST":
+            data = request.get_json()
+        else:
+            data = request.args
 
-    # Generar TTS
-    tts_audio = gTTS(text_response, lang="es")  # detecta automáticamente idioma si lo deseas cambiar
-    mp3_fp = BytesIO()
-    tts_audio.write_to_fp(mp3_fp)
-    mp3_fp.seek(0)
-    audio_base64 = base64.b64encode(mp3_fp.read()).decode("utf-8")
+        user_message = data.get("message", "")
+        service = data.get("service", "general")
+        secret = data.get("secret", "")
 
-    return JSONResponse({
-        "access": "granted" if access_granted else "user",
-        "text": text_response,
-        "audio": audio_base64
-    })
+        # Guardar en Firebase
+        db.collection("chats").add({
+            "user_message": user_message,
+            "service": service,
+            "secret": secret
+        })
 
-@app.get("/config")
-def get_config():
-    return {"stripe_key": STRIPE_PUBLISHABLE_KEY}
+        # 1️⃣ Intentar con Gemini
+        try:
+            response = gemini_model.generate_content(user_message)
+            respuesta = response.text
+        except Exception:
+            # 2️⃣ Fallback a OpenAI
+            completion = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres Asistente May Roga, experto en risoterapia y bienestar natural."},
+                    {"role": "user", "content": user_message},
+                ],
+            )
+            respuesta = completion.choices[0].message.content
 
+        return jsonify({"reply": respuesta})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# -------------------------
+# Webhook Stripe
+# -------------------------
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRECT")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+    except stripe.error.SignatureVerificationError:
+        return "Firma inválida", 400
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        print("✅ Pago exitoso:", session.get("id"))
+
+    return "ok", 200
+
+# -------------------------
+# Run
+# -------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
