@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import stripe
 import os
@@ -61,32 +61,29 @@ def unlock_services():
 # --- SSE chat por servicio con IA real ---
 @app.route('/assistant-stream')
 def assistant_stream():
-    from flask import Response, stream_with_context
-
     service = request.args.get('service', 'Servicio')
-    secret = request.args.get('secret', None)
+    user_msg = request.args.get('message', '')
+
     initial_message = f"Conectando con {service}..."
     
     def generate():
         yield f"data: {initial_message}\n\n"
-        user_msgs = []
-        while True:
-            # Espera a que el frontend envíe mensajes vía query param "message"
-            msg = request.args.get('message')
-            if msg:
-                user_msgs.append(msg)
-                # Llamada a OpenAI para respuesta dinámica
-                try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-4",
-                        messages=[{"role": "system", "content": f"Servicio: {service}. Responde con tono profesional y cálido."}] +
-                                 [{"role": "user", "content": m} for m in user_msgs]
-                    )
-                    answer = response.choices[0].message.content
-                    yield f"data: {answer}\n\n"
-                except Exception as e:
-                    yield f"data: Error al generar respuesta: {str(e)}\n\n"
-            time.sleep(1)
+        time.sleep(0.5)
+
+        if user_msg:
+            # Llamada a OpenAI
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional y cálido, adaptándote al tipo de servicio."},
+                        {"role": "user", "content": user_msg}
+                    ]
+                )
+                answer = response.choices[0].message.content
+                yield f"data: {answer}\n\n"
+            except Exception as e:
+                yield f"data: Error al generar respuesta: {str(e)}\n\n"
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
