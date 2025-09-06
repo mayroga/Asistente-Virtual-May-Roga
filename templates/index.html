@@ -1,106 +1,24 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga</title>
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-body { font-family: Arial; background:#f5f5f5; display:flex; justify-content:center; padding-top:40px; }
-.container { background:#fff; padding:30px; border-radius:12px; width:90%; max-width:600px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
-h1 { text-align:center; color:#4CAF50; }
-.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-button { background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:10px; }
-button:hover { background:#43a047; }
-#chat-output p { background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0; color:#2980b9; }
-#chat-input { width:80%; padding:8px; border-radius:6px; border:1px solid #ccc; }
-#chat-send { padding:8px 16px; border-radius:6px; border:none; background:#4CAF50; color:white; cursor:pointer; }
-#chat-send:hover { background:#43a047; }
-#timer { text-align:center; margin-top:10px; font-size:1.2em; }
-</style>
-</head>
-<body>
-<div class="container">
-<h1>Asistente May Roga</h1>
-
-<div style="margin-bottom:20px; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
-
-<div id="services">
-<!-- Aquí se listan los servicios -->
-</div>
-
-<h2>Chat del Servicio</h2>
-<div id="chat-output"></div>
-<input id="chat-input" type="text" placeholder="Escribe tu mensaje">
-<button id="chat-send" onclick="sendChat()">Enviar</button>
-<div id="timer"></div>
-</div>
-
-<script>
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-const stripe = Stripe("{{ stripe_public_key }}");
 let evtSource = null;
 let currentService = null;
-
-// --- Lista de servicios ---
-const services = [
-    {name:"Risoterapia y Bienestar Natural", price:12, duration:600},
-    {name:"Horóscopo y Consejos de Vida", price:6, duration:120},
-    {name:"Respuesta Rápida", price:2, duration:55},
-    {name:"Servicio Personalizado", price:50, duration:1200},
-    {name:"Servicio Corporativo", price:750, duration:1800},
-    {name:"Servicio Grupal", price:450, duration:900}
-];
-
-const servicesDiv = document.getElementById("services");
-services.forEach(s=>{
-    const div=document.createElement('div');
-    div.className='service';
-    div.innerHTML=`<h2>${s.name}</h2><p>Precio: $${s.price}</p>
-    <button onclick="startService('${s.name}')">Iniciar Chat</button>
-    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;
-    servicesDiv.appendChild(div);
-});
-
-// --- Stripe Compra ---
-async function buyService(product, amount){
-    const res = await fetch(`${backendURL}/create-checkout-session`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({product, amount})
-    });
-    const data = await res.json();
-    if(data.id) await stripe.redirectToCheckout({sessionId:data.id});
-    else alert("Error al crear sesión de pago");
-}
-
-// --- Desbloqueo servicios ---
-async function unlockAllServices(){
-    const code=document.getElementById("secret-input").value.trim();
-    if(!code){ alert("Ingresa tu código"); return; }
-    const res=await fetch(`${backendURL}/assistant-unlock`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({secret: code})
-    });
-    const data = await res.json();
-    if(data.success) alert("Servicios desbloqueados ✅");
-    else alert("Código incorrecto ❌");
-}
+let userMsgs = [];
 
 // --- Inicio servicio ---
 function startService(serviceName){
     currentService = serviceName;
+    userMsgs = [];
     if(evtSource) evtSource.close();
     document.getElementById("chat-output").innerHTML=`<p>Conectando con ${serviceName}...</p>`;
-    evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}`);
+
+    // Abrimos SSE para recibir respuestas continuas
+    evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(currentService)}`);
+    
     evtSource.onmessage = (e)=>{
         const p=document.createElement('p');
-        p.textContent = e.data;
+        p.textContent=e.data;
         document.getElementById("chat-output").appendChild(p);
         document.getElementById("chat-output").scrollTop = document.getElementById("chat-output").scrollHeight;
     };
+    
     evtSource.onerror = ()=>{
         evtSource.close();
         const p=document.createElement('p');
@@ -115,20 +33,18 @@ function sendChat(){
     const msg = input.value.trim();
     if(!msg || !currentService) return;
     const out = document.getElementById("chat-output");
-    const p = document.createElement('p'); p.textContent="Tú: "+msg;
+    const p = document.createElement('p'); 
+    p.textContent="Tú: "+msg;
     out.appendChild(p);
     input.value="";
-    // Reabrir SSE con mensaje enviado
-    if(evtSource) evtSource.close();
-    evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(currentService)}&message=${encodeURIComponent(msg)}`);
-    evtSource.onmessage = (e)=>{
-        const p=document.createElement('p');
-        p.textContent=e.data;
-        out.appendChild(p);
-        out.scrollTop = out.scrollHeight;
-    };
-    evtSource.onerror = ()=>{ evtSource.close(); };
+
+    // Guardamos mensajes enviados para enviarlos al backend
+    userMsgs.push(msg);
+
+    // Petición POST para que el backend genere la respuesta sin cerrar SSE
+    fetch(`${backendURL}/assistant-stream-message`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({service: currentService, messages: userMsgs})
+    });
 }
-</script>
-</body>
-</html>
