@@ -1,13 +1,18 @@
 import os
 import json
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, redirect, Response
 from flask_cors import CORS
 import stripe
 from time import sleep
-from flask import Response
 
 app = Flask(__name__)
 CORS(app)
+
+# --- Endpoint para la ruta principal ---
+# Esto resuelve el error 404 y proporciona una página de inicio.
+@app.route("/")
+def home():
+    return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
 
 # Configuración de Stripe
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
