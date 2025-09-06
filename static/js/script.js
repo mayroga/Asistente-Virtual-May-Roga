@@ -9,15 +9,9 @@ async function buyService(product, amount){
             body: JSON.stringify({product, amount})
         });
         const data = await res.json();
-        if(data.id){
-            await stripe.redirectToCheckout({ sessionId: data.id });
-        } else {
-            alert("Error al crear la sesión de pago");
-        }
-    } catch(e){
-        alert("Error conectando al servidor");
-        console.error(e);
-    }
+        if(data.id) await stripe.redirectToCheckout({ sessionId: data.id });
+        else alert("Error al crear la sesión de pago");
+    } catch(e){ alert("Error conectando al servidor"); console.error(e); }
 }
 
 async function accessWithCode(){
@@ -25,31 +19,23 @@ async function accessWithCode(){
     if(!code) return;
     try {
         const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
-        if(res.status === 403){
-            alert("Código incorrecto");
-            return;
-        }
+        if(res.status === 403){ alert("Código incorrecto"); return; }
         startSession("Todos los servicios desbloqueados", code);
-    } catch(e){
-        alert("Error al verificar el código secreto");
-        console.error(e);
-    }
+    } catch(e){ alert("Error al verificar el código secreto"); console.error(e); }
 }
 
-function startService(serviceName){
-    startSession(serviceName);
-}
+function startService(serviceName){ startSession(serviceName); }
 
 function startSession(serviceName, secret=null){
     const output = document.getElementById("assistant-output");
     output.innerHTML = `<p class="assistant-message">Iniciando sesión: ${serviceName}</p>`;
 
     const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret ? '&secret=' + secret : ''}`);
-    evtSource.onmessage = (e)=>{
-        const [text, audio] = e.data.split("|");
+    evtSource.onmessage = async (e)=>{
+        const [text, audio_url] = e.data.split("|");
         const div = document.createElement("div");
         div.className = "assistant-message";
-        div.innerHTML = `<p>${text}</p>${audio ? `<button onclick="new Audio('${audio}').play()">▶ Escuchar</button>` : ""}`;
+        div.innerHTML = `<p>${text}</p>${audio_url ? `<button onclick="new Audio('${audio_url}').play()">▶ Escuchar</button>` : ""}`;
         output.appendChild(div);
         output.scrollTop = output.scrollHeight;
     };
