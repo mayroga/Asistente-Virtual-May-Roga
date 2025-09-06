@@ -56,15 +56,15 @@ def unlock_services():
         return jsonify({'success': True})
     return jsonify({'success': False})
 
-# --- Generar respuesta de IA dinámica ---
+# --- Generar respuesta de IA dinámica (actualizado para openai>=1.0.0) ---
 @app.route('/assistant-stream', methods=['GET'])
 def assistant_stream():
     service = request.args.get('service', 'Servicio')
     message = request.args.get('message', '')
 
     try:
-        # Llamada a OpenAI para respuesta
-        response = openai.ChatCompletion.create(
+        # Nueva sintaxis OpenAI 1.0+
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."},
