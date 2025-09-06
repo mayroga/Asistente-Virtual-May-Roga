@@ -1,1 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
+.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
+h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
+.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
+.service h2 { margin-top:0; color:#333; }
+.service p { margin:5px 0; }
+button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
+button:hover { background:#43a047; }
+#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
+#secret-button { background:#2196F3; }
+#secret-button:hover { background:#1976D2; }
+#assistant-output p { color:#2980b9; background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0;}
+#timer { font-size: 1.2em; margin-top:10px; text-align:center; }
+#message-box { text-align: center; margin-bottom: 20px; font-weight: bold; }
+.success { color: #4CAF50; }
+.error { color: #f44336; }
+audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Asistente May Roga</h1>
+
+<div id="message-box"></div>
+
+<div style="margin-bottom:20px; text-align:center;">
+<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
+</div>
+
+<h2>🌿 Servicios Regulares</h2>
+<div class="service">
+<h2>Risoterapia y Bienestar Natural</h2>
+<p>Duración: 10 minutos</p>
+<p>Precio: $12</p>
+<button onclick="startService('Risoterapia y Bienestar Natural',12,600)">Iniciar</button>
+<button onclick="buyService('Risoterapia y Bienestar Natural',12)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Horóscopo y Consejos de Vida</h2>
+<p>Duración: 2 minutos</p>
+<p>Precio: $6</p>
+<button onclick="startService('Horóscopo y Consejos de Vida',6,120)">Iniciar</button>
+<button onclick="buyService('Horóscopo y Consejos de Vida',6)">Comprar</button>
+</div>
+
+<div class="service">
+<h2>Respuesta Rápida</h2>
+<p>Duración: 55 segundos</p>
+<p>Precio: $2</p>
+<button onclick="startService('Respuesta Rápida',2,55)">Iniciar</button>
+<button onclick="buyService('Respuesta Rápida',2)">Comprar</button>
+</div>
+
+<h2>Chat con el Asistente</h2>
+<div id="assistant-output"></div>
+<div id="timer"></div>
+
+</div>
+
+<script>
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+let currentTimer = null;
+
+function showMessage(message, type='success'){
+    const messageBox=document.getElementById('message-box');
+    messageBox.textContent=message;
+    messageBox.className=type;
+}
+
+async function buyService(product, amount){
+    try{
+        const res=await fetch(`${backendURL}/create-checkout-session`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({product, amount})
+        });
+        const data=await res.json();
+        if(data.url){ window.open(data.url,'_blank'); }
+        else{ showMessage("Error al crear la sesión de pago",'error'); }
+    }catch(e){ showMessage("Error conectando al servidor",'error'); console.error(e);}
+}
+
+async function unlockAllServices(){
+    const code=document.getElementById("secret-input").value.trim();
+    if(!code){ showMessage("Ingresa tu código secreto",'error'); return; }
+    try{
+        const res=await fetch(`${backendURL}/assistant-unlock`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: code })
+        });
+        const data=await res.json();
+        if(res.status===200 && data.success){
+            showMessage("Todos los servicios desbloqueados ✅",'success');
+            startSession("Todos los servicios desbloqueados", code);
+        } else { showMessage("Código incorrecto ❌",'error'); }
+    }catch(e){ showMessage("Error de conexión con el servidor",'error'); console.error(e);}
+}
+
+function startService(serviceName, price, duration){ startSession(serviceName,null,duration); }
+
+function startSession(serviceName, secret=null, duration=null){
+    const output=document.getElementById("assistant-output");
+    const timerEl=document.getElementById("timer");
+    output.innerHTML=`<p>Iniciando sesión: ${serviceName}</p>`;
+    timerEl.innerText="";
+    let totalSeconds = duration || 300;
+    startCountdown(totalSeconds, timerEl);
+    startSSE(serviceName, output, secret);
+}
+
+function startCountdown(seconds, displayEl){
+    if(currentTimer) clearInterval(currentTimer);
+    currentTimer=setInterval(()=>{
+        const mins=Math.floor(seconds/60);
+        const secs=seconds%60;
+        displayEl.innerText=`Tiempo restante: ${mins}:${secs<10?'0'+secs:secs}`;
+        if(seconds<=0) clearInterval(currentTimer);
+        seconds--;
+    },1000);
+}
+
+function startSSE(serviceName, outputEl, secret=null){
+    const url=`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret?'&secret='+secret:''}`;
+    const evtSource=new EventSource(url);
+    evtSource.onmessage=(e)=>{
+        let [msg,audioFile]=e.data.split('|');
+        const p=document.createElement('p'); p.textContent=msg; outputEl.appendChild(p);
+        if(audioFile){
+            const audio=document.createElement('audio');
+            audio.controls=true;
+            audio.src=`${backendURL}/get-audio?file=${encodeURIComponent(audioFile)}`;
+            outputEl.appendChild(audio);
+        }
+        outputEl.scrollTop=outputEl.scrollHeight;
+    };
+    evtSource.onerror=()=>{
+        evtSource.close();
+        const p=document.createElement('p');
+        p.textContent="Sesión finalizada o desconectada";
+        outputEl.appendChild(p);
+    };
+}
+
+window.buyService=buyService;
+window.unlockAllServices=unlockAllServices;
+window.startService=startService;
+</script>
+</body>
+</html>
 
