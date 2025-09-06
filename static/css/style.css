@@ -1,8 +1,107 @@
-body { font-family: Arial, sans-serif; background: #f9f9f9; margin:0; padding:0;}
-.container { max-width:600px; margin:auto; padding:20px;}
-h1,h2,h3 { color:#333;}
-.service { background:#fff; border-radius:10px; padding:15px; margin-bottom:15px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-button { background:#4a90e2; color:white; border:none; border-radius:6px; padding:8px 12px; margin:5px 5px 0 0; cursor:pointer;}
-button:hover { background:#357ABD;}
-#assistant-output { margin-top:20px; }
-.assistant-message { background:#d0e7ff; padding:10px; border-radius:8px; margin-bottom:10px;}
+/* Fuente y fondo */
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    margin: 0;
+    padding-top: 40px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Contenedor principal */
+.container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 600px;
+}
+
+/* Títulos */
+h1 {
+    color: #4CAF50;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Servicios */
+.service {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.service h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.service p {
+    margin: 5px 0;
+}
+
+/* Botones generales */
+button {
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button:hover {
+    background: #43a047;
+}
+
+/* Input de código secreto */
+#secret-input {
+    width: 70%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+/* Botón de código secreto */
+#secret-button {
+    background: #2196F3;
+}
+
+#secret-button:hover {
+    background: #1976D2;
+}
+
+/* Mensajes del asistente */
+#assistant-output {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 10px;
+    background: #f0f8ff;
+    color: #0000ff; /* mensajes en azul */
+}
+
+/* Botón de audio TTS */
+.audio-btn {
+    margin-left: 10px;
+    background: #2196F3;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #fff;
+    border: none;
+}
+
+@media screen and (max-width: 600px) {
+    .container { width: 95%; padding: 20px; }
+    button { width: 100%; margin-top: 8px; }
+    #secret-input { width: 65%; }
+}
