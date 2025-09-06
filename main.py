@@ -1,28 +1,32 @@
 import os
 import json
-from flask import Flask, jsonify, request, redirect, Response
+from flask import Flask, jsonify, request, redirect, Response, send_file
 from flask_cors import CORS
 import stripe
 from time import sleep
+import openai
+import tempfile
 
 app = Flask(__name__)
 CORS(app)
 
-# Configuración de Stripe
+# --- Configuración Stripe ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 YOUR_DOMAIN = os.environ.get("URL_SITE")
 
-# Variables de entorno importantes
+# --- Variables importantes ---
 ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")  # Para generación de audio
 
-# --- Endpoint para la raíz ---
+openai.api_key = OPENAI_KEY
+
+# --- Endpoint raíz ---
 @app.route("/")
 def home():
     return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
 
-# --- Endpoint para config segura ---
+# --- Configuración segura ---
 @app.route("/config")
 def get_config():
     return jsonify({
@@ -30,7 +34,7 @@ def get_config():
         "URL_SITE": YOUR_DOMAIN
     })
 
-# --- Endpoint para desbloqueo con código secreto ---
+# --- Desbloqueo con código secreto ---
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock_services():
     data = request.json
@@ -63,18 +67,34 @@ def create_checkout_session():
     except Exception as e:
         return jsonify(error=str(e)), 403
 
-# --- SSE para el asistente (texto y audio simulado) ---
+# --- Generación de audio con Gemini o OpenAI ---
+def generate_audio(text):
+    # Genera un archivo de audio temporal
+    try:
+        response = openai.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="alloy",  # puedes cambiar la voz
+            input=text
+        )
+        # Guardar audio en archivo temporal
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        temp_file.write(response.read())
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        print("Error generando audio:", e)
+        return None
+
+# --- SSE para el asistente ---
 @app.route("/assistant-stream")
 def assistant_stream():
     service = request.args.get("service")
     secret = request.args.get("secret")
 
-    # Validar código secreto si se solicita "all"
     if service == "Todos los servicios desbloqueados" and secret != ACCESS_CODE:
         return "Forbidden", 403
 
     def event_stream():
-        # Mensajes dinámicos según el servicio
         if service == "Risoterapia y Bienestar Natural":
             messages = [
                 "¡Hola! Prepárate para una sesión de risoterapia y bienestar natural.",
@@ -109,27 +129,23 @@ def assistant_stream():
                 "Finalizando sesión, gracias por usar Asistente May Roga."
             ]
 
-        # Simular un flujo de mensajes con un archivo de audio
         for msg in messages:
-            sleep(2)  # simula tiempo de procesamiento
-            # Enviar el mensaje de texto y un nombre de archivo de audio simulado
-            yield f"data:{msg}|simulated_audio.mp3\n\n"
+            sleep(1)
+            audio_file = generate_audio(msg)
+            yield f"data:{msg}|{audio_file}\n\n"
 
     return Response(event_stream(), mimetype="text/event-stream")
 
-# --- Webhook de Stripe (opcional) ---
+# --- Webhook Stripe opcional ---
 @app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
     webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, webhook_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
         return str(e), 400
-    # Aquí se podrían procesar pagos completados
     return "", 200
 
 # --- Ejecutar ---
