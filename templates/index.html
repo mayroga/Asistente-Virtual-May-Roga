@@ -1,70 +1,63 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga</title>
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
-.container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
-h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
-.service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
-.service h2 { margin-top:0; color:#333; }
-.service p { margin:5px 0; }
-button { background:#4CAF50; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:16px; cursor:pointer; margin-top:10px; }
-button:hover { background:#43a047; }
-#secret-input { width:70%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-right:10px; }
-#secret-button { background:#2196F3; }
-#secret-button:hover { background:#1976D2; }
-audio { width:100%; margin-top:10px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente May Roga</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-<div class="container">
-<h1>Asistente May Roga</h1>
+    <div class="container">
+        <h1>Asistente May Roga</h1>
 
-<!-- Acceso con Código Secreto -->
-<div style="margin-bottom:20px; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
+        <button onclick="accessWithCode()">🔑 Ingresar Código Secreto</button>
 
-<h2>🌿 Servicios Regulares</h2>
+        <div id="services">
+            <h2>🌿 Servicios Regulares</h2>
+            <div class="service">
+                <h3>Risoterapia y Bienestar Natural</h3>
+                <p>Duración: 10 minutos</p>
+                <p>Precio: $12</p>
+                <button onclick="startService('Risoterapia y Bienestar Natural', 12, 600)">Iniciar Servicio</button>
+                <button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
+            </div>
+            <div class="service">
+                <h3>Horóscopo y Consejos de Vida</h3>
+                <p>Duración: 2 minutos</p>
+                <p>Precio: $6</p>
+                <button onclick="startService('Horóscopo y Consejos de Vida', 6, 120)">Iniciar Servicio</button>
+                <button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
+            </div>
+            <div class="service">
+                <h3>Respuesta Rápida</h3>
+                <p>Duración: 55 segundos</p>
+                <p>Precio: $2</p>
+                <button onclick="startService('Respuesta Rápida', 2, 55)">Iniciar Servicio</button>
+                <button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
+            </div>
 
-<div class="service">
-<h2>Risoterapia y Bienestar Natural</h2>
-<p>Duración: 10 minutos</p>
-<p>Precio: $12</p>
-<button onclick="startService('TDB')">Iniciar Servicio</button>
-<audio id="audio-TDB" controls></audio>
-<button onclick="buyService('Risoterapia y Bienestar Natural', 1200)">Comprar</button>
-</div>
+            <h2>🌟 Servicios Especiales</h2>
+            <div class="service">
+                <h3>Servicio Personalizado</h3>
+                <p>Duración: 20 minutos</p>
+                <p>Precio: $20</p>
+                <button onclick="startService('Servicio Personalizado', 20, 1200)">Iniciar Servicio</button>
+                <button onclick="buyService('Servicio Personalizado', 20)">Comprar</button>
+            </div>
+            <div class="service">
+                <h3>Paquete VIP</h3>
+                <p>Duración: 40 minutos</p>
+                <p>Precio: $35</p>
+                <button onclick="startService('Paquete VIP', 35, 2400)">Iniciar Servicio</button>
+                <button onclick="buyService('Paquete VIP', 35)">Comprar</button>
+            </div>
+        </div>
 
-<div class="service">
-<h2>Horóscopo y Consejos de Vida</h2>
-<p>Duración: 2 minutos</p>
-<p>Precio: $6</p>
-<button onclick="startService('TDM')">Iniciar Servicio</button>
-<audio id="audio-TDM" controls></audio>
-<button onclick="buyService('Horóscopo', 600)">Comprar</button>
-</div>
+        <div id="assistant-output"></div>
+        <div id="timer"></div>
+    </div>
 
-<div class="service">
-<h2>Respuesta Rápida</h2>
-<p>Duración: 55 segundos</p>
-<p>Precio: $2</p>
-<button onclick="startService('TDN')">Iniciar Servicio</button>
-<audio id="audio-TDN" controls></audio>
-<button onclick="buyService('Respuesta Rápida', 200)">Comprar</button>
-</div>
-
-<h2>🌟 Servicios Especiales</h2>
-
-<div class="service">
-<h2>Servicio Personalizado</h2>
-<p>Atención individual</p>
-<p>Duración: 20 minutos</p>
-<button onclick="startService('TDK')">Iniciar Servicio</button>
-<audio id="audio-TDK" controls></audio>
-<button onclick=
+    <script src="static/js/script.js"></script>
+</body>
+</html>
