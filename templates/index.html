@@ -46,7 +46,6 @@ button:hover { background:#43a047; }
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-const stripe = Stripe("{{ stripe_public_key }}");
 let currentService = null;
 let userMsgs = [];
 
@@ -70,15 +69,18 @@ services.forEach(s=>{
     servicesDiv.appendChild(div);
 });
 
-// --- Stripe Compra ---
+// --- Stripe Compra (abre en nueva pestaña) ---
 async function buyService(product, amount){
     const res = await fetch(`${backendURL}/create-checkout-session`,{
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({product, amount})
     });
     const data = await res.json();
-    if(data.id) await stripe.redirectToCheckout({sessionId:data.id});
-    else alert("Error al crear sesión de pago");
+    if(data.url){
+        window.open(data.url, "_blank"); // 🔑 abre Stripe en nueva pestaña
+    } else {
+        alert("Error al crear sesión de pago");
+    }
 }
 
 // --- Desbloqueo servicios ---
