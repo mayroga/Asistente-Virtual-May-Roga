@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import stripe
 import os
 import openai
-import time
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
@@ -13,10 +12,9 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")  # Solo si usarás Gemini
 URL_SITE = os.environ.get("URL_SITE")
 
-# Configuración OpenAI
 openai.api_key = OPENAI_API_KEY
 
 # --- Ruta principal ---
@@ -58,34 +56,25 @@ def unlock_services():
         return jsonify({'success': True})
     return jsonify({'success': False})
 
-# --- SSE chat por servicio con IA real ---
-@app.route('/assistant-stream')
+# --- Generar respuesta de IA dinámica ---
+@app.route('/assistant-stream', methods=['GET'])
 def assistant_stream():
     service = request.args.get('service', 'Servicio')
-    user_msg = request.args.get('message', '')
+    message = request.args.get('message', '')
 
-    initial_message = f"Conectando con {service}..."
-    
-    def generate():
-        yield f"data: {initial_message}\n\n"
-        time.sleep(0.5)
-
-        if user_msg:
-            # Llamada a OpenAI
-            try:
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional y cálido, adaptándote al tipo de servicio."},
-                        {"role": "user", "content": user_msg}
-                    ]
-                )
-                answer = response.choices[0].message.content
-                yield f"data: {answer}\n\n"
-            except Exception as e:
-                yield f"data: Error al generar respuesta: {str(e)}\n\n"
-    
-    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+    try:
+        # Llamada a OpenAI para respuesta
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."},
+                {"role": "user", "content": message}
+            ]
+        )
+        answer = response.choices[0].message.content
+        return jsonify({'answer': answer})
+    except Exception as e:
+        return jsonify({'answer': f"Error al generar respuesta: {str(e)}"})
 
 # --- Rutas de éxito y cancelación de pago ---
 @app.route('/success')
