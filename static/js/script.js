@@ -1,6 +1,5 @@
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-const stripe = Stripe("{{ stripe_key }}"); // Clave pública de Stripe
-let currentTimer = null;
+const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 
 async function buyService(product, amount){
     try {
@@ -24,7 +23,6 @@ async function buyService(product, amount){
 async function accessWithCode(){
     const code = prompt("Ingrese su código secreto:");
     if(!code) return;
-
     try {
         const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
         if(res.status === 403){
@@ -38,50 +36,24 @@ async function accessWithCode(){
     }
 }
 
-function startService(serviceName, price, duration){
-    startSession(serviceName, null, duration);
+function startService(serviceName){
+    startSession(serviceName);
 }
 
-function startSession(serviceName, secret=null, duration=null){
+function startSession(serviceName, secret=null){
     const output = document.getElementById("assistant-output");
-    const timerEl = document.getElementById("timer");
-    output.innerHTML = `<p>Iniciando sesión: ${serviceName}</p>`;
-    timerEl.innerText = "";
+    output.innerHTML = `<p class="assistant-message">Iniciando sesión: ${serviceName}</p>`;
 
-    let totalSeconds = duration || 300;
-    startCountdown(totalSeconds, timerEl);
-    startSSE(serviceName, output, secret);
-}
-
-function startCountdown(seconds, displayEl){
-    if(currentTimer) clearInterval(currentTimer);
-    currentTimer = setInterval(()=>{
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        displayEl.innerText = `Tiempo restante: ${mins}:${secs < 10 ? '0'+secs : secs}`;
-        if(seconds <= 0) clearInterval(currentTimer);
-        seconds--;
-    }, 1000);
-}
-
-function startSSE(serviceName, outputEl, secret=null){
-    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret ? '&secret=' + secret : ''}`;
-    const evtSource = new EventSource(url);
-
+    const evtSource = new EventSource(`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret ? '&secret=' + secret : ''}`);
     evtSource.onmessage = (e)=>{
-        outputEl.innerHTML += `<p>${e.data}</p>`;
-        outputEl.scrollTop = outputEl.scrollHeight;
-        if(e.data.startsWith("🎵")){
-            const audioSrc = e.data.replace("🎵", "").trim();
-            const audio = new Audio(audioSrc);
-            audio.play().catch(err=>console.error(err));
-        }
+        const [text, audio] = e.data.split("|");
+        const div = document.createElement("div");
+        div.className = "assistant-message";
+        div.innerHTML = `<p>${text}</p>${audio ? `<button onclick="new Audio('${audio}').play()">▶ Escuchar</button>` : ""}`;
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
     };
-
-    evtSource.onerror = ()=>{
-        evtSource.close();
-        outputEl.innerHTML += "<p>Sesión finalizada o desconectada</p>";
-    };
+    evtSource.onerror = ()=>{evtSource.close();}
 }
 
 window.buyService = buyService;
