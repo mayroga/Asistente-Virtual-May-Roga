@@ -6,6 +6,8 @@ import openai
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
+# --- Configuración CORS para Google Sites ---
+CORS(app, origins=["https://sites.google.com"]) 
 
 # --- Configuración de llaves del entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
