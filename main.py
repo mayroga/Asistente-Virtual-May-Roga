@@ -1,18 +1,13 @@
 import os
 import json
-from flask import Flask, jsonify, request, redirect, Response
+from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
 import stripe
 from time import sleep
+from flask import Response
 
 app = Flask(__name__)
 CORS(app)
-
-# --- Endpoint para la ruta principal ---
-# Esto resuelve el error 404 y proporciona una página de inicio.
-@app.route("/")
-def home():
-    return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
 
 # Configuración de Stripe
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
@@ -22,6 +17,11 @@ YOUR_DOMAIN = os.environ.get("URL_SITE")
 ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+
+# --- Endpoint principal (fix 404) ---
+@app.route("/")
+def home():
+    return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
 
 # --- Endpoint para config segura ---
 @app.route("/config")
@@ -60,7 +60,8 @@ def create_checkout_session():
             success_url=YOUR_DOMAIN + '/success.html',
             cancel_url=YOUR_DOMAIN + '/cancel.html',
         )
-        return jsonify({"id": session.id})
+        # Devolver el URL de la sesión en lugar del ID
+        return jsonify({"url": session.url})
     except Exception as e:
         return jsonify(error=str(e)), 403
 
