@@ -20,12 +20,16 @@ button:hover { background:#43a047; }
 #assistant-output p { color:#2980b9; background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0;}
 #timer { font-size: 1.2em; margin-top:10px; text-align:center; }
 audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
+#chat-input { width:80%; padding:8px; border-radius:6px; border:1px solid #ccc; }
+#chat-send { padding:8px 16px; border-radius:6px; border:none; background:#4CAF50; color:white; cursor:pointer; }
+#chat-send:hover { background:#43a047; }
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Asistente May Roga</h1>
 
+<!-- Acceso con Código Secreto -->
 <div style="margin-bottom:20px; text-align:center;">
 <input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
 <button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
@@ -85,6 +89,8 @@ audio { margin-top:5px; width:100%; outline:none; border-radius:6px;}
 
 <h2>Chat con el Asistente</h2>
 <div id="assistant-output"></div>
+<input id="chat-input" type="text" placeholder="Escribe tu mensaje">
+<button id="chat-send" onclick="sendChat()">Enviar</button>
 <div id="timer"></div>
 
 </div>
@@ -94,7 +100,7 @@ const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 let currentTimer = null;
 
-// --- Stripe ---
+// --- Compra con Stripe ---
 async function buyService(product, amount){
     try{
         const res = await fetch(`${backendURL}/create-checkout-session`,{
@@ -103,12 +109,12 @@ async function buyService(product, amount){
             body: JSON.stringify({product, amount})
         });
         const data = await res.json();
-        if(data.url) window.open(data.url,'_blank');
+        if(data.id) await stripe.redirectToCheckout({sessionId:data.id});
         else alert("Error al crear la sesión de pago");
     }catch(e){alert("Error conectando al servidor"); console.error(e);}
 }
 
-// --- Código secreto ---
+// --- Desbloqueo de servicios con código secreto ---
 async function unlockAllServices(){
     const code = document.getElementById("secret-input").value.trim();
     if(!code){ alert("Ingresa tu código secreto"); return; }
@@ -132,8 +138,8 @@ async function unlockAllServices(){
     }
 }
 
-// --- Servicios ---
-function startService(serviceName, price, duration){ startSession(serviceName,null,duration); }
+// --- Inicio de servicios ---
+function startService(serviceName, price, duration){ startSession(serviceName, null, duration); }
 
 function startSession(serviceName, secret=null, duration=null){
     const output=document.getElementById("assistant-output");
@@ -157,30 +163,24 @@ function startCountdown(seconds, displayEl){
     },1000);
 }
 
-// --- SSE con texto + botón de voz ---
+// --- SSE para el asistente ---
+let evtSource = null;
 function startSSE(serviceName, outputEl, secret=null){
+    if(evtSource) evtSource.close();
     const url=`${backendURL}/assistant-stream?service=${encodeURIComponent(serviceName)}${secret?'&secret='+secret:''}`;
-    const evtSource=new EventSource(url);
-    evtSource.onmessage=async (e)=>{
-        const [msg] = e.data.split('|');
+    evtSource=new EventSource(url);
+    evtSource.onmessage=(e)=>{
+        let [msg,audioFile] = e.data.split('|');
         const p=document.createElement('p');
-        p.textContent = msg;
-
-        // Botón de escuchar
-        const button = document.createElement('button');
-        button.textContent = "🔊 Escuchar";
-        button.onclick = async () => {
-            const res = await fetch(`${backendURL}/generate-voice?text=${encodeURIComponent(msg)}`);
-            const data = await res.json();
-            const audio = document.createElement("audio");
-            audio.controls = true;
-            audio.src = data.url;
-            p.appendChild(audio);
-        };
-
-        p.appendChild(button);
+        p.textContent=msg;
         outputEl.appendChild(p);
-        outputEl.scrollTop = outputEl.scrollHeight;
+        if(audioFile){
+            const audio=document.createElement('audio');
+            audio.controls=true;
+            audio.src=`/static/audios/${audioFile}`;
+            outputEl.appendChild(audio);
+        }
+        outputEl.scrollTop=outputEl.scrollHeight;
     };
     evtSource.onerror=()=>{
         evtSource.close();
@@ -190,10 +190,23 @@ function startSSE(serviceName, outputEl, secret=null){
     };
 }
 
+// --- Chat simple ---
+function sendChat(){
+    const input=document.getElementById("chat-input");
+    const message=input.value.trim();
+    if(!message) return;
+    const output=document.getElementById("assistant-output");
+    const p=document.createElement('p');
+    p.textContent = "Tú: " + message;
+    output.appendChild(p);
+    input.value="";
+}
+
 // --- Exportar funciones ---
 window.buyService=buyService;
 window.unlockAllServices=unlockAllServices;
 window.startService=startService;
+window.sendChat=sendChat;
 </script>
 </body>
 </html>
