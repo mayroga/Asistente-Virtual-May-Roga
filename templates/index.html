@@ -63,9 +63,12 @@ const servicesDiv = document.getElementById("services");
 services.forEach(s=>{
     const div=document.createElement('div');
     div.className='service';
-  div.innerHTML=`<h2>${s.name}</h2><p>Precio: $${s.price}</p>
+    div.innerHTML=`<h2>${s.name}</h2>
+<p>Precio: $${s.price}</p>
+<p>Duración: ${s.duration} seg</p>
 <button onclick="startService('${s.name}')">Iniciar Chat</button>
 <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;  
+    servicesDiv.appendChild(div);
 });
 
 // --- Stripe Compra (abre en nueva pestaña) ---
