@@ -12,7 +12,7 @@ h1 { text-align:center; color:#4CAF50; }
 .service { border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px; }
 button { background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:10px; }
 button:hover { background:#43a047; }
-#chat-output p { background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0; color:#2980b9; }
+#chat-output p { background:#eaf2fb; padding:8px; border-radius:8px; margin:5px 0; color:#2980b9; display:inline-block; }
 #chat-input {
     width:80%;
     padding:8px;
@@ -100,6 +100,13 @@ function startService(serviceName){
     document.getElementById("chat-output").innerHTML=`<p>Conectando con ${serviceName}...</p>`;
 }
 
+// --- Función para hablar con voz del navegador ---
+function speakText(text){
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-ES";
+    speechSynthesis.speak(utterance);
+}
+
 // --- Enviar mensaje ---
 async function sendChat(){
     const input = document.getElementById("chat-input");
@@ -120,8 +127,19 @@ async function sendChat(){
             body: JSON.stringify({service: currentService, messages: userMsgs})
         });
         const data = await res.json();
+
+        // Contenedor con respuesta y botón de voz
+        const divResp = document.createElement('div');
         const p2 = document.createElement('p'); p2.textContent=data.answer;
-        out.appendChild(p2);
+        const btn = document.createElement('button');
+        btn.textContent = "🔊 Escuchar";
+        btn.style.marginLeft = "10px";
+        btn.onclick = () => speakText(data.answer);
+
+        divResp.appendChild(p2);
+        divResp.appendChild(btn);
+
+        out.appendChild(divResp);
         out.scrollTop = out.scrollHeight;
     } catch(err){
         const p2 = document.createElement('p'); p2.textContent="Error al generar respuesta.";
