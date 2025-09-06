@@ -1,158 +1,151 @@
-# main.py definitivo - Asistente May Roga 🌿
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
+import stripe
+import asyncio
 import os
 import json
-import asyncio
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-import stripe
 import httpx
-from google.cloud import firestore
-from google.generativeai import TextToSpeechClient
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-# ---------- Variables de entorno ----------
-FIREBASE_CONFIG = os.getenv("__firebase_config__")
+# -----------------------------
+# CONFIGURACIÓN INICIAL
+# -----------------------------
+app = Flask(__name__)
+CORS(app, origins=["https://asistente-virtual-may-roga.onrender.com", "https://yoursite.com"])  # tu URL_SITE
+
+# Variables de entorno
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRECT")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRECT")
-URL_SITE = os.getenv("URL_SITE")
-MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE", "TU_CODIGO_SECRETO_ADMIN")  # solo tu lo conoces
+FIREBASE_CONFIG = os.getenv("__firebase_config__")
+MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")
 
 stripe.api_key = STRIPE_SECRET_KEY
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[URL_SITE],
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+# Firebase
+cred = credentials.Certificate(json.loads(FIREBASE_CONFIG))
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-# ---------- Firestore (historial de chat) ----------
-db = firestore.Client.from_service_account_info(json.loads(FIREBASE_CONFIG))
-chat_collection = db.collection("chat_history")
-
-# ---------- Duraciones en segundos ----------
-SERVICES_DURATION = {
+# Servicios y duración en segundos
+SERVICES = {
     "Risoterapia y Bienestar Natural": 600,
     "Horóscopo y Consejos de Vida": 120,
     "Respuesta Rápida": 55,
     "Servicio Personalizado": 1200,
-    "Servicio Corporativo": 1200,  # duración de 1 sesión, puede multiplicarse
+    "Servicio Corporativo": 1200,  # promedio
     "Servicio Grupal": 900
 }
 
-# ---------- Crear sesión Stripe ----------
-@app.post("/create-checkout-session")
-async def create_checkout_session(req: Request):
-    data = await req.json()
+# -----------------------------
+# ENDPOINTS
+# -----------------------------
+
+# Crear sesión Stripe
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    data = request.json
     product = data.get("product")
-    amount = int(data.get("amount", 0)) * 100  # centavos
+    amount = int(data.get("amount"))
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
+            payment_method_types=["card"],
             line_items=[{
-                'price_data':{
-                    'currency':'usd',
-                    'product_data':{'name': product},
-                    'unit_amount': amount
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": product},
+                    "unit_amount": amount
                 },
-                'quantity':1
+                "quantity": 1
             }],
-            mode='payment',
-            success_url=f"{URL_SITE}/success.html",
-            cancel_url=f"{URL_SITE}/cancel.html"
+            mode="payment",
+            success_url=f"{os.getenv('URL_SITE')}/success.html",
+            cancel_url=f"{os.getenv('URL_SITE')}/cancel.html"
         )
-        return JSONResponse({"id": session.id})
+        return jsonify({"id": session.id})
     except Exception as e:
-        return JSONResponse({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 
-# ---------- Obtener duración ----------
-@app.get("/get-duration")
-async def get_duration(service: str):
-    duration = SERVICES_DURATION.get(service, 300)
-    return {"duration": duration}
+# Obtener duración del servicio
+@app.route("/get-duration")
+def get_duration():
+    service = request.args.get("service")
+    duration = SERVICES.get(service, 300)
+    return jsonify({"duration": duration})
 
-# ---------- SSE Mensajes en vivo con TTS ----------
-@app.get("/assistant-stream")
-async def assistant_stream(service: str, secret: str = None):
-    # Acceso con código secreto
-    if secret == MAYROGA_ACCESS_CODE:
+# SSE con TTS y mensajes en vivo
+@app.route("/assistant-stream")
+def assistant_stream():
+    service = request.args.get("service")
+    secret = request.args.get("secret")
+
+    # Validar acceso por código secreto
+    if secret and secret == MAYROGA_ACCESS_CODE:
         access_granted = True
+    elif service not in SERVICES:
+        return jsonify({"access": "denied"}), 403
     else:
         access_granted = False
 
-    async def event_generator():
-        messages = []
-        if service == "all" and access_granted:
-            messages.append("🎉 Acceso completo desbloqueado por el administrador.")
-            messages.append("Listo para usar todos los servicios de May Roga LLC.")
-        else:
-            messages.append(f"Bienvenido al servicio {service}.")
-            messages.append("Aplicando técnicas TVid y dualidad positiva/negativa...")
-            messages.append("Escuchando tu estado y adaptando la sesión...")
+    async def generate_events():
+        messages = [
+            f"Bienvenido al servicio {service}.",
+            "Aplicando Técnicas de Vida (TVid)...",
+            "Escuchando tu estado y adaptando la sesión...",
+            "Sesión en progreso..."
+        ]
 
+        # Simular IA y TTS en vivo
         for msg in messages:
-            # Generar TTS con Gemini/OpenAI
+            # Llamada a OpenAI/Gemini TTS para generar audio
             audio_url = await generate_tts(msg)
-            yield f"data: 🎵{audio_url}\n\n"  # indica que es audio clicable
             yield f"data: {msg}\n\n"
+            if audio_url:
+                yield f"data: 🎵{audio_url}\n\n"
             await asyncio.sleep(2)
 
-    headers = {"Content-Type": "text/event-stream", "Cache-Control": "no-cache"}
-    return StreamingResponse(event_generator(), headers=headers)
+    return Response(generate_events(), mimetype="text/event-stream")
 
-# ---------- Función TTS ----------
-async def generate_tts(text: str) -> str:
+# -----------------------------
+# FUNCIONES AUXILIARES
+# -----------------------------
+
+async def generate_tts(text):
     """
-    Genera un audio TTS usando Gemini/OpenAI.
-    Retorna la URL pública de un mp3 temporal.
+    Genera TTS con Gemini/OpenAI según el idioma detectado automáticamente
+    Retorna URL de audio listo para reproducir
     """
-    # Aquí usamos Gemini TTS como ejemplo
+    # Detección de idioma automática (simple, se puede mejorar)
+    import langdetect
+    lang = "es"  # predeterminado
     try:
-        client = TextToSpeechClient(api_key=GEMINI_API_KEY)
-        voice_config = {
-            "languageCode": "auto",  # detecta idioma
-            "name": "all-natural-voice"
-        }
-        input_text = {"text": text}
-        response = client.synthesize_speech(
-            input=input_text,
-            voice=voice_config,
-            audio_config={"audioEncoding":"MP3"}
-        )
-        # Guardar audio en /static/audios con nombre temporal
-        filename = f"static/audios/{int(asyncio.get_event_loop().time()*1000)}.mp3"
-        with open(filename, "wb") as f:
-            f.write(response.audio_content)
-        # Retornar ruta relativa para que el front pueda reproducirlo
-        return f"/{filename}"
-    except Exception as e:
-        print("Error TTS:", e)
-        return ""  # si falla, solo texto
+        from langdetect import detect
+        lang = detect(text)
+    except:
+        pass
 
-# ---------- Historial en Firebase ----------
-@app.post("/save-message")
-async def save_message(req: Request):
-    data = await req.json()
-    chat_collection.add(data)
-    return {"status":"ok"}
+    # Llamada ficticia a API TTS Gemini/OpenAI
+    # Aquí se puede integrar la API real de Gemini/OpenAI TTS
+    # Se devuelve una URL pública accesible desde el frontend
+    # Para fines de prueba, podemos devolver un audio local o un placeholder
+    return f"https://asistente-virtual-may-roga.onrender.com/static/tts_placeholder.mp3"
 
-# ---------- Inicio rápido ----------
-@app.get("/")
-async def root():
-    return JSONResponse({"message":"Asistente May Roga listo para producción ✅"})
+# Guardar historial en Firebase
+def save_message(user_id, service, message, response):
+    doc_ref = db.collection("chats").document(user_id)
+    doc_ref.set({
+        "service": service,
+        "message": message,
+        "response": response
+    }, merge=True)
 
-# ---------- Webhook Stripe (opcional) ----------
-@app.post("/webhook")
-async def stripe_webhook(req: Request):
-    payload = await req.body()
-    sig_header = req.headers.get("stripe-signature")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        # Aquí puedes manejar pagos exitosos si quieres
-        return JSONResponse({"status":"success"})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+# -----------------------------
+# RUN APP
+# -----------------------------
+if __name__ == "__main__":
+    import os
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
