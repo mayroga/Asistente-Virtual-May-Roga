@@ -6,7 +6,6 @@
 <title>Asistente May Roga</title>
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-/* --- estilos como antes --- */
 body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding-top:40px; display:flex; justify-content:center; }
 .container { background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:90%; max-width:600px; }
 h1 { color:#4CAF50; text-align:center; margin-bottom:20px; }
@@ -32,7 +31,6 @@ button:hover { background:#43a047; }
 <button id="secret-button" onclick="unlockAllServices()">Desbloquear Servicios</button>
 </div>
 
-<!-- Servicios -->
 <h2>🌿 Servicios Regulares</h2>
 <div class="service">
 <h2>Risoterapia y Bienestar Natural</h2>
@@ -74,10 +72,11 @@ button:hover { background:#43a047; }
 </div>
 
 <div id="assistant-output"></div>
+
 </div>
 
 <script>
-const stripe = Stripe("{{ stripe_key }}");
+const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
 
 async function buyService(product, amount){
@@ -100,12 +99,21 @@ async function buyService(product, amount){
 
 async function unlockAllServices(){
     const code = document.getElementById("secret-input").value.trim();
-    if(!code){ alert("Ingresa tu código secreto"); return; }
+    if(!code){ 
+        alert("Ingresa tu código secreto"); 
+        return; 
+    }
     try {
-        const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
-        if(res.status === 200){
-            startSSE("all", code);
-            alert("Todos los servicios desbloqueados ✅");
+        const res = await fetch(`${backendURL}/assistant-stream`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ service: "all", secret: code })
+        });
+
+        const data = await res.json();
+        if(res.status === 200 && data.success){
+            alert(data.message);  // "Servicios desbloqueados ✅"
+            startSSE("all", code); // iniciar SSE opcional
         } else {
             alert("Código incorrecto ❌");
         }
@@ -117,7 +125,7 @@ async function unlockAllServices(){
 function startSSE(service, secret=null){
     const outputEl = document.getElementById("assistant-output");
     outputEl.innerHTML = "";
-    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + secret : ''}`;
+    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + encodeURIComponent(secret) : ''}`;
     const evtSource = new EventSource(url);
 
     evtSource.onmessage = (e) => {
