@@ -1,10 +1,9 @@
 import os
 import json
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, redirect, Response
 from flask_cors import CORS
 import stripe
 from time import sleep
-from flask import Response
 
 app = Flask(__name__)
 CORS(app)
@@ -18,7 +17,7 @@ ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 
-# --- Endpoint principal (fix 404) ---
+# --- Endpoint para la raíz ---
 @app.route("/")
 def home():
     return "¡Hola! Tu servicio de Asistente Virtual está en funcionamiento."
@@ -60,7 +59,6 @@ def create_checkout_session():
             success_url=YOUR_DOMAIN + '/success.html',
             cancel_url=YOUR_DOMAIN + '/cancel.html',
         )
-        # Devolver el URL de la sesión en lugar del ID
         return jsonify({"url": session.url})
     except Exception as e:
         return jsonify(error=str(e)), 403
@@ -72,19 +70,50 @@ def assistant_stream():
     secret = request.args.get("secret")
 
     # Validar código secreto si se solicita "all"
-    if service == "all" and secret != ACCESS_CODE:
+    if service == "Todos los servicios desbloqueados" and secret != ACCESS_CODE:
         return "Forbidden", 403
 
     def event_stream():
-        messages = [
-            f"Iniciando servicio: {service}",
-            "Procesando tus datos...",
-            "Servicio en curso, disfruta de la experiencia.",
-            "Finalizando sesión, gracias por usar Asistente May Roga."
-        ]
+        # Mensajes dinámicos según el servicio
+        if service == "Risoterapia y Bienestar Natural":
+            messages = [
+                "¡Hola! Prepárate para una sesión de risoterapia y bienestar natural.",
+                "Inhalamos paz, exhalamos estrés. ¡Siente la calma!",
+                "La risa es la mejor medicina. ¡Ja, ja, ja! ¡Sigue así!",
+                "Sesión completa. Espero que te sientas renovado/a."
+            ]
+        elif service == "Horóscopo y Consejos de Vida":
+            messages = [
+                "Bienvenido/a a tu lectura de horóscopo y consejos de vida.",
+                "Hoy, los astros se alinean para darte un mensaje especial...",
+                "Recuerda, tu poder está en ti. Sigue tu intuición.",
+                "Tu sesión ha finalizado. ¡Que tengas un día lleno de éxitos!"
+            ]
+        elif service == "Respuesta Rápida":
+            messages = [
+                "Buscando la respuesta a tu pregunta...",
+                "Procesando la información en tiempo real...",
+                "¡Listo! Aquí está tu respuesta rápida."
+            ]
+        elif service == "Todos los servicios desbloqueados":
+            messages = [
+                "¡Acceso completo a todos los servicios!",
+                "El código secreto es correcto. Bienvenido/a.",
+                "Disfruta de una experiencia ilimitada. ¡Estoy a tu disposición!"
+            ]
+        else:
+            messages = [
+                f"Iniciando servicio: {service}",
+                "Procesando tus datos...",
+                "Servicio en curso, disfruta de la experiencia.",
+                "Finalizando sesión, gracias por usar Asistente May Roga."
+            ]
+
+        # Simular un flujo de mensajes con un archivo de audio
         for msg in messages:
             sleep(2)  # simula tiempo de procesamiento
-            yield f"data:{msg}|\n\n"
+            # Enviar el mensaje de texto y un nombre de archivo de audio simulado
+            yield f"data:{msg}|simulated_audio.mp3\n\n"
 
     return Response(event_stream(), mimetype="text/event-stream")
 
