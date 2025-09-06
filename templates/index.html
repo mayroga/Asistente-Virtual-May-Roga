@@ -72,12 +72,12 @@ button:hover { background:#43a047; }
 </div>
 
 <div id="assistant-output"></div>
-
 </div>
 
 <script>
-const stripe = Stripe("pk_live_51NqPxQBOA5mT4t0PEoRVRc0Sj7DugiHvxhozC3BYh0q0hAx1N3HCLJe4xEp3MSuNMA6mQ7fAO4mvtppqLodrtqEn00pgJNQaxz");
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+// Flask inyecta las variables desde backend
+const stripe = Stripe("{{ stripe_key }}");
+const backendURL = "{{ url_site }}";
 
 async function buyService(product, amount){
     try {
@@ -90,7 +90,7 @@ async function buyService(product, amount){
         if(data.id){
             await stripe.redirectToCheckout({ sessionId: data.id });
         } else {
-            alert("Error al crear la sesión de pago");
+            alert("Error al crear la sesión de pago: " + (data.error || ""));
         }
     } catch(e){
         alert("Error conectando al servidor");
@@ -102,47 +102,16 @@ async function unlockAllServices(){
     if(!code){ alert("Ingresa tu código secreto"); return; }
     try {
         const res = await fetch(`${backendURL}/assistant-stream?service=all&secret=${code}`);
+        const data = await res.json();
         if(res.status === 200){
-            startSSE("all", code);
+            document.getElementById("assistant-output").innerText = data.reply || "Servicios desbloqueados ✅";
             alert("Todos los servicios desbloqueados ✅");
         } else {
-            alert("Código incorrecto ❌");
+            alert(data.error || "Código incorrecto ❌");
         }
     } catch(e){
         alert("Error de conexión con el servidor");
     }
-}
-
-function startSSE(service, secret=null){
-    const outputEl = document.getElementById("assistant-output");
-    outputEl.innerHTML = "";
-    const url = `${backendURL}/assistant-stream?service=${encodeURIComponent(service)}${secret ? '&secret=' + secret : ''}`;
-    const evtSource = new EventSource(url);
-
-    evtSource.onmessage = (e) => {
-        const msg = e.data;
-        if(msg.startsWith("🎵")){
-            const audioSrc = msg.replace("🎵","").trim();
-            const audioBtn = document.createElement("button");
-            audioBtn.className = "audio-btn";
-            audioBtn.innerText = "Escuchar respuesta";
-            audioBtn.onclick = ()=>{ new Audio(audioSrc).play(); }
-            outputEl.appendChild(audioBtn);
-            outputEl.appendChild(document.createElement("br"));
-        } else {
-            const p = document.createElement("p");
-            p.innerText = msg;
-            outputEl.appendChild(p);
-        }
-        outputEl.scrollTop = outputEl.scrollHeight;
-    };
-
-    evtSource.onerror = () => {
-        evtSource.close();
-        const p = document.createElement("p");
-        p.innerText = "Sesión finalizada o desconectada";
-        outputEl.appendChild(p);
-    };
 }
 </script>
 </body>
