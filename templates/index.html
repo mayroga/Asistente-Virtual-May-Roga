@@ -99,6 +99,7 @@ async function sendChat(){
     const input = document.getElementById("chat-input");
     const msg = input.value.trim();
     if(!msg || !currentService) return;
+
     const out = document.getElementById("chat-output");
     const p = document.createElement('p'); p.textContent="Tú: "+msg;
     out.appendChild(p);
@@ -106,7 +107,12 @@ async function sendChat(){
     userMsgs.push(msg);
 
     try {
-        const res = await fetch(`${backendURL}/assistant-stream?service=${encodeURIComponent(currentService)}&message=${encodeURIComponent(msg)}`);
+        // POST al endpoint actualizado para generar respuesta dinámica
+        const res = await fetch(`${backendURL}/assistant-stream-message`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({service: currentService, messages: userMsgs})
+        });
         const data = await res.json();
         const p2 = document.createElement('p'); p2.textContent=data.answer;
         out.appendChild(p2);
