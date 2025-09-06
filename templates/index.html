@@ -1,63 +1,67 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente May Roga</title>
-    <link rel="stylesheet" href="static/css/style.css">
-    <script src="https://js.stripe.com/v3/"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga</title>
+<link rel="stylesheet" href="static/css/style.css">
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Asistente May Roga</h1>
+<div class="container">
+    <h1>Asistente May Roga</h1>
+    <button onclick="accessWithCode()">🔑 Ingresar Código Secreto</button>
 
-        <button onclick="accessWithCode()">🔑 Ingresar Código Secreto</button>
-
-        <div id="services">
-            <h2>🌿 Servicios Regulares</h2>
-            <div class="service">
-                <h3>Risoterapia y Bienestar Natural</h3>
-                <p>Duración: 10 minutos</p>
-                <p>Precio: $12</p>
-                <button onclick="startService('Risoterapia y Bienestar Natural', 12, 600)">Iniciar Servicio</button>
-                <button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
-            </div>
-            <div class="service">
-                <h3>Horóscopo y Consejos de Vida</h3>
-                <p>Duración: 2 minutos</p>
-                <p>Precio: $6</p>
-                <button onclick="startService('Horóscopo y Consejos de Vida', 6, 120)">Iniciar Servicio</button>
-                <button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
-            </div>
-            <div class="service">
-                <h3>Respuesta Rápida</h3>
-                <p>Duración: 55 segundos</p>
-                <p>Precio: $2</p>
-                <button onclick="startService('Respuesta Rápida', 2, 55)">Iniciar Servicio</button>
-                <button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
-            </div>
-
-            <h2>🌟 Servicios Especiales</h2>
-            <div class="service">
-                <h3>Servicio Personalizado</h3>
-                <p>Duración: 20 minutos</p>
-                <p>Precio: $20</p>
-                <button onclick="startService('Servicio Personalizado', 20, 1200)">Iniciar Servicio</button>
-                <button onclick="buyService('Servicio Personalizado', 20)">Comprar</button>
-            </div>
-            <div class="service">
-                <h3>Paquete VIP</h3>
-                <p>Duración: 40 minutos</p>
-                <p>Precio: $35</p>
-                <button onclick="startService('Paquete VIP', 35, 2400)">Iniciar Servicio</button>
-                <button onclick="buyService('Paquete VIP', 35)">Comprar</button>
-            </div>
+    <div id="services">
+        <h2>🌿 Servicios Regulares</h2>
+        <div class="service">
+            <h3>Risoterapia y Bienestar Natural</h3>
+            <p>Duración: 10 minutos</p>
+            <p>Precio: $12</p>
+            <button onclick="startService('Risoterapia y Bienestar Natural')">Iniciar Servicio</button>
+            <button onclick="buyService('Risoterapia y Bienestar Natural', 12)">Comprar</button>
+        </div>
+        <div class="service">
+            <h3>Horóscopo y Consejos de Vida</h3>
+            <p>Duración: 2 minutos</p>
+            <p>Precio: $6</p>
+            <button onclick="startService('Horóscopo y Consejos de Vida')">Iniciar Servicio</button>
+            <button onclick="buyService('Horóscopo y Consejos de Vida', 6)">Comprar</button>
+        </div>
+        <div class="service">
+            <h3>Respuesta Rápida</h3>
+            <p>Duración: 55 segundos</p>
+            <p>Precio: $2</p>
+            <button onclick="startService('Respuesta Rápida')">Iniciar Servicio</button>
+            <button onclick="buyService('Respuesta Rápida', 2)">Comprar</button>
         </div>
 
-        <div id="assistant-output"></div>
-        <div id="timer"></div>
+        <h2>🌟 Servicios Especiales</h2>
+        <div class="service">
+            <h3>Servicio Personalizado</h3>
+            <p>Duración: 20 minutos</p>
+            <p>Precio: $50</p>
+            <button onclick="startService('Servicio Personalizado')">Iniciar Servicio</button>
+            <button onclick="buyService('Servicio Personalizado', 50)">Comprar</button>
+        </div>
+        <div class="service">
+            <h3>Servicio Corporativo</h3>
+            <p>3 sesiones de 15–25 minutos</p>
+            <p>Precio: $750</p>
+            <button onclick="startService('Servicio Corporativo')">Iniciar Servicio</button>
+            <button onclick="buyService('Servicio Corporativo', 750)">Comprar</button>
+        </div>
+        <div class="service">
+            <h3>Servicio Grupal</h3>
+            <p>Duración: 15 minutos</p>
+            <p>Precio: $450</p>
+            <button onclick="startService('Servicio Grupal')">Iniciar Servicio</button>
+            <button onclick="buyService('Servicio Grupal', 450)">Comprar</button>
+        </div>
     </div>
 
-    <script src="static/js/script.js"></script>
+    <div id="assistant-output"></div>
+</div>
+<script src="static/js/script.js"></script>
 </body>
 </html>
