@@ -1,55 +1,61 @@
-from flask import Flask, request, jsonify, Response
-from flask_cors import CORS
-import stripe
-import asyncio
 import os
 import json
-import httpx
-import firebase_admin
-from firebase_admin import credentials, firestore
+import stripe
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from google.cloud import firestore
+from google.generativeai import TextGenerationClient, text
+from gtts import gTTS
+from io import BytesIO
+import base64
 
-# -----------------------------
-# CONFIGURACIÓN INICIAL
-# -----------------------------
-app = Flask(__name__)
-CORS(app, origins=["https://asistente-virtual-may-roga.onrender.com", "https://yoursite.com"])  # tu URL_SITE
+app = FastAPI()
 
-# Variables de entorno
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+# CORS
+origins = [os.getenv("URL_SITE", "https://asistente-virtual-may-roga.onrender.com")]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRECT")
+
+# Firestore
+firebase_config = json.loads(os.getenv("__firebase_config__"))
+db = firestore.Client.from_service_account_info(firebase_config)
+
+# Gemini/OpenAI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-FIREBASE_CONFIG = os.getenv("__firebase_config__")
+
+# Código secreto
 MAYROGA_ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")
 
-stripe.api_key = STRIPE_SECRET_KEY
-
-# Firebase
-cred = credentials.Certificate(json.loads(FIREBASE_CONFIG))
-firebase_admin.initialize_app(cred)
-db = firestore.client()
-
-# Servicios y duración en segundos
+# Servicios
 SERVICES = {
-    "Risoterapia y Bienestar Natural": 600,
-    "Horóscopo y Consejos de Vida": 120,
-    "Respuesta Rápida": 55,
-    "Servicio Personalizado": 1200,
-    "Servicio Corporativo": 1200,  # promedio
-    "Servicio Grupal": 900
+    "Risoterapia y Bienestar Natural": {"duration": 600, "price": 1200},
+    "Horóscopo y Consejos de Vida": {"duration": 120, "price": 600},
+    "Respuesta Rápida": {"duration": 55, "price": 200},
+    "Servicio Personalizado": {"duration": 1200, "price": 5000},
+    "Servicio Corporativo": {"duration": 1500, "price": 75000},
+    "Servicio Grupal": {"duration": 900, "price": 45000},
 }
 
-# -----------------------------
-# ENDPOINTS
-# -----------------------------
-
-# Crear sesión Stripe
-@app.route("/create-checkout-session", methods=["POST"])
-def create_checkout_session():
-    data = request.json
+@app.post("/create-checkout-session")
+async def create_checkout_session(request: Request):
+    data = await request.json()
     product = data.get("product")
-    amount = int(data.get("amount"))
+    amount = data.get("amount")
+
+    if not product or not amount:
+        raise HTTPException(status_code=400, detail="Producto o monto faltante")
+
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -57,95 +63,56 @@ def create_checkout_session():
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": product},
-                    "unit_amount": amount
+                    "unit_amount": amount,
                 },
-                "quantity": 1
+                "quantity": 1,
             }],
             mode="payment",
-            success_url=f"{os.getenv('URL_SITE')}/success.html",
-            cancel_url=f"{os.getenv('URL_SITE')}/cancel.html"
+            success_url=os.getenv("URL_SITE") + "/success.html",
+            cancel_url=os.getenv("URL_SITE") + "/cancel.html",
         )
-        return jsonify({"id": session.id})
+        return {"id": session.id}
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Obtener duración del servicio
-@app.route("/get-duration")
-def get_duration():
-    service = request.args.get("service")
-    duration = SERVICES.get(service, 300)
-    return jsonify({"duration": duration})
-
-# SSE con TTS y mensajes en vivo
-@app.route("/assistant-stream")
-def assistant_stream():
-    service = request.args.get("service")
-    secret = request.args.get("secret")
-
-    # Validar acceso por código secreto
-    if secret and secret == MAYROGA_ACCESS_CODE:
+@app.get("/assistant-stream")
+async def assistant_stream(service: str, secret: str = None):
+    # Verificar acceso
+    access_granted = False
+    if secret and secret.strip() == MAYROGA_ACCESS_CODE:
         access_granted = True
     elif service not in SERVICES:
-        return jsonify({"access": "denied"}), 403
-    else:
-        access_granted = False
+        raise HTTPException(status_code=400, detail="Servicio no válido")
 
-    async def generate_events():
-        messages = [
-            f"Bienvenido al servicio {service}.",
-            "Aplicando Técnicas de Vida (TVid)...",
-            "Escuchando tu estado y adaptando la sesión...",
-            "Sesión en progreso..."
-        ]
+    # Generar respuesta
+    prompt = f"Usuario solicitó: {service}. Aplicar TVid, dualidad positivo/negativo, voz clara y motivadora."
 
-        # Simular IA y TTS en vivo
-        for msg in messages:
-            # Llamada a OpenAI/Gemini TTS para generar audio
-            audio_url = await generate_tts(msg)
-            yield f"data: {msg}\n\n"
-            if audio_url:
-                yield f"data: 🎵{audio_url}\n\n"
-            await asyncio.sleep(2)
-
-    return Response(generate_events(), mimetype="text/event-stream")
-
-# -----------------------------
-# FUNCIONES AUXILIARES
-# -----------------------------
-
-async def generate_tts(text):
-    """
-    Genera TTS con Gemini/OpenAI según el idioma detectado automáticamente
-    Retorna URL de audio listo para reproducir
-    """
-    # Detección de idioma automática (simple, se puede mejorar)
-    import langdetect
-    lang = "es"  # predeterminado
+    # Llamada a Gemini/OpenAI
     try:
-        from langdetect import detect
-        lang = detect(text)
-    except:
-        pass
+        client = TextGenerationClient(api_key=GEMINI_API_KEY)
+        response = client.generate_text(
+            model="gemini-1.5-t",
+            prompt=prompt,
+            max_output_tokens=500
+        )
+        text_response = response.result
+    except Exception:
+        text_response = f"[Asistente May Roga]: Lo siento, no pude generar la respuesta para {service}."
 
-    # Llamada ficticia a API TTS Gemini/OpenAI
-    # Aquí se puede integrar la API real de Gemini/OpenAI TTS
-    # Se devuelve una URL pública accesible desde el frontend
-    # Para fines de prueba, podemos devolver un audio local o un placeholder
-    return f"https://asistente-virtual-may-roga.onrender.com/static/tts_placeholder.mp3"
+    # Generar TTS
+    tts_audio = gTTS(text_response, lang="es")  # detecta automáticamente idioma si lo deseas cambiar
+    mp3_fp = BytesIO()
+    tts_audio.write_to_fp(mp3_fp)
+    mp3_fp.seek(0)
+    audio_base64 = base64.b64encode(mp3_fp.read()).decode("utf-8")
 
-# Guardar historial en Firebase
-def save_message(user_id, service, message, response):
-    doc_ref = db.collection("chats").document(user_id)
-    doc_ref.set({
-        "service": service,
-        "message": message,
-        "response": response
-    }, merge=True)
+    return JSONResponse({
+        "access": "granted" if access_granted else "user",
+        "text": text_response,
+        "audio": audio_base64
+    })
 
-# -----------------------------
-# RUN APP
-# -----------------------------
-if __name__ == "__main__":
-    import os
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+@app.get("/config")
+def get_config():
+    return {"stripe_key": STRIPE_PUBLISHABLE_KEY}
+
