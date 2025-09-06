@@ -1,88 +1,61 @@
-import os
-import json
-import stripe
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+import stripe
+import time
+import asyncio
 
-# --- Variables de entorno de Render ---
-RENDER_URL = "https://asistente-virtual-may-roga.onrender.com"
-STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-ACCESS_CODE = os.getenv("MAYROGA_ACCESS_CODE")  # Tu código secreto desde Render
-
-# --- Inicialización Stripe ---
-stripe.api_key = STRIPE_SECRET_KEY
-
-# --- FastAPI ---
 app = FastAPI()
+stripe.api_key = "TU_STRIPE_SECRET_KEY"
 
-# --- CORS para Google Sites y cualquier web ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permitir acceso desde cualquier web
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-# --- Static files y templates ---
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+# Duraciones por servicio en segundos
+SERVICES_DURATION = {
+    "Risoterapia y Bienestar Natural": 600,
+    "Horóscopo y Consejos de Vida": 120,
+    "Respuesta Rápida": 55,
+    "Servicio Personalizado": 1200,
+    "Paquete VIP": 2400
+}
 
-# --- Usuarios (para servicios bloqueados, si fuera necesario) ---
-USERS_FILE = "users.json"
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, "w") as f:
-        json.dump({}, f)
-
-# --- Ruta principal ---
-@app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "stripe_key": STRIPE_PUBLIC_KEY})
-
-# --- Crear sesión de pago Stripe ---
 @app.post("/create-checkout-session")
-async def create_checkout_session(data: dict):
+async def create_checkout_session(req: Request):
+    data = await req.json()
     product = data.get("product")
-    amount = data.get("amount")
-    if not product or not amount:
-        raise HTTPException(status_code=400, detail="Producto o monto no definido")
-
+    amount = data.get("amount") * 100  # centavos
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": product},
-                    "unit_amount": amount,
-                },
-                "quantity": 1,
-            }],
-            mode="payment",
-            success_url=f"{RENDER_URL}/success",
-            cancel_url=f"{RENDER_URL}/cancel",
+            payment_method_types=['card'],
+            line_items=[{'price_data':{'currency':'usd','product_data':{'name':product},'unit_amount':amount}, 'quantity':1}],
+            mode='payment',
+            success_url="https://tusitio.com/success.html",
+            cancel_url="https://tusitio.com/cancel.html"
         )
         return JSONResponse({"id": session.id})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({"error": str(e)})
 
-# --- Acceso a servicios con código secreto ---
+@app.get("/get-duration")
+async def get_duration(service: str, secret: str = None):
+    duration = SERVICES_DURATION.get(service, 300)
+    return {"duration": duration}
+
 @app.get("/assistant-stream")
-async def assistant_stream(service: str, secret: str):
-    if secret != ACCESS_CODE:
-        return JSONResponse({"access": "denied"}, status_code=403)
-
-    return JSONResponse({"access": "granted", "service": service})
-
-# --- Reproducción de audios de Tvid (opcional, si quieres rutas directas) ---
-@app.get("/audio/{tvid_name}")
-async def get_audio(tvid_name: str):
-    audio_path = f"static/audio/{tvid_name}.mp3"
-    if os.path.exists(audio_path):
-        return JSONResponse({"audio_path": f"/static/audio/{tvid_name}.mp3"})
-    else:
-        raise HTTPException(status_code=404, detail="Audio no encontrado")
+async def assistant_stream(service: str, secret: str = None):
+    async def event_generator():
+        messages = [
+            f"Bienvenido al servicio {service}.",
+            "Aplicando Técnicas de Vida (TVid)...",
+            "Escuchando tu estado y adaptando la sesión...",
+            "Sesión en progreso..."
+        ]
+        for msg in messages:
+            yield f"data: {msg}\n\n"
+            await asyncio.sleep(2)
+    return JSONResponse(content=event_generator())
