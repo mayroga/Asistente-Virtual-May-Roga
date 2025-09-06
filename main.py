@@ -56,20 +56,40 @@ def unlock_services():
         return jsonify({'success': True})
     return jsonify({'success': False})
 
-# --- Generar respuesta de IA dinámica (actualizado para openai>=1.0.0) ---
+# --- Generar respuesta de IA dinámica ---
 @app.route('/assistant-stream', methods=['GET'])
 def assistant_stream():
     service = request.args.get('service', 'Servicio')
     message = request.args.get('message', '')
 
     try:
-        # Nueva sintaxis OpenAI 1.0+
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."},
                 {"role": "user", "content": message}
             ]
+        )
+        answer = response.choices[0].message.content
+        return jsonify({'answer': answer})
+    except Exception as e:
+        return jsonify({'answer': f"Error al generar respuesta: {str(e)}"})
+
+# --- Nuevo endpoint para recibir mensajes en tiempo real ---
+@app.route('/assistant-stream-message', methods=['POST'])
+def assistant_stream_message():
+    data = request.get_json()
+    service = data.get('service', 'Servicio')
+    messages = data.get('messages', [])
+
+    try:
+        formatted_messages = [{"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."}]
+        for m in messages:
+            formatted_messages.append({"role": "user", "content": m})
+
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=formatted_messages
         )
         answer = response.choices[0].message.content
         return jsonify({'answer': answer})
