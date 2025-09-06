@@ -66,7 +66,7 @@ def assistant_stream():
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."},
+                {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y empático, integrando dualidad positiva/negativa y ejercicios TVid cuando sea posible."},
                 {"role": "user", "content": message}
             ]
         )
@@ -83,7 +83,9 @@ def assistant_stream_message():
     messages = data.get('messages', [])
 
     try:
-        formatted_messages = [{"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y amigable."}]
+        formatted_messages = [
+            {"role": "system", "content": f"Servicio: {service}. Responde con tono profesional, cálido y empático, integrando dualidad positiva/negativa y ejercicios TVid cuando sea posible. Siempre escucha primero, respeta tiempos de ejercicios y responde en el idioma del cliente."}
+        ]
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
 
