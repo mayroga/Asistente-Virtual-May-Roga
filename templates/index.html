@@ -25,10 +25,18 @@ body {
     max-width:800px;
     box-shadow:0 6px 20px rgba(0,0,0,0.15);
 }
-h1 {
+/* 🔹 Título con cuadro violeta, borde y sombra */
+.title-box {
+    background:#8e24aa; /* violeta/lila intenso */
+    color:#fff;
+    padding:15px;
+    border-radius:12px;
     text-align:center;
-    color:#2980b9;
+    font-size:1.8em;
+    font-weight:bold;
     margin-bottom:20px;
+    border:2px solid #fff;          /* borde blanco */
+    box-shadow:0 4px 10px rgba(0,0,0,0.3); /* sombra suave */
 }
 .service {
     border-radius:12px;
@@ -118,7 +126,9 @@ button:hover { background:#e0e0e0; }
 </head>
 <body>
 <div class="container">
-<h1>Asistente May Roga</h1>
+
+<!-- 🔹 Título dentro de cuadro violeta con borde y sombra -->
+<div class="title-box">Asistente May Roga</div>
 
 <!-- 🔹 Chat se muestra primero -->
 <h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
