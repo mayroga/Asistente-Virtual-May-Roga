@@ -31,7 +31,7 @@ SERVICIO_TIEMPOS = {
     "risoterapia y bienestar natural": 10*60,       # 10 minutos
     "horoscopo y consejos de vida": 90,            # 1 minuto 30 segundos
     "servicio personalizado": 20*60,               # 20 minutos
-    "servicio corporativo": 25*60,                 # 20-25 minutos (usar máximo 25 min)
+    "servicio corporativo": 25*60,                 # 20–25 minutos (usar máximo 25 min)
     "servicio grupal": 15*60                        # 15 minutos
 }
 
