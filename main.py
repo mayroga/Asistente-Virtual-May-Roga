@@ -27,12 +27,12 @@ with open('manual_tvid.json', 'r', encoding='utf-8') as f:
 
 # --- Tiempos de cada servicio en segundos ---
 SERVICIO_TIEMPOS = {
-    "respuesta rápida": 55,
-    "risoterapia y bienestar natural": 10*60,
-    "horoscopo y consejos de vida": 90,
-    "servicio personalizado": 20*60,
-    "servicio corporativo": 25*60,
-    "servicio grupal": 15*60
+    "respuesta rápida": 55,                          # 55 segundos
+    "risoterapia y bienestar natural": 10*60,       # 10 minutos
+    "horoscopo y consejos de vida": 90,            # 1 minuto 30 segundos
+    "servicio personalizado": 20*60,               # 20 minutos
+    "servicio corporativo": 25*60,                 # 20-25 minutos (usar máximo 25 min)
+    "servicio grupal": 15*60                        # 15 minutos
 }
 
 # --- Función para detectar Tvid según palabras clave ---
