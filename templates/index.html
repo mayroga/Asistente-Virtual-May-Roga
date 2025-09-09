@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -35,8 +35,8 @@ body {
     font-size:1.8em;
     font-weight:bold;
     margin-bottom:20px;
-    border:2px solid #fff;
-    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+    border:2px solid #fff;          /* borde blanco */
+    box-shadow:0 4px 10px rgba(0,0,0,0.3); /* sombra suave */
 }
 .service {
     border-radius:12px;
@@ -83,14 +83,14 @@ button:hover { background:#e0e0e0; }
     max-width:80%;
     word-wrap:break-word;
 }
-#chat-output p.client { 
-    background:#e0e0e0; 
-    color:#000; 
+#chat-output p.client {
+    background:#e0e0e0;
+    color:#000;
     align-self:flex-start;
 }
-#chat-output p.assistant { 
-    background:#eaf2fb; 
-    color:#2980b9; 
+#chat-output p.assistant {
+    background:#eaf2fb;
+    color:#2980b9;
     align-self:flex-end;
 }
 #chat-box {
@@ -127,10 +127,8 @@ button:hover { background:#e0e0e0; }
 <body>
 <div class="container">
 
-<!-- 🔹 Título dentro de cuadro violeta con borde y sombra -->
 <div class="title-box">Asistente May Roga</div>
 
-<!-- 🔹 Chat se muestra primero -->
 <h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
 <div id="chat-output"></div>
 <div id="chat-box">
@@ -139,7 +137,6 @@ button:hover { background:#e0e0e0; }
 </div>
 <div id="timer"></div>
 
-<!-- 🔹 Luego desbloqueo y servicios -->
 <div style="margin:20px 0; text-align:center;">
 <input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
 <button onclick="unlockAllServices()">Desbloquear Servicios</button>
@@ -156,7 +153,7 @@ let timerInterval;
 
 const services = [
     {name:"Risoterapia y Bienestar Natural", price:12, duration:600},
-    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:90}, // 1:30 min
+    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:90},
     {name:"RESPUESTA RAPIDA", price:2, duration:55},
     {name:"Servicio Personalizado", price:50, duration:1200},
     {name:"Servicio Corporativo", price:750, duration:1800},
@@ -195,7 +192,7 @@ async function buyService(product, amount){
     });
     const data = await res.json();
     if(data.url){
-        window.open(data.url, "_blank"); 
+        window.open(data.url, "_blank");
     } else {
         alert("Error al crear sesión de pago");
     }
@@ -213,10 +210,20 @@ async function unlockAllServices(){
     else alert("Código incorrecto ❌");
 }
 
+// --- Inicio servicio con saludo práctico ---
 function startService(serviceName, duration){
     currentService = serviceName;
     userMsgs = [];
-    document.getElementById("chat-output").innerHTML=`<p class="assistant">Conectando con ${serviceName}...</p>`;
+    const out = document.getElementById("chat-output");
+
+    // Saludo según hora
+    const hour = new Date().getHours();
+    let greeting = "¡Hola!";
+    if(hour >= 6 && hour < 12) greeting = "¡Buenos días!";
+    else if(hour >= 12 && hour < 18) greeting = "¡Buenas tardes!";
+    else greeting = "¡Buenas noches!";
+
+    out.innerHTML = `<p class="assistant">${greeting} Estoy aquí para escucharte y que salgas con tus problemas resueltos. ¿Cómo te sientes hoy?</p>`;
     startTimer(duration);
 }
 
@@ -247,18 +254,33 @@ function speakText(text){
     speechSynthesis.speak(utterance);
 }
 
+// --- Enviar mensaje con guía práctica ---
 async function sendChat(){
     const input = document.getElementById("chat-input");
     const msg = input.value.trim();
     if(!msg || !currentService) return;
 
     const out = document.getElementById("chat-output");
-    const p = document.createElement('p'); 
+    const p = document.createElement('p');
     p.textContent="Tú: "+msg;
     p.className="client";
     out.appendChild(p);
     input.value="";
     userMsgs.push(msg);
+
+    // Ejemplo práctico instantáneo
+    if(msg.toLowerCase().includes("estres") || msg.toLowerCase().includes("estresado")){
+        const guidance = `Vamos a hacer un ejercicio breve para aliviar estrés:
+1️⃣ Respira profundo 3 veces en 30 segundos.
+2️⃣ Mira al cielo y sonríe.
+3️⃣ Di "Estoy bien" y repítelo 5 veces.
+4️⃣ Siente tu corazón y recuerda que eres amado tal como eres.
+5️⃣ Acepta tu estado y cómo eres, esto te hará sentir mejor.`;
+        const p2 = document.createElement('p');
+        p2.textContent = guidance;
+        p2.className="assistant";
+        out.appendChild(p2);
+    }
 
     try {
         const res = await fetch(`${backendURL}/assistant-stream-message`,{
@@ -269,7 +291,7 @@ async function sendChat(){
         const data = await res.json();
 
         const divResp = document.createElement('div');
-        const p2 = document.createElement('p'); 
+        const p2 = document.createElement('p');
         p2.textContent=data.answer;
         p2.className="assistant";
 
@@ -284,7 +306,7 @@ async function sendChat(){
         out.appendChild(divResp);
         out.scrollTop = out.scrollHeight;
     } catch(err){
-        const p2 = document.createElement('p'); 
+        const p2 = document.createElement('p');
         p2.textContent="Error al generar respuesta.";
         p2.className="assistant";
         out.appendChild(p2);
