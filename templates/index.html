@@ -7,126 +7,33 @@
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-/* === ESTILOS IGUALES QUE ANTES === */
-body {
-    font-family: Arial, sans-serif;
-    background:#f0f2f5;
-    margin:0;
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    padding:20px;
-}
-.container {
-    background:#fff;
-    padding:20px;
-    border-radius:16px;
-    width:100%;
-    max-width:800px;
-    box-shadow:0 6px 20px rgba(0,0,0,0.15);
-}
-/* 🔹 Título con cuadro violeta, borde y sombra */
-.title-box {
-    background:#8e24aa; /* violeta/lila intenso */
-    color:#fff;
-    padding:15px;
-    border-radius:12px;
-    text-align:center;
-    font-size:1.8em;
-    font-weight:bold;
-    margin-bottom:20px;
-    border:2px solid #fff;          /* borde blanco */
-    box-shadow:0 4px 10px rgba(0,0,0,0.3); /* sombra suave */
-}
-.service {
-    border-radius:12px;
-    padding:15px;
-    margin-bottom:15px;
-    color:#fff;
-    font-weight:bold;
-}
+body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
+.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:800px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
+.title-box { background:#8e24aa; color:#fff; padding:15px; border-radius:12px; text-align:center; font-size:1.8em; font-weight:bold; margin-bottom:20px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+.service { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
 .service:nth-child(1){ background:#4CAF50; }
 .service:nth-child(2){ background:#ff9800; }
 .service:nth-child(3){ background:#9c27b0; }
 .service:nth-child(4){ background:#2196F3; }
 .service:nth-child(5){ background:#f44336; }
 .service:nth-child(6){ background:#009688; }
-
 .service h2 { margin:0 0 10px 0; }
 .service p { margin:4px 0; }
-
-button {
-    background:#fff;
-    color:#333;
-    border:none;
-    padding:8px 16px;
-    border-radius:8px;
-    cursor:pointer;
-    margin-top:8px;
-    font-weight:bold;
-}
+button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
 button:hover { background:#e0e0e0; }
-
-#chat-output {
-    margin-top:20px;
-    max-height:300px;
-    overflow-y:auto;
-    padding:10px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    background:#fafafa;
-}
-#chat-output p {
-    padding:8px;
-    border-radius:8px;
-    margin:6px 0;
-    max-width:80%;
-    word-wrap:break-word;
-}
-#chat-output p.client {
-    background:#e0e0e0;
-    color:#000;
-    align-self:flex-start;
-}
-#chat-output p.assistant {
-    background:#eaf2fb;
-    color:#2980b9;
-    align-self:flex-end;
-}
-#chat-box {
-    display:flex;
-    margin-top:10px;
-}
-#chat-input {
-    flex:1;
-    padding:10px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    color:#000;
-}
-#chat-send {
-    margin-left:10px;
-    padding:10px 18px;
-    border-radius:8px;
-    border:none;
-    background:#2980b9;
-    color:#fff;
-    cursor:pointer;
-}
+#chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
+#chat-output p { padding:8px; border-radius:8px; margin:6px 0; max-width:80%; word-wrap:break-word; }
+#chat-output p.client { background:#e0e0e0; color:#000; align-self:flex-start; }
+#chat-output p.assistant { background:#eaf2fb; color:#2980b9; align-self:flex-end; }
+#chat-box { display:flex; margin-top:10px; }
+#chat-input { flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; color:#000; }
+#chat-send { margin-left:10px; padding:10px 18px; border-radius:8px; border:none; background:#2980b9; color:#fff; cursor:pointer; }
 #chat-send:hover { background:#1f6391; }
-
-#timer {
-    text-align:center;
-    margin-top:15px;
-    font-size:1.2em;
-    font-weight:bold;
-    color:#d32f2f;
-}
+#timer { text-align:center; margin-top:15px; font-size:1.2em; font-weight:bold; color:#d32f2f; }
 </style>
 </head>
 <body>
 <div class="container">
-
 <div class="title-box">Asistente May Roga</div>
 
 <h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
@@ -191,11 +98,8 @@ async function buyService(product, amount){
         body:JSON.stringify({product, amount})
     });
     const data = await res.json();
-    if(data.url){
-        window.open(data.url, "_blank");
-    } else {
-        alert("Error al crear sesión de pago");
-    }
+    if(data.url){ window.open(data.url, "_blank"); } 
+    else { alert("Error al crear sesión de pago"); }
 }
 
 async function unlockAllServices(){
@@ -206,24 +110,13 @@ async function unlockAllServices(){
         body:JSON.stringify({secret: code})
     });
     const data = await res.json();
-    if(data.success) alert("Servicios desbloqueados ✅");
-    else alert("Código incorrecto ❌");
+    alert(data.success ? "Servicios desbloqueados ✅" : "Código incorrecto ❌");
 }
 
-// --- Inicio servicio con saludo práctico ---
 function startService(serviceName, duration){
     currentService = serviceName;
     userMsgs = [];
-    const out = document.getElementById("chat-output");
-
-    // Saludo según hora
-    const hour = new Date().getHours();
-    let greeting = "¡Hola!";
-    if(hour >= 6 && hour < 12) greeting = "¡Buenos días!";
-    else if(hour >= 12 && hour < 18) greeting = "¡Buenas tardes!";
-    else greeting = "¡Buenas noches!";
-
-    out.innerHTML = `<p class="assistant">${greeting} Estoy aquí para escucharte y que salgas con tus problemas resueltos. ¿Cómo te sientes hoy?</p>`;
+    document.getElementById("chat-output").innerHTML=`<p class="assistant">Conectando con ${serviceName}...</p>`;
     startTimer(duration);
 }
 
@@ -232,16 +125,13 @@ function startTimer(duration){
     let timeLeft = duration;
     const timerDiv = document.getElementById("timer");
     timerDiv.textContent = formatTime(timeLeft);
-
     timerInterval = setInterval(()=>{
         timeLeft--;
         timerDiv.textContent = formatTime(timeLeft);
-        if(timeLeft <= 0){
-            clearInterval(timerInterval);
-            timerDiv.textContent = "⏰ Tiempo finalizado";
-        }
+        if(timeLeft <= 0){ clearInterval(timerInterval); timerDiv.textContent = "⏰ Tiempo finalizado"; }
     },1000);
 }
+
 function formatTime(seconds){
     const m = Math.floor(seconds/60);
     const s = seconds%60;
@@ -254,7 +144,6 @@ function speakText(text){
     speechSynthesis.speak(utterance);
 }
 
-// --- Enviar mensaje con guía práctica ---
 async function sendChat(){
     const input = document.getElementById("chat-input");
     const msg = input.value.trim();
@@ -267,20 +156,6 @@ async function sendChat(){
     out.appendChild(p);
     input.value="";
     userMsgs.push(msg);
-
-    // Ejemplo práctico instantáneo
-    if(msg.toLowerCase().includes("estres") || msg.toLowerCase().includes("estresado")){
-        const guidance = `Vamos a hacer un ejercicio breve para aliviar estrés:
-1️⃣ Respira profundo 3 veces en 30 segundos.
-2️⃣ Mira al cielo y sonríe.
-3️⃣ Di "Estoy bien" y repítelo 5 veces.
-4️⃣ Siente tu corazón y recuerda que eres amado tal como eres.
-5️⃣ Acepta tu estado y cómo eres, esto te hará sentir mejor.`;
-        const p2 = document.createElement('p');
-        p2.textContent = guidance;
-        p2.className="assistant";
-        out.appendChild(p2);
-    }
 
     try {
         const res = await fetch(`${backendURL}/assistant-stream-message`,{
