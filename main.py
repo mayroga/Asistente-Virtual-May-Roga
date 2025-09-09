@@ -3,6 +3,7 @@ from flask_cors import CORS
 import stripe
 import os
 import openai
+import json
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
@@ -15,6 +16,60 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")
 
 openai.api_key = OPENAI_API_KEY
+
+# --- Cargar manual Tvid ---
+with open('manual_tvid.json', 'r', encoding='utf-8') as f:
+    manual_data = json.load(f)["manual"]
+    manual_tecnicas = manual_data["partes"]["manual_Tvid_solo"]["tecnicas"]
+    tabla_decision = manual_data["partes"]["manual_Tvid_solo"]["tabla_decision"]
+    reglas_generales = manual_data["partes"]["parte_IV"]["reglas"]
+
+# --- Función para detectar Tvid según palabras clave ---
+def detectar_tvid(mensaje):
+    mensaje = mensaje.lower()
+    if "estres" in mensaje or "agotado" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["estres"]]
+    elif "ira" in mensaje or "culpa" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["ira"]]
+    elif "bloque" in mensaje or "creativo" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["bloqueo_creativo"]]
+    elif "autoestima" in mensaje or "solo" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["autoestima_baja"]]
+    elif "procrastinacion" in mensaje or "desorganizado" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["procrastinacion"]]
+    elif "crisis" in mensaje or "miedo" in mensaje:
+        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["crisis"]]
+    else:
+        # Por defecto TDB
+        return [t for t in manual_tecnicas if t["sigla"] == "TDB"]
+
+# --- Función para adaptar ejercicios según tipo de servicio ---
+def adaptar_ejercicios(tecnicas, servicio):
+    adapted = []
+    for t in tecnicas:
+        ejercicios = t["ejercicios"]
+        if servicio.lower() == "servicio personalizado":
+            # Mantener todos los ejercicios, añadir guía verbal extra
+            ejercicios = [f"{e} (guía personalizada)" for e in ejercicios]
+        elif servicio.lower() == "servicio corporativo":
+            # Elegir los ejercicios más aplicables a equipo y liderazgo
+            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 0]
+            ejercicios = [f"{e} (enfoque corporativo)" for e in ejercicios]
+        elif servicio.lower() == "servicio grupal":
+            # Ejercicios más cortos y dinámicos
+            ejercicios = [e for i, e in enumerate(ejercicios) if i % 3 == 0]
+            ejercicios = [f"{e} (dinámica grupal)" for e in ejercicios]
+        elif servicio.lower() == "risoterapia y bienestar natural":
+            # Ejercicios generales de risa y respiración
+            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 1]
+            ejercicios = [f"{e} (bienestar y risa)" for e in ejercicios]
+        adapted.append({
+            "sigla": t["sigla"],
+            "nombre": t["nombre"],
+            "descripcion": t["descripcion"],
+            "ejercicios": ejercicios
+        })
+    return adapted
 
 @app.route('/')
 def index():
@@ -57,16 +112,29 @@ def assistant_stream_message():
     messages = data.get('messages', [])
 
     try:
+        # Tomar último mensaje del usuario
+        ultimo_mensaje = messages[-1] if messages else ""
+        tvid_seleccionada = detectar_tvid(ultimo_mensaje)
+        tvid_adaptada = adaptar_ejercicios(tvid_seleccionada, service)
+
+        # Información de Tvid adaptada para pasar a OpenAI
+        tvid_info = "\n".join([
+            f"{t['sigla']} - {t['nombre']}: {t['descripcion']}\nEjercicios: {', '.join(t['ejercicios'])}"
+            for t in tvid_adaptada
+        ])
+
         formatted_messages = [
             {"role": "system", "content":
              f"""Eres Asistente May Roga, creado por Maykel Rodríguez García, experto en risoterapia y bienestar natural.
              Conoces todas las Técnicas de Vida (Tvid): TDB, TDM, TDN, TDK, TDP, TDMM, TDG.
              PARA TODOS LOS SERVICIOS PRACTICOS: guía al cliente paso a paso con ejercicios verbales, dinámicas y coaching.
-             Para el servicio mixto (Horóscopo y Consejos de Vida) combina teoría breve + práctica.
-             Para Respuesta Rápida, educación y consejos generales.
              Nunca uses contacto físico, siempre indica qué hacer con palabras.
-             Mantén tono profesional, cálido y cercano, adapta ejemplos a la edad y situación del cliente."""}
+             Mantén tono profesional, cálido y cercano, adapta ejemplos a la edad y situación del cliente.
+             Información de Tvid adaptada según mensaje del usuario y tipo de servicio ({service}):
+             {tvid_info}"""
+            }
         ]
+
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
 
