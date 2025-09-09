@@ -3,6 +3,7 @@ from flask_cors import CORS
 import stripe
 import os
 import openai
+import time
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
@@ -101,6 +102,22 @@ def assistant_stream_message():
         ]
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
+
+        # --- Lógica especial para HOROSCOPO Y CONSEJOS DE VIDA ---
+        if service == "HOROSCOPO Y CONSEJOS DE VIDA":
+            # Limitar la respuesta rápida y tiempo de servicio
+            # Simula lectura breve de horóscopo y mini ejercicio opcional
+            answer_text = ""
+            if messages:
+                user_question = messages[-1]
+                # Simulación de lectura de horóscopo
+                answer_text += "🌟 Según tu horóscopo, hay oportunidades en tu camino esta semana. "
+                answer_text += "Concéntrate en lo importante: amor, dinero, bienestar y felicidad. "
+                # Mini-ejercicio opcional de 20 segundos
+                answer_text += "Opcional: respira profundo y visualiza tu decisión durante 20 segundos. "
+                # Cierre motivador
+                answer_text += "Recuerda que los retos abren camino a la fortaleza y la esperanza. Tu futuro puede ser próspero y lleno de bienestar. 💛"
+            return jsonify({'answer': answer_text})
 
         response = openai.chat.completions.create(
             model="gpt-4",
