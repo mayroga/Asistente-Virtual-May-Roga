@@ -15,7 +15,7 @@ MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 
-# --- Configuracion OpenAI ---
+# --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
 
 # --- Funciones OpenAI aisladas ---
@@ -107,7 +107,7 @@ def create_checkout_session():
     # --- Convertir nombre del producto a mayusculas y sin tildes ---
     product_name = data['product'].upper()
     replacements = {
-        "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN 2 MINUTOS",
+        "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
         "INFUSIÓN ANTI-ESTRÉS": "INFUSION ANTI-ESTRES",
         "BATIDO ENERGÉTICO NATURAL": "BATIDO ENERGETICO NATURAL",
         "MINI GUÍA DE PLANTAS CURATIVAS": "MINI GUIA DE PLANTAS CURATIVAS",
@@ -150,7 +150,7 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
-
+    
     if not messages:
         return jsonify({"answer": "No se envio ningun mensaje."})
 
