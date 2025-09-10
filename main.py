@@ -1,196 +1,68 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga</title>
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
-.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:800px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
-.title-box { background:#8e24aa; color:#fff; padding:15px; border-radius:12px; text-align:center; font-size:1.8em; font-weight:bold; margin-bottom:20px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-.service { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
-.service:nth-child(1){ background:#4CAF50; }
-.service:nth-child(2){ background:#ff9800; }
-.service:nth-child(3){ background:#9c27b0; }
-.service:nth-child(4){ background:#2196F3; }
-.service:nth-child(5){ background:#f44336; }
-.service:nth-child(6){ background:#009688; }
-.service h2 { margin:0 0 4px 0; }
-.service p { margin:4px 0; }
-.service .english { font-size:0.75em; font-weight:normal; opacity:0.8; }
-button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
-button:hover { background:#e0e0e0; }
-#chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
-#chat-output p { padding:8px; border-radius:8px; margin:6px 0; max-width:80%; word-wrap:break-word; }
-#chat-output p.client { background:#e0e0e0; color:#000; align-self:flex-start; }
-#chat-output p.assistant { background:#eaf2fb; color:#2980b9; align-self:flex-end; }
-#chat-box { display:flex; margin-top:10px; }
-#chat-input { flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; color:#000; }
-#chat-send { margin-left:10px; padding:10px 18px; border-radius:8px; border:none; background:#2980b9; color:#fff; cursor:pointer; }
-#chat-send:hover { background:#1f6391; }
-#timer { text-align:center; margin-top:15px; font-size:1.2em; font-weight:bold; color:#d32f2f; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="title-box">Asistente May Roga</div>
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+import stripe, os, openai, json
 
-<h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
-<div id="chat-output"></div>
-<div id="chat-box">
-    <input id="chat-input" type="text" placeholder="Escribe tu mensaje">
-    <button id="chat-send" onclick="sendChat()">Enviar</button>
-</div>
-<div id="timer"></div>
+app = Flask(__name__, template_folder='templates', static_folder='static')
+CORS(app)
 
-<div style="margin:20px 0; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-<div id="services"></div>
-</div>
+SECRET_CODE = "MayRoga123"
 
-<script>
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-let currentService = null;
-let userMsgs = [];
-let timerInterval;
+# --- Home ---
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-const services = [
-    {name:"Risoterapia y Bienestar Natural", price:8, duration:300},
-    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:80},
-    {name:"Servicio Express", price:3, duration:48},
-    {name:"RESPUESTA RAPIDA", price:2, duration:55},
-    {name:"Servicio Personalizado", price:50, duration:1200},
-    {name:"Servicio Corporativo", price:750, duration:1800},
-    {name:"Servicio Grupal", price:450, duration:900}
-];
+# --- Unlock services ---
+@app.route("/assistant-unlock", methods=["POST"])
+def unlock():
+    data = request.json
+    if data.get("secret") == SECRET_CODE:
+        return jsonify({"success": True})
+    return jsonify({"success": False})
 
-const servicesDiv = document.getElementById("services");
-services.forEach(s=>{
-    const div=document.createElement('div');
-    div.className='service';
-    div.innerHTML=`<h2>${s.name}</h2>
-    <p class="english">${translateToEnglish(s.name)}</p>
-    <p>Precio: $${s.price}</p>
-    <p>Duración: ${Math.floor(s.duration/60)} min</p>
-    <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
-    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;  
-    servicesDiv.appendChild(div);
-});
+# --- Crear checkout Stripe ---
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    data = request.json
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {'name': data['product']},
+                    'unit_amount': int(float(data['amount'])*100)
+                },
+                'quantity': 1
+            }],
+            mode='payment',
+            success_url="https://yourdomain.com/success",
+            cancel_url="https://yourdomain.com/cancel"
+        )
+        return jsonify({"url": session.url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
-function translateToEnglish(name){
-    switch(name){
-        case "Risoterapia y Bienestar Natural": return "Laughter Therapy & Natural Wellbeing";
-        case "HOROSCOPO Y CONSEJOS DE VIDA": return "Horoscope & Life Advice";
-        case "RESPUESTA RAPIDA": return "Quick Response";
-        case "Servicio Personalizado": return "Personalized Service";
-        case "Servicio Corporativo": return "Corporate Service";
-        case "Servicio Grupal": return "Group Service";
-        case "Servicio Express": return "Express Service";
-        default: return "";
-    }
-}
+# --- Stream AI Assistant ---
+@app.route("/assistant-stream-message", methods=["POST"])
+def assistant_stream_message():
+    data = request.json
+    service = data.get("service")
+    messages = data.get("messages", [])
+    prompt = f"Asistente May Roga para {service}. Atiende con risoterapia, bienestar, TVid, consejos de vida, medicina verde.\nUsuario: {messages[-1]}\nAsistente:"
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-5-mini",
+            messages=[{"role":"user","content":prompt}],
+            max_tokens=300
+        )
+        answer = response.choices[0].message.content
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"answer": f"Error AI: {str(e)}"})
 
-async function buyService(product, amount){
-    const res = await fetch(`${backendURL}/create-checkout-session`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({product, amount})
-    });
-    const data = await res.json();
-    if(data.url){ window.open(data.url, "_blank"); } 
-    else { alert("Error al crear sesión de pago"); }
-}
-
-async function unlockAllServices(){
-    const code=document.getElementById("secret-input").value.trim();
-    if(!code){ alert("Ingresa tu código"); return; }
-    const res=await fetch(`${backendURL}/assistant-unlock`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({secret: code})
-    });
-    const data = await res.json();
-    alert(data.success ? "Servicios desbloqueados ✅" : "Código incorrecto ❌");
-}
-
-function startService(serviceName, duration){
-    currentService = serviceName;
-    userMsgs = [];
-    document.getElementById("chat-output").innerHTML=`<p class="assistant">Conectando con ${serviceName}...</p>`;
-    startTimer(duration);
-}
-
-function startTimer(duration){
-    clearInterval(timerInterval);
-    let timeLeft = duration;
-    const timerDiv = document.getElementById("timer");
-    timerDiv.textContent = formatTime(timeLeft);
-    timerInterval = setInterval(()=>{
-        timeLeft--;
-        timerDiv.textContent = formatTime(timeLeft);
-        if(timeLeft <= 0){ clearInterval(timerInterval); timerDiv.textContent = "⏰ Tiempo finalizado"; }
-    },1000);
-}
-
-function formatTime(seconds){
-    const m = Math.floor(seconds/60);
-    const s = seconds%60;
-    return `${m}:${s.toString().padStart(2,'0')} min`;
-}
-
-function speakText(text){
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-ES";
-    speechSynthesis.speak(utterance);
-}
-
-async function sendChat(){
-    const input = document.getElementById("chat-input");
-    const msg = input.value.trim();
-    if(!msg || !currentService) return;
-
-    const out = document.getElementById("chat-output");
-    const p = document.createElement('p');
-    p.textContent="Tú: "+msg;
-    p.className="client";
-    out.appendChild(p);
-    input.value="";
-    userMsgs.push(msg);
-
-    try {
-        const res = await fetch(`${backendURL}/assistant-stream-message`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({service: currentService, messages: userMsgs})
-        });
-        const data = await res.json();
-
-        const divResp = document.createElement('div');
-        const p2 = document.createElement('p');
-        p2.textContent=data.answer;
-        p2.className="assistant";
-
-        const btn = document.createElement('button');
-        btn.textContent = "🔊 Escuchar";
-        btn.style.marginLeft = "10px";
-        btn.onclick = () => speakText(data.answer);
-
-        divResp.appendChild(p2);
-        divResp.appendChild(btn);
-
-        out.appendChild(divResp);
-        out.scrollTop = out.scrollHeight;
-    } catch(err){
-        const p2 = document.createElement('p');
-        p2.textContent="Error al generar respuesta.";
-        p2.className="assistant";
-        out.appendChild(p2);
-        out.scrollTop = out.scrollHeight;
-    }
-}
-</script>
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
