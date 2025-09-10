@@ -5,7 +5,6 @@ import os
 import openai
 import json
 import datetime
-from google_genai import Client  # <-- CORRECTO
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
@@ -16,10 +15,8 @@ PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
-client_gemini = Client(api_key=GOOGLE_API_KEY)  # <-- CORRECTO
 
 # --- Cargar manual Tvid ---
 with open('manual_tvid.json', 'r', encoding='utf-8') as f:
@@ -104,12 +101,11 @@ def generar_sesion_coach(tecnicas, servicio):
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
 
-# --- Función corregida para crear sesión de pago ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout():
     data = request.get_json()
     product = data.get('product')
-    amount = float(data.get('amount', 0))  # <-- asegura float correcto
+    amount = float(data.get('amount', 0))
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -117,7 +113,7 @@ def create_checkout():
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {'name': product},
-                    'unit_amount': int(amount * 100),  # <-- entero en centavos
+                    'unit_amount': int(amount * 100),
                 },
                 'quantity': 1,
             }],
@@ -179,13 +175,7 @@ Bloques de la sesión según tiempo total:
         answer = response.choices[0].message.content
         return jsonify({'answer': answer})
     except Exception as e:
-        # --- Gemini como segunda opción si falla OpenAI ---
-        try:
-            prompt = "\n".join([m["content"] for m in formatted_messages])
-            gemini_resp = client_gemini.generate_text(model="text-bison-001", prompt=prompt, max_output_tokens=512)
-            return jsonify({'answer': gemini_resp.text})
-        except Exception as e2:
-            return jsonify({'answer': f"Error al generar respuesta: {str(e)}; Gemini fallback: {str(e2)}"})
+        return jsonify({'answer': f"Error al generar respuesta: {str(e)}"})
 
 @app.route('/success')
 def success():
