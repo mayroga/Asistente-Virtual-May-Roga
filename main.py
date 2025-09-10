@@ -1,14 +1,17 @@
-from flask import Flask, render_template, request, jsonify 
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-import stripe, os, openai, json
+import stripe, os, json
+import openai
+import requests
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# El código secreto sigue igual en Render
+# Código secreto queda como está en Render
 SECRET_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 
 # --- Home ---
@@ -47,7 +50,7 @@ def create_checkout_session():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# --- Stream AI Assistant (API nueva OpenAI) ---
+# --- Stream AI Assistant con fallback OpenAI → Gemini ---
 @app.route("/assistant-stream-message", methods=["POST"])
 def assistant_stream_message():
     data = request.json
@@ -55,16 +58,31 @@ def assistant_stream_message():
     messages = data.get("messages", [])
     prompt = f"Asistente May Roga para {service}. Atiende con risoterapia, bienestar, TVid, consejos de vida, medicina verde.\nUsuario: {messages[-1]}\nAsistente:"
 
+    # Intentar OpenAI primero
     try:
         response = openai.chat.completions.create(
             model="gpt-5-mini",
             messages=[{"role":"user","content":prompt}],
-            max_tokens=300
+            max_completion_tokens=300
         )
-        answer = response.choices[0].message["content"]
+        answer = response.choices[0].message.content
         return jsonify({"answer": answer})
-    except Exception as e:
-        return jsonify({"answer": f"Error AI: {str(e)}"})
+    except Exception as e_openai:
+        # Si falla, fallback a Gemini
+        try:
+            gemini_url = "https://api.generativeai.google/v1beta2/models/text-bison-001:generate"
+            headers = {"Authorization": f"Bearer {GEMINI_API_KEY}", "Content-Type": "application/json"}
+            payload = {
+                "prompt": {"text": prompt},
+                "temperature": 0.7,
+                "maxOutputTokens": 300
+            }
+            res = requests.post(gemini_url, headers=headers, json=payload)
+            res_json = res.json()
+            answer = res_json.get("candidates", [{}])[0].get("content", "Lo siento, no pude generar respuesta.")
+            return jsonify({"answer": answer})
+        except Exception as e_gemini:
+            return jsonify({"answer": f"Error AI: OpenAI [{str(e_openai)}], Gemini [{str(e_gemini)}]"})
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
