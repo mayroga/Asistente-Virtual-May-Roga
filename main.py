@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify 
 from flask_cors import CORS
 import stripe
 import os
@@ -10,6 +10,7 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 CORS(app, origins=["https://sites.google.com"])
 
+# --- Claves ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
@@ -33,37 +34,6 @@ SERVICIO_TIEMPOS = {
     "servicio personalizado": 20*60,
     "servicio corporativo": 25*60,
     "servicio grupal": 15*60
-}
-
-# --- Diccionario de productos con precio ---
-PRODUCTOS_PRECIOS = {
-    "Risoterapia y Bienestar Natural": 8.00,
-    "Servicio Express": 3.00,
-    "HOROSCOPO Y CONSEJOS DE VIDA": 6.00,
-    "Té Mágico en 2 Minutos": 3.99,
-    "Infusión Anti-Estrés": 5.99,
-    "Batido Energético Natural": 3.99,
-    "Mini Guía de Plantas Curativas": 3.99,
-    "Respiración Verde Express": 3.99,
-    "Risa Relámpago": 3.99,
-    "Motívate en un Minuto": 3.99,
-    "Respira y Sonríe": 3.99,
-    "Confianza Express": 5.99,
-    "Optimismo al Instante": 3.99,
-    "Horóscopo Flash": 3.99,
-    "Consejo del Día": 5.99,
-    "Amor Instantáneo": 3.99,
-    "Abundancia en 2 Minutos": 5.99,
-    "Mensaje de tu Estrella": 3.99,
-    "Mini Diagnóstico de Hábitos": 3.99,
-    "Ejercicio TVid Express": 3.99,
-    "Prevención en un Minuto": 5.99,
-    "Tracker de Bienestar Diario": 3.99,
-    "Receta Verde Express": 3.99,
-    "Té Relajante Rápido": 5.99,
-    "Batido Creativo": 3.99,
-    "Infusión para Claridad Mental": 5.99,
-    "Mini Detox Express": 3.99
 }
 
 # --- Función para detectar Tvid según palabras clave ---
@@ -133,25 +103,22 @@ def generar_sesion_coach(tecnicas, servicio):
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
 
-# --- Endpoint de Stripe actualizado ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout():
     data = request.get_json()
-    product = data.get('product', '').strip()
-
-    if product not in PRODUCTOS_PRECIOS:
-        return jsonify({'error': 'Producto no válido'}), 400
-
-    amount = PRODUCTOS_PRECIOS[product]
-
+    product = str(data.get('product', 'Servicio')).strip()
     try:
+        amount = float(data.get('amount', 0))
+        if amount <= 0:
+            return jsonify({'error': 'Monto inválido'}), 400
+
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {'name': product},
-                    'unit_amount': int(amount * 100),
+                    'unit_amount': round(amount * 100),  # Convierte a centavos
                 },
                 'quantity': 1,
             }],
@@ -205,6 +172,7 @@ Bloques de la sesión según tiempo total:
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
 
+        # --- OpenAI ---
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=formatted_messages
