@@ -5,26 +5,21 @@ import os
 import openai
 import json
 import datetime
-
-# Google Generative AI
-from google.generativeai import client as gemini_client
+from google.generativeai import TextGenerationClient
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 CORS(app, origins=["https://sites.google.com"])
 
-# --- Claves y variables ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-# Configurar OpenAI
 openai.api_key = OPENAI_API_KEY
-# Configurar Gemini
-gemini_client.api_key = GEMINI_API_KEY
+client_gemini = TextGenerationClient(api_key=GOOGLE_API_KEY)
 
 # --- Cargar manual Tvid ---
 with open('manual_tvid.json', 'r', encoding='utf-8') as f:
@@ -43,7 +38,7 @@ SERVICIO_TIEMPOS = {
     "servicio grupal": 15*60
 }
 
-# --- Funciones de Tvid ---
+# --- Función para detectar Tvid según palabras clave ---
 def detectar_tvid(mensaje):
     mensaje = mensaje.lower()
     if "estres" in mensaje or "agotado" in mensaje:
@@ -61,6 +56,7 @@ def detectar_tvid(mensaje):
     else:
         return [t for t in manual_tecnicas if t["sigla"] == "TDB"]
 
+# --- Función para adaptar ejercicios según tipo de servicio ---
 def adaptar_ejercicios(tecnicas, servicio):
     adapted = []
     for t in tecnicas:
@@ -84,8 +80,9 @@ def adaptar_ejercicios(tecnicas, servicio):
         })
     return adapted
 
+# --- Función para guiar la sesión como un coach ---
 def generar_sesion_coach(tecnicas, servicio):
-    tiempo_total = SERVICIO_TIEMPOS.get(servicio.lower(), 600)
+    tiempo_total = SERVICIO_TIEMPOS.get(servicio.lower(), 600)  # Por defecto 10 min
     bloques = []
 
     if tiempo_total <= 60:
@@ -103,16 +100,16 @@ def generar_sesion_coach(tecnicas, servicio):
         ]
     return bloques
 
-# --- Rutas Flask ---
 @app.route('/')
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
 
+# --- Función corregida para crear sesión de pago ---
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout():
     data = request.get_json()
     product = data.get('product')
-    amount = data.get('amount')
+    amount = float(data.get('amount', 0))  # <-- asegura float correcto
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -120,7 +117,7 @@ def create_checkout():
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {'name': product},
-                    'unit_amount': int(amount * 100),
+                    'unit_amount': int(amount * 100),  # <-- entero en centavos
                 },
                 'quantity': 1,
             }],
@@ -174,31 +171,21 @@ Bloques de la sesión según tiempo total:
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
 
-        # --- Intentar OpenAI primero ---
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=formatted_messages
-            )
-            answer = response.choices[0].message.content
-        except Exception as e_openai:
-            # --- Si falla OpenAI, usar Gemini ---
-            try:
-                prompt_text = "\n".join([m['content'] for m in formatted_messages if m['role'] == 'user'])
-                gemini_response = gemini_client.generate_text(
-                    model="gemini-1.5",
-                    prompt=prompt_text,
-                    temperature=0.7,
-                    max_output_tokens=300
-                )
-                answer = gemini_response.text
-            except Exception as e_gemini:
-                answer = f"Error al generar respuesta: OpenAI ({str(e_openai)}), Gemini ({str(e_gemini)})"
-
+        # --- OpenAI ---
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=formatted_messages
+        )
+        answer = response.choices[0].message.content
         return jsonify({'answer': answer})
-
     except Exception as e:
-        return jsonify({'answer': f"Error al procesar la solicitud: {str(e)}"})
+        # --- Gemini como segunda opción si falla OpenAI ---
+        try:
+            prompt = "\n".join([m["content"] for m in formatted_messages])
+            gemini_resp = client_gemini.generate_text(model="text-bison-001", prompt=prompt, max_output_tokens=512)
+            return jsonify({'answer': gemini_resp.text})
+        except Exception as e2:
+            return jsonify({'answer': f"Error al generar respuesta: {str(e)}; Gemini fallback: {str(e2)}"})
 
 @app.route('/success')
 def success():
