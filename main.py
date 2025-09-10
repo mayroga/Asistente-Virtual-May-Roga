@@ -150,7 +150,13 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
-    
+    secret = data.get("secret")  # tu código secreto en Render
+    paid = data.get("paid", False)  # flag enviado por frontend tras Stripe
+
+    # 🔒 Verificación de acceso
+    if secret != MAYROGA_SECRET and not paid:
+        return jsonify({"error": "❌ Acceso denegado. Debes pagar o usar el código correcto."}), 403
+
     if not messages:
         return jsonify({"answer": "No se envio ningun mensaje."})
 
