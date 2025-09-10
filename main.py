@@ -5,7 +5,7 @@ import os
 import openai
 import json
 import datetime
-from google import genai  # <-- CORREGIDO
+from google_genai import Client  # <-- CORRECTO
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
@@ -19,7 +19,7 @@ URL_SITE = os.environ.get("URL_SITE")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
-client_gemini = genai.Client(api_key=GOOGLE_API_KEY)  # <-- CORREGIDO
+client_gemini = Client(api_key=GOOGLE_API_KEY)  # <-- CORRECTO
 
 # --- Cargar manual Tvid ---
 with open('manual_tvid.json', 'r', encoding='utf-8') as f:
