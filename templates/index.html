@@ -7,18 +7,18 @@
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
-body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
-.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:800px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
+body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; padding:20px; }
+.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:900px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
 .title-box { background:#8e24aa; color:#fff; padding:15px; border-radius:12px; text-align:center; font-size:1.8em; font-weight:bold; margin-bottom:20px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-.service { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
+.service, .microservice { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
 .service:nth-child(1){ background:#4CAF50; }
 .service:nth-child(2){ background:#ff9800; }
 .service:nth-child(3){ background:#9c27b0; }
-.service:nth-child(4){ background:#2196F3; }
-.service:nth-child(5){ background:#f44336; }
-.service:nth-child(6){ background:#009688; }
-.service h2 { margin:0 0 5px 0; }
-.service p { margin:4px 0; }
+.microservice { background:#2196F3; color:#fff; font-weight:bold; }
+.microservice-category { margin-top:25px; }
+.service h2, .microservice h2 { margin:0 0 5px 0; }
+.service p, .microservice p { margin:2px 0; font-size:0.95em; }
+.service p.english, .microservice p.english { font-style:italic; font-size:0.85em; margin-top:2px; }
 button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
 button:hover { background:#e0e0e0; }
 #chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
@@ -36,7 +36,7 @@ button:hover { background:#e0e0e0; }
 <div class="container">
 <div class="title-box">Asistente May Roga</div>
 
-<h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
+<h2 style="color:#2980b9;">Chat del Servicio</h2>
 <div id="chat-output"></div>
 <div id="chat-box">
     <input id="chat-input" type="text" placeholder="Escribe tu mensaje">
@@ -50,7 +50,6 @@ button:hover { background:#e0e0e0; }
 </div>
 
 <div id="services"></div>
-</div>
 
 <script>
 const backendURL = "https://asistente-virtual-may-roga.onrender.com";
@@ -58,40 +57,86 @@ let currentService = null;
 let userMsgs = [];
 let timerInterval;
 
+// --- Servicios principales ---
 const services = [
-    {name:"Risoterapia y Bienestar Natural", price:12, duration:600},
-    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:90},
-    {name:"RESPUESTA RAPIDA", price:2, duration:55},
-    {name:"Servicio Personalizado", price:50, duration:1200},
-    {name:"Servicio Corporativo", price:750, duration:1800},
-    {name:"Servicio Grupal", price:450, duration:900}
+    {name:"Risoterapia y Bienestar Natural", price:8, duration:300, english:"Laughter Therapy & Natural Wellbeing"},
+    {name:"Servicio Express", price:3, duration:48, english:"Express Service"},
+    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:80, english:"Horoscope & Life Advice"}
 ];
 
+// --- Microservicios Express ---
+const microservices = [
+    {category:"🌿 Mini guías naturales", english:"Mini Natural Guides", items:[
+        {name:"Té Mágico en 2 Minutos", duration:120, price:3.99, english:"Magic Tea in 2 Minutes"},
+        {name:"Infusión Anti-Estrés", duration:120, price:5.99, english:"Anti-Stress Infusion"},
+        {name:"Batido Energético Natural", duration:120, price:3.99, english:"Natural Energy Smoothie"},
+        {name:"Mini Guía de Plantas Curativas", duration:120, price:3.99, english:"Mini Healing Plants Guide"},
+        {name:"Respiración Verde Express", duration:120, price:3.99, english:"Green Breathing Express"}
+    ]},
+    {category:"😂 Ejercicios rápidos de risa", english:"Quick Laughter Exercises", items:[
+        {name:"Risa Relámpago", duration:120, price:3.99, english:"Lightning Laughter"},
+        {name:"Motívate en un Minuto", duration:90, price:3.99, english:"Motivate in a Minute"},
+        {name:"Respira y Sonríe", duration:120, price:3.99, english:"Breathe and Smile"},
+        {name:"Confianza Express", duration:120, price:5.99, english:"Express Confidence"},
+        {name:"Optimismo al Instante", duration:60, price:3.99, english:"Instant Optimism"}
+    ]},
+    {category:"🔮 Horóscopos y consejos breves", english:"Quick Horoscope & Advice", items:[
+        {name:"Horóscopo Flash", duration:60, price:3.99, english:"Flash Horoscope"},
+        {name:"Consejo del Día", duration:90, price:5.99, english:"Daily Advice"},
+        {name:"Amor Instantáneo", duration:60, price:3.99, english:"Instant Love"},
+        {name:"Abundancia en 2 Minutos", duration:120, price:5.99, english:"Abundance in 2 Minutes"},
+        {name:"Mensaje de tu Estrella", duration:120, price:3.99, english:"Message from Your Star"}
+    ]},
+    {category:"💚 Hábitos saludables instantáneos", english:"Instant Healthy Habits", items:[
+        {name:"Mini Diagnóstico de Hábitos", duration:120, price:3.99, english:"Mini Habit Diagnosis"},
+        {name:"Ejercicio TVid Express", duration:120, price:3.99, english:"TVid Express Exercise"},
+        {name:"Prevención en un Minuto", duration:60, price:5.99, english:"Prevention in a Minute"},
+        {name:"Reto 3 Días Express", duration:120, price:5.99, english:"3-Day Express Challenge"},
+        {name:"Tracker de Bienestar Diario", duration:60, price:3.99, english:"Daily Wellbeing Tracker"}
+    ]},
+    {category:"🔥 Recetas verdes express", english:"Green Recipes Express", items:[
+        {name:"Receta Verde Express", duration:120, price:3.99, english:"Green Recipe Express"},
+        {name:"Té Relajante Rápido", duration:120, price:5.99, english:"Quick Relaxing Tea"},
+        {name:"Batido Creativo", duration:120, price:3.99, english:"Creative Smoothie"},
+        {name:"Infusión para Claridad Mental", duration:120, price:5.99, english:"Mental Clarity Infusion"},
+        {name:"Mini Detox Express", duration:120, price:3.99, english:"Mini Detox Express"}
+    ]}
+];
+
+// --- Renderizar servicios principales ---
 const servicesDiv = document.getElementById("services");
 services.forEach(s=>{
     const div=document.createElement('div');
     div.className='service';
     div.innerHTML=`<h2>${s.name}</h2>
-    <p>Precio: $${s.price}</p>
-    <p>Duración: ${Math.floor(s.duration/60)} min</p>
-    <p style="font-style:italic; font-size:0.9em; margin-top:5px;">${translateToEnglish(s.name)}</p>
-    <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
-    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;  
+        <p class="english">${s.english}</p>
+        <p>Precio: $${s.price}</p>
+        <p>Duración: ${Math.floor(s.duration/60)}:${(s.duration%60).toString().padStart(2,'0')} min</p>
+        <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
+        <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;
     servicesDiv.appendChild(div);
 });
 
-function translateToEnglish(name){
-    switch(name){
-        case "Risoterapia y Bienestar Natural": return "Laughter Therapy & Natural Wellbeing";
-        case "HOROSCOPO Y CONSEJOS DE VIDA": return "Horoscope & Life Advice";
-        case "RESPUESTA RAPIDA": return "Quick Response";
-        case "Servicio Personalizado": return "Personalized Service";
-        case "Servicio Corporativo": return "Corporate Service";
-        case "Servicio Grupal": return "Group Service";
-        default: return "";
-    }
-}
+// --- Renderizar microservicios ---
+microservices.forEach(cat=>{
+    const catDiv = document.createElement('div');
+    catDiv.className='microservice-category';
+    catDiv.innerHTML = `<h2 style="color:#555;">${cat.category}</h2><p class="english">${cat.english}</p>`;
+    cat.items.forEach(ms=>{
+        const div = document.createElement('div');
+        div.className='microservice';
+        div.innerHTML=`<h2>${ms.name}</h2>
+            <p class="english">${ms.english}</p>
+            <p>Precio: $${ms.price}</p>
+            <p>Duración: ${Math.floor(ms.duration/60)}:${(ms.duration%60).toString().padStart(2,'0')} min</p>
+            <button onclick="startService('${ms.name}', ${ms.duration})">Iniciar Chat</button>
+            <button onclick="buyService('${ms.name}',${ms.price})">Comprar</button>`;
+        catDiv.appendChild(div);
+    });
+    servicesDiv.appendChild(catDiv);
+});
 
+// --- Funciones de Stripe y chat ---
 async function buyService(product, amount){
     const res = await fetch(`${backendURL}/create-checkout-session`,{
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -189,5 +234,6 @@ async function sendChat(){
     }
 }
 </script>
+</div>
 </body>
 </html>
