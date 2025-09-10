@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify 
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import stripe
 import os
@@ -10,7 +10,6 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 CORS(app, origins=["https://sites.google.com"])
 
-# --- Claves ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
@@ -98,7 +97,6 @@ def generar_sesion_coach(tecnicas, servicio):
         ]
     return bloques
 
-# --- Rutas ---
 @app.route('/')
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
@@ -106,19 +104,16 @@ def index():
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout():
     data = request.get_json()
-    product = str(data.get('product', 'Servicio')).strip()
+    product = data.get('product')
+    amount = data.get('amount')
     try:
-        amount = float(data.get('amount', 0))
-        if amount <= 0:
-            return jsonify({'error': 'Monto inválido'}), 400
-
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
                     'product_data': {'name': product},
-                    'unit_amount': round(amount * 100),  # Convierte a centavos
+                    'unit_amount': int(amount * 100),
                 },
                 'quantity': 1,
             }],
@@ -172,7 +167,6 @@ Bloques de la sesión según tiempo total:
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
 
-        # --- OpenAI ---
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=formatted_messages
