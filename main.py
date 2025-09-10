@@ -103,19 +103,25 @@ def unlock():
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
+    product_name = data.get("product")  # Se mantiene tal cual con emojis y acentos
+    amount = float(data.get("amount", 0))
+
+    if not product_name or amount <= 0:
+        return jsonify({"error": "Producto o monto inválido"}), 400
+
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
-                    'product_data': {'name': data['product']},
-                    'unit_amount': int(float(data['amount']) * 100)
+                    'product_data': {'name': product_name},  # Envío tal cual
+                    'unit_amount': int(amount * 100)  # Stripe recibe centavos
                 },
                 'quantity': 1
             }],
             mode='payment',
-            success_url=f"{URL_SITE}/success?service={data['product']}",
+            success_url=f"{URL_SITE}/success?service={product_name}",
             cancel_url=f"{URL_SITE}/cancel"
         )
         return jsonify({"url": session.url})
@@ -127,7 +133,7 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
-    
+
     if not messages:
         return jsonify({"answer": "No se envió ningún mensaje."})
 
