@@ -1,212 +1,196 @@
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
-import stripe
-import os
-import openai
-import json
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente May Roga</title>
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
+.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:800px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
+.title-box { background:#8e24aa; color:#fff; padding:15px; border-radius:12px; text-align:center; font-size:1.8em; font-weight:bold; margin-bottom:20px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+.service { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
+.service:nth-child(1){ background:#4CAF50; }
+.service:nth-child(2){ background:#ff9800; }
+.service:nth-child(3){ background:#9c27b0; }
+.service:nth-child(4){ background:#2196F3; }
+.service:nth-child(5){ background:#f44336; }
+.service:nth-child(6){ background:#009688; }
+.service h2 { margin:0 0 4px 0; }
+.service p { margin:4px 0; }
+.service .english { font-size:0.75em; font-weight:normal; opacity:0.8; }
+button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
+button:hover { background:#e0e0e0; }
+#chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
+#chat-output p { padding:8px; border-radius:8px; margin:6px 0; max-width:80%; word-wrap:break-word; }
+#chat-output p.client { background:#e0e0e0; color:#000; align-self:flex-start; }
+#chat-output p.assistant { background:#eaf2fb; color:#2980b9; align-self:flex-end; }
+#chat-box { display:flex; margin-top:10px; }
+#chat-input { flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; color:#000; }
+#chat-send { margin-left:10px; padding:10px 18px; border-radius:8px; border:none; background:#2980b9; color:#fff; cursor:pointer; }
+#chat-send:hover { background:#1f6391; }
+#timer { text-align:center; margin-top:15px; font-size:1.2em; font-weight:bold; color:#d32f2f; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="title-box">Asistente May Roga</div>
 
-app = Flask(__name__, template_folder='templates', static_folder='static')
-CORS(app)
+<h2 style="color:#2980b9; margin-top:10px;">Chat del Servicio</h2>
+<div id="chat-output"></div>
+<div id="chat-box">
+    <input id="chat-input" type="text" placeholder="Escribe tu mensaje">
+    <button id="chat-send" onclick="sendChat()">Enviar</button>
+</div>
+<div id="timer"></div>
 
-# --- Claves de entorno ---
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
-PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-URL_SITE = os.environ.get("URL_SITE")
+<div style="margin:20px 0; text-align:center;">
+<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
+<button onclick="unlockAllServices()">Desbloquear Servicios</button>
+</div>
 
-openai.api_key = OPENAI_API_KEY
+<div id="services"></div>
+</div>
 
-# --- Cargar manual Tvid ---
-with open('manual_tvid.json', 'r', encoding='utf-8') as f:
-    manual_data = json.load(f)["manual"]
-    manual_tecnicas = manual_data["partes"]["manual_Tvid_solo"]["tecnicas"]
-    tabla_decision = manual_data["partes"]["manual_Tvid_solo"]["tabla_decision"]
-    reglas_generales = manual_data["partes"]["parte_IV"]["reglas"]
+<script>
+const backendURL = "https://asistente-virtual-may-roga.onrender.com";
+let currentService = null;
+let userMsgs = [];
+let timerInterval;
 
-# --- Tiempos de cada servicio en segundos ---
-SERVICIO_TIEMPOS = {
-    "respuesta rápida": 55,
-    "risoterapia y bienestar natural": 300,  # 5 minutos
-    "horoscopo y consejos de vida": 80,      # 1 min 20 seg
-    "servicio express": 48,
-    # Microservicios express
-    "risa relámpago": 120,
-    "té mágico en 2 minutos": 120,
-    "confianza instantánea": 150,
-    "mini guía calma": 150,
-    "batido energético express": 180,
-    "mini diagnóstico estrés": 150,
-    "visualización prosperidad": 120,
-    "amor y conexión rápida": 120,
-    "claridad mental flash": 150,
-    "inspiración relámpago": 120,
-    "energía inmediata": 150,
-    "paz interior instantánea": 150,
-    "diversión express": 150,
-    "sentido de poder flash": 150,
-    "esperanza y optimismo breve": 120,
-    "mini hábitos saludables": 150,
-    "mini recetas verdes": 180,
-    "reto bienestar 3 días": 180,
-    "audio de relajación breve": 120,
-    "plantilla tracker rápida": 120,
-    "micro horóscopo consejo": 80,
-    "ejercicio risoterapia mini": 150,
-    "guía bienestar natural breve": 150,
-    "técnica TVid rápida": 150
+const services = [
+    {name:"Risoterapia y Bienestar Natural", price:8, duration:300},
+    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:80},
+    {name:"Servicio Express", price:3, duration:48},
+    {name:"RESPUESTA RAPIDA", price:2, duration:55},
+    {name:"Servicio Personalizado", price:50, duration:1200},
+    {name:"Servicio Corporativo", price:750, duration:1800},
+    {name:"Servicio Grupal", price:450, duration:900}
+];
+
+const servicesDiv = document.getElementById("services");
+services.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='service';
+    div.innerHTML=`<h2>${s.name}</h2>
+    <p class="english">${translateToEnglish(s.name)}</p>
+    <p>Precio: $${s.price}</p>
+    <p>Duración: ${Math.floor(s.duration/60)} min</p>
+    <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
+    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;  
+    servicesDiv.appendChild(div);
+});
+
+function translateToEnglish(name){
+    switch(name){
+        case "Risoterapia y Bienestar Natural": return "Laughter Therapy & Natural Wellbeing";
+        case "HOROSCOPO Y CONSEJOS DE VIDA": return "Horoscope & Life Advice";
+        case "RESPUESTA RAPIDA": return "Quick Response";
+        case "Servicio Personalizado": return "Personalized Service";
+        case "Servicio Corporativo": return "Corporate Service";
+        case "Servicio Grupal": return "Group Service";
+        case "Servicio Express": return "Express Service";
+        default: return "";
+    }
 }
 
-# --- Función para detectar Tvid según palabras clave ---
-def detectar_tvid(mensaje):
-    mensaje = mensaje.lower()
-    if "estres" in mensaje or "agotado" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["estres"]]
-    elif "ira" in mensaje or "culpa" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["ira"]]
-    elif "bloque" in mensaje or "creativo" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["bloqueo_creativo"]]
-    elif "autoestima" in mensaje or "solo" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["autoestima_baja"]]
-    elif "procrastinacion" in mensaje or "desorganizado" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["procrastinacion"]]
-    elif "crisis" in mensaje or "miedo" in mensaje:
-        return [t for t in manual_tecnicas if t["sigla"] in tabla_decision["crisis"]]
-    else:
-        return [t for t in manual_tecnicas if t["sigla"] == "TDB"]
+async function buyService(product, amount){
+    const res = await fetch(`${backendURL}/create-checkout-session`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({product, amount})
+    });
+    const data = await res.json();
+    if(data.url){ window.open(data.url, "_blank"); } 
+    else { alert("Error al crear sesión de pago"); }
+}
 
-# --- Función para adaptar ejercicios según tipo de servicio ---
-def adaptar_ejercicios(tecnicas, servicio):
-    adapted = []
-    for t in tecnicas:
-        ejercicios = t["ejercicios"]
-        if servicio.lower() == "servicio personalizado":
-            ejercicios = [f"{e} (guía personalizada)" for e in ejercicios]
-        elif servicio.lower() == "servicio corporativo":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 0]
-            ejercicios = [f"{e} (enfoque corporativo)" for e in ejercicios]
-        elif servicio.lower() == "servicio grupal":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 3 == 0]
-            ejercicios = [f"{e} (dinámica grupal)" for e in ejercicios]
-        elif servicio.lower() == "risoterapia y bienestar natural":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 1]
-            ejercicios = [f"{e} (bienestar y risa)" for e in ejercicios]
-        adapted.append({
-            "sigla": t["sigla"],
-            "nombre": t["nombre"],
-            "descripcion": t["descripcion"],
-            "ejercicios": ejercicios
-        })
-    return adapted
+async function unlockAllServices(){
+    const code=document.getElementById("secret-input").value.trim();
+    if(!code){ alert("Ingresa tu código"); return; }
+    const res=await fetch(`${backendURL}/assistant-unlock`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({secret: code})
+    });
+    const data = await res.json();
+    alert(data.success ? "Servicios desbloqueados ✅" : "Código incorrecto ❌");
+}
 
-# --- Función para guiar la sesión como un coach ---
-def generar_sesion_coach(tecnicas, servicio):
-    tiempo_total = SERVICIO_TIEMPOS.get(servicio.lower(), 600)  # Por defecto 10 min
-    bloques = []
+function startService(serviceName, duration){
+    currentService = serviceName;
+    userMsgs = [];
+    document.getElementById("chat-output").innerHTML=`<p class="assistant">Conectando con ${serviceName}...</p>`;
+    startTimer(duration);
+}
 
-    if tiempo_total <= 60:
-        bloques.append({"nombre": "Interacción rápida", "duracion": tiempo_total, "actividad": "Pregunta y respuesta rápida"})
-    else:
-        bienvenida = int(tiempo_total * 0.1)
-        exploracion = int(tiempo_total * 0.2)
-        practica = int(tiempo_total * 0.6)
-        cierre = int(tiempo_total * 0.1)
-        bloques = [
-            {"nombre": "Bienvenida cálida", "duracion": bienvenida, "actividad": "Saluda, pregunta cómo se siente"},
-            {"nombre": "Exploración inicial", "duracion": exploracion, "actividad": "Escucha necesidades y emociones del cliente"},
-            {"nombre": "Práctica guiada", "duracion": practica, "actividad": f"Guía ejercicios de: {', '.join([e['sigla'] for e in tecnicas])} adaptados a {servicio}"},
-            {"nombre": "Cierre positivo", "duracion": cierre, "actividad": "Resumen y refuerzo positivo"}
-        ]
-    return bloques
+function startTimer(duration){
+    clearInterval(timerInterval);
+    let timeLeft = duration;
+    const timerDiv = document.getElementById("timer");
+    timerDiv.textContent = formatTime(timeLeft);
+    timerInterval = setInterval(()=>{
+        timeLeft--;
+        timerDiv.textContent = formatTime(timeLeft);
+        if(timeLeft <= 0){ clearInterval(timerInterval); timerDiv.textContent = "⏰ Tiempo finalizado"; }
+    },1000);
+}
 
-@app.route('/')
-def index():
-    return render_template('index.html', stripe_public_key=PUBLIC_KEY)
+function formatTime(seconds){
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+    return `${m}:${s.toString().padStart(2,'0')} min`;
+}
 
-@app.route('/create-checkout-session', methods=['POST'])
-def create_checkout():
-    data = request.get_json()
-    product = data.get('product')
-    amount = data.get('amount')
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {'name': product},
-                    'unit_amount': int(amount * 100),
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=f'{URL_SITE}/success?service={product}',
-            cancel_url=f'{URL_SITE}/cancel',
-        )
-        return jsonify({'url': session.url})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+function speakText(text){
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-ES";
+    speechSynthesis.speak(utterance);
+}
 
-@app.route('/assistant-unlock', methods=['POST'])
-def unlock_services():
-    data = request.get_json()
-    secret = data.get('secret')
-    return jsonify({'success': secret == MAYROGA_SECRET})
+async function sendChat(){
+    const input = document.getElementById("chat-input");
+    const msg = input.value.trim();
+    if(!msg || !currentService) return;
 
-@app.route('/assistant-stream-message', methods=['POST'])
-def assistant_stream_message():
-    data = request.get_json()
-    service = data.get('service', 'Servicio')
-    messages = data.get('messages', [])
+    const out = document.getElementById("chat-output");
+    const p = document.createElement('p');
+    p.textContent="Tú: "+msg;
+    p.className="client";
+    out.appendChild(p);
+    input.value="";
+    userMsgs.push(msg);
 
-    try:
-        ultimo_mensaje = messages[-1] if messages else ""
-        tvid_seleccionada = detectar_tvid(ultimo_mensaje)
-        tvid_adaptada = adaptar_ejercicios(tvid_seleccionada, service)
-        bloques_sesion = generar_sesion_coach(tvid_adaptada, service)
+    try {
+        const res = await fetch(`${backendURL}/assistant-stream-message`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({service: currentService, messages: userMsgs})
+        });
+        const data = await res.json();
 
-        tvid_info = "\n".join([
-            f"{t['sigla']} - {t['nombre']}: {t['descripcion']}\nEjercicios: {', '.join(t['ejercicios'])}"
-            for t in tvid_adaptada
-        ])
-        bloques_info = "\n".join([
-            f"{b['nombre']} ({b['duracion']} seg): {b['actividad']}" for b in bloques_sesion
-        ])
+        const divResp = document.createElement('div');
+        const p2 = document.createElement('p');
+        p2.textContent=data.answer;
+        p2.className="assistant";
 
-        formatted_messages = [
-            {"role": "system", "content":
-             f"""Eres Asistente May Roga, creado por Maykel Rodríguez García, experto en risoterapia y bienestar natural.
-Conoces todas las Técnicas de Vida (Tvid): TDB, TDM, TDN, TDK, TDP, TDMM, TDG.
-GUÍA al cliente como un verdadero coach: pregunta, escucha y adapta ejercicios paso a paso según sus respuestas.
-Nunca uses contacto físico.
-Mantén tono profesional, cálido y cercano, adapta ejemplos a la edad y situación del cliente.
-Información de Tvid adaptada según mensaje del usuario y tipo de servicio ({service}):
-{tvid_info}
-Bloques de la sesión según tiempo total:
-{bloques_info}"""
-            }
-        ]
-        for m in messages:
-            formatted_messages.append({"role": "user", "content": m})
+        const btn = document.createElement('button');
+        btn.textContent = "🔊 Escuchar";
+        btn.style.marginLeft = "10px";
+        btn.onclick = () => speakText(data.answer);
 
-        response = openai.chat.completions.create(
-            model="gpt-4",
-            messages=formatted_messages
-        )
-        answer = response.choices[0].message.content
-        return jsonify({'answer': answer})
-    except Exception as e:
-        return jsonify({'answer': f"Error al generar respuesta: {str(e)}"})
+        divResp.appendChild(p2);
+        divResp.appendChild(btn);
 
-@app.route('/success')
-def success():
-    service = request.args.get('service', '')
-    return f"Pago exitoso ✅. Servicio activado: {service}"
-
-@app.route('/cancel')
-def cancel():
-    return "Pago cancelado ❌"
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+        out.appendChild(divResp);
+        out.scrollTop = out.scrollHeight;
+    } catch(err){
+        const p2 = document.createElement('p');
+        p2.textContent="Error al generar respuesta.";
+        p2.className="assistant";
+        out.appendChild(p2);
+        out.scrollTop = out.scrollHeight;
+    }
+}
+</script>
+</body>
+</html>
