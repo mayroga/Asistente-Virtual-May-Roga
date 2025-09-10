@@ -97,7 +97,7 @@ def home():
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    # Si el usuario ingresa el código secreto correcto, desbloquea TODO y OpenAI funciona
+    # Si el usuario ingresa el código secreto correcto, desbloquea TODOS los servicios
     return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
 
 @app.route("/create-checkout-session", methods=["POST"])
@@ -152,9 +152,9 @@ def assistant_stream_message():
     if not messages:
         return jsonify({"answer": "No se envio ningun mensaje."})
 
-    # SOLO responder si el servicio ha sido comprado o el código secreto fue usado
+    # SOLO responder si el servicio ha sido pagado o si el código secreto desbloquea TODO
     if not data.get("paid") and not data.get("secret_verified"):
-        return jsonify({"answer": "⛔ Acceso denegado. Debes pagar o usar el código secreto."})
+        return jsonify({"answer": "⛔ Acceso denegado. Debes pagar el servicio o usar el código secreto que desbloquea todos los servicios."})
 
     answer = generar_respuesta_openai(service, messages)
     return jsonify({"answer": answer})
@@ -162,7 +162,6 @@ def assistant_stream_message():
 @app.route("/success")
 def success():
     service = request.args.get("service", "")
-    # Aquí se podría marcar que el servicio fue pagado para habilitarlo
     return f"Pago exitoso. Servicio activado: {service}"
 
 @app.route("/cancel")
