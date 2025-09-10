@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify 
 from flask_cors import CORS
 import stripe, os, openai, json
 
@@ -8,7 +8,8 @@ CORS(app)
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-SECRET_CODE = "MayRoga123"
+# --- Código secreto desde Render ---
+MAYROGA_ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 
 # --- Home ---
 @app.route("/")
@@ -19,7 +20,7 @@ def home():
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    if data.get("secret") == SECRET_CODE:
+    if data.get("secret") == MAYROGA_ACCESS_CODE:
         return jsonify({"success": True})
     return jsonify({"success": False})
 
