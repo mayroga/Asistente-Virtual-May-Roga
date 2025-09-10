@@ -136,7 +136,7 @@ microservices.forEach(cat=>{
     servicesDiv.appendChild(catDiv);
 });
 
-// --- Funciones de Stripe y chat ---
+// --- Funciones Stripe y chat ---
 async function buyService(product, amount){
     const res = await fetch(`${backendURL}/create-checkout-session`,{
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -202,11 +202,13 @@ async function sendChat(){
     input.value="";
     userMsgs.push(msg);
 
+    const secret_code = document.getElementById("secret-input").value.trim() || null;
+
     try {
         const res = await fetch(`${backendURL}/assistant-stream-message`,{
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({service: currentService, messages: userMsgs})
+            body: JSON.stringify({service: currentService, messages: userMsgs, secret: secret_code})
         });
         const data = await res.json();
 
