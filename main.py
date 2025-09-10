@@ -8,8 +8,8 @@ CORS(app)
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-# --- Código secreto desde Render ---
-MAYROGA_ACCESS_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
+# El código secreto sigue igual en Render
+SECRET_CODE = os.environ.get("MAYROGA_ACCESS_CODE")
 
 # --- Home ---
 @app.route("/")
@@ -20,7 +20,7 @@ def home():
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    if data.get("secret") == MAYROGA_ACCESS_CODE:
+    if data.get("secret") == SECRET_CODE:
         return jsonify({"success": True})
     return jsonify({"success": False})
 
@@ -47,20 +47,21 @@ def create_checkout_session():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# --- Stream AI Assistant ---
+# --- Stream AI Assistant (API nueva OpenAI) ---
 @app.route("/assistant-stream-message", methods=["POST"])
 def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
     prompt = f"Asistente May Roga para {service}. Atiende con risoterapia, bienestar, TVid, consejos de vida, medicina verde.\nUsuario: {messages[-1]}\nAsistente:"
+
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-5-mini",
             messages=[{"role":"user","content":prompt}],
             max_tokens=300
         )
-        answer = response.choices[0].message.content
+        answer = response.choices[0].message["content"]
         return jsonify({"answer": answer})
     except Exception as e:
         return jsonify({"answer": f"Error AI: {str(e)}"})
