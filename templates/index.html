@@ -16,9 +16,8 @@ body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:fle
 .service:nth-child(3){ background:#9c27b0; }
 .microservice { background:#2196F3; color:#fff; font-weight:bold; }
 .microservice-category { margin-top:25px; }
-.service h2, .microservice h2 { margin:0 0 4px 0; }
-.service p, .microservice p { margin:2px 0; font-size:0.95em; }
-.english { font-size:0.75em; font-weight:normal; opacity:0.8; margin:0 0 4px 0; }
+.service h2, .microservice h2 { margin:0 0 10px 0; }
+.service p, .microservice p { margin:4px 0; font-size:0.95em; }
 button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
 button:hover { background:#e0e0e0; }
 #chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
@@ -30,6 +29,7 @@ button:hover { background:#e0e0e0; }
 #chat-send { margin-left:10px; padding:10px 18px; border-radius:8px; border:none; background:#2980b9; color:#fff; cursor:pointer; }
 #chat-send:hover { background:#1f6391; }
 #timer { text-align:center; margin-top:15px; font-size:1.2em; font-weight:bold; color:#d32f2f; }
+.small-english { font-size:0.7em; color:#eee; margin-top:-5px; }
 </style>
 </head>
 <body>
@@ -59,47 +59,47 @@ let timerInterval;
 
 // --- Servicios principales ---
 const services = [
-    {name:"Risoterapia y Bienestar Natural", en:"Laughter Therapy & Natural Wellbeing", price:8, duration:300},
-    {name:"Servicio Express", en:"Express Service", price:3, duration:48},
-    {name:"HOROSCOPO Y CONSEJOS DE VIDA", en:"Horoscope & Life Advice", price:6, duration:80}
+    {name:"Risoterapia y Bienestar Natural", name_en:"Laughter Therapy & Natural Wellness", price:8, duration:300},
+    {name:"Servicio Express", name_en:"Express Service", price:3, duration:48},
+    {name:"HOROSCOPO Y CONSEJOS DE VIDA", name_en:"Horoscope & Life Advice", price:6, duration:80}
 ];
 
 // --- Microservicios Express ---
 const microservices = [
     {category:"🌿 Mini guías naturales", items:[
-        {name:"Té Mágico en 2 Minutos", en:"Magic Tea in 2 Minutes", duration:120, price:3.99},
-        {name:"Infusión Anti-Estrés", en:"Anti-Stress Infusion", duration:120, price:5.99},
-        {name:"Batido Energético Natural", en:"Natural Energy Smoothie", duration:120, price:3.99},
-        {name:"Mini Guía de Plantas Curativas", en:"Mini Healing Plants Guide", duration:120, price:3.99},
-        {name:"Respiración Verde Express", en:"Green Breathing Express", duration:120, price:3.99}
+        {name:"Té Mágico en 2 Minutos", duration:120, price:3.99},
+        {name:"Infusión Anti-Estrés", duration:120, price:5.99},
+        {name:"Batido Energético Natural", duration:120, price:3.99},
+        {name:"Mini Guía de Plantas Curativas", duration:120, price:3.99},
+        {name:"Respiración Verde Express", duration:120, price:3.99}
     ]},
     {category:"😂 Ejercicios rápidos de risa", items:[
-        {name:"Risa Relámpago", en:"Lightning Laugh", duration:120, price:3.99},
-        {name:"Motívate en un Minuto", en:"Motivate in One Minute", duration:90, price:3.99},
-        {name:"Respira y Sonríe", en:"Breathe & Smile", duration:120, price:3.99},
-        {name:"Confianza Express", en:"Confidence Express", duration:120, price:5.99},
-        {name:"Optimismo al Instante", en:"Instant Optimism", duration:60, price:3.99}
+        {name:"Risa Relámpago", duration:120, price:3.99},
+        {name:"Motívate en un Minuto", duration:90, price:3.99},
+        {name:"Respira y Sonríe", duration:120, price:3.99},
+        {name:"Confianza Express", duration:120, price:5.99},
+        {name:"Optimismo al Instante", duration:60, price:3.99}
     ]},
     {category:"🔮 Horóscopos y consejos breves", items:[
-        {name:"Horóscopo Flash", en:"Flash Horoscope", duration:60, price:3.99},
-        {name:"Consejo del Día", en:"Daily Advice", duration:90, price:5.99},
-        {name:"Amor Instantáneo", en:"Instant Love", duration:60, price:3.99},
-        {name:"Abundancia en 2 Minutos", en:"Abundance in 2 Minutes", duration:120, price:5.99},
-        {name:"Mensaje de tu Estrella", en:"Message from Your Star", duration:120, price:3.99}
+        {name:"Horóscopo Flash", duration:60, price:3.99},
+        {name:"Consejo del Día", duration:90, price:5.99},
+        {name:"Amor Instantáneo", duration:60, price:3.99},
+        {name:"Abundancia en 2 Minutos", duration:120, price:5.99},
+        {name:"Mensaje de tu Estrella", duration:120, price:3.99}
     ]},
     {category:"💚 Hábitos saludables instantáneos", items:[
-        {name:"Mini Diagnóstico de Hábitos", en:"Mini Habits Diagnosis", duration:120, price:3.99},
-        {name:"Ejercicio TVid Express", en:"TVid Express Exercise", duration:120, price:3.99},
-        {name:"Prevención en un Minuto", en:"Prevention in One Minute", duration:60, price:5.99},
-        {name:"Reto 3 Días Express", en:"3-Day Express Challenge", duration:120, price:5.99},
-        {name:"Tracker de Bienestar Diario", en:"Daily Wellbeing Tracker", duration:60, price:3.99}
+        {name:"Mini Diagnóstico de Hábitos", duration:120, price:3.99},
+        {name:"Ejercicio TVid Express", duration:120, price:3.99},
+        {name:"Prevención en un Minuto", duration:60, price:5.99},
+        {name:"Reto 3 Días Express", duration:120, price:5.99},
+        {name:"Tracker de Bienestar Diario", duration:60, price:3.99}
     ]},
     {category:"🔥 Recetas verdes express", items:[
-        {name:"Receta Verde Express", en:"Green Recipe Express", duration:120, price:3.99},
-        {name:"Té Relajante Rápido", en:"Quick Relaxing Tea", duration:120, price:5.99},
-        {name:"Batido Creativo", en:"Creative Smoothie", duration:120, price:3.99},
-        {name:"Infusión para Claridad Mental", en:"Infusion for Mental Clarity", duration:120, price:5.99},
-        {name:"Mini Detox Express", en:"Mini Detox Express", duration:120, price:3.99}
+        {name:"Receta Verde Express", duration:120, price:3.99},
+        {name:"Té Relajante Rápido", duration:120, price:5.99},
+        {name:"Batido Creativo", duration:120, price:3.99},
+        {name:"Infusión para Claridad Mental", duration:120, price:5.99},
+        {name:"Mini Detox Express", duration:120, price:3.99}
     ]}
 ];
 
@@ -108,8 +108,7 @@ const servicesDiv = document.getElementById("services");
 services.forEach(s=>{
     const div=document.createElement('div');
     div.className='service';
-    div.innerHTML=`<h2>${s.name}</h2>
-        <p class="english">${s.en}</p>
+    div.innerHTML=`<h2>${s.name}</h2><div class="small-english">${s.name_en}</div>
         <p>Precio: $${s.price}</p>
         <p>Duración: ${Math.floor(s.duration/60)}:${(s.duration%60).toString().padStart(2,'0')} min</p>
         <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
@@ -126,7 +125,6 @@ microservices.forEach(cat=>{
         const div = document.createElement('div');
         div.className='microservice';
         div.innerHTML=`<h2>${ms.name}</h2>
-            <p class="english">${ms.en}</p>
             <p>Precio: $${ms.price}</p>
             <p>Duración: ${Math.floor(ms.duration/60)}:${(ms.duration%60).toString().padStart(2,'0')} min</p>
             <button onclick="startService('${ms.name}', ${ms.duration})">Iniciar Chat</button>
@@ -136,7 +134,6 @@ microservices.forEach(cat=>{
     servicesDiv.appendChild(catDiv);
 });
 
-// --- Funciones existentes ---
 async function buyService(product, amount){
     const res = await fetch(`${backendURL}/create-checkout-session`,{
         method:'POST', headers:{'Content-Type':'application/json'},
