@@ -4,26 +4,26 @@ import stripe
 import os
 import openai
 import json
+import datetime
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
+CORS(app, origins=["https://sites.google.com"])
 
-# --- Claves desde variables de entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
-
-# --- Configuración OpenAI ---
+URL_SITE = os.environ.get("URL_SITE")
 openai.api_key = OPENAI_API_KEY
 
 # --- Cargar manual Tvid ---
 with open('manual_tvid.json', 'r', encoding='utf-8') as f:
     manual_data = json.load(f)["manual"]
-    manual_tecnicas = manual_data["partes"]["manual_Tvid_solo"]["tecnicas"]
-    tabla_decision = manual_data["partes"]["manual_Tvid_solo"]["tabla_decision"]
-    reglas_generales = manual_data["partes"]["parte_IV"]["reglas"]
+
+manual_tecnicas = manual_data["partes"]["manual_Tvid_solo"]["tecnicas"]
+tabla_decision = manual_data["partes"]["manual_Tvid_solo"]["tabla_decision"]
+reglas_generales = manual_data["partes"]["parte_IV"]["reglas"]
 
 # --- Tiempos de cada servicio en segundos ---
 SERVICIO_TIEMPOS = {
@@ -77,9 +77,8 @@ def adaptar_ejercicios(tecnicas, servicio):
 
 # --- Función para guiar la sesión como un coach ---
 def generar_sesion_coach(tecnicas, servicio):
-    tiempo_total = SERVICIO_TIEMPOS.get(servicio.lower(), 600)  # Por defecto 10 min
+    tiempo_total = SERVICIO_TIEMPOS.get(servicio.lower(), 600)
     bloques = []
-
     if tiempo_total <= 60:
         bloques.append({"nombre": "Interacción rápida", "duracion": tiempo_total, "actividad": "Pregunta y respuesta rápida"})
     else:
@@ -95,7 +94,6 @@ def generar_sesion_coach(tecnicas, servicio):
         ]
     return bloques
 
-# --- Rutas Flask ---
 @app.route('/')
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
@@ -135,37 +133,16 @@ def assistant_stream_message():
     data = request.get_json()
     service = data.get('service', 'Servicio')
     messages = data.get('messages', [])
-
     try:
         ultimo_mensaje = messages[-1] if messages else ""
         tvid_seleccionada = detectar_tvid(ultimo_mensaje)
         tvid_adaptada = adaptar_ejercicios(tvid_seleccionada, service)
         bloques_sesion = generar_sesion_coach(tvid_adaptada, service)
-
-        tvid_info = "\n".join([
-            f"{t['sigla']} - {t['nombre']}: {t['descripcion']}\nEjercicios: {', '.join(t['ejercicios'])}"
-            for t in tvid_adaptada
-        ])
-        bloques_info = "\n".join([
-            f"{b['nombre']} ({b['duracion']} seg): {b['actividad']}" for b in bloques_sesion
-        ])
-
-        formatted_messages = [
-            {"role": "system", "content":
-             f"""Eres Asistente May Roga, creado por Maykel Rodríguez García, experto en risoterapia y bienestar natural.
-Conoces todas las Técnicas de Vida (Tvid): TDB, TDM, TDN, TDK, TDP, TDMM, TDG.
-GUÍA al cliente como un verdadero coach: pregunta, escucha y adapta ejercicios paso a paso según sus respuestas.
-Nunca uses contacto físico.
-Mantén tono profesional, cálido y cercano, adapta ejemplos a la edad y situación del cliente.
-Información de Tvid adaptada según mensaje del usuario y tipo de servicio ({service}):
-{tvid_info}
-Bloques de la sesión según tiempo total:
-{bloques_info}"""
-            }
-        ]
+        tvid_info = "\n".join([ f"{t['sigla']} - {t['nombre']}: {t['descripcion']}\nEjercicios: {', '.join(t['ejercicios'])}" for t in tvid_adaptada ])
+        bloques_info = "\n".join([ f"{b['nombre']} ({b['duracion']} seg): {b['actividad']}" for b in bloques_sesion ])
+        formatted_messages = [{"role": "system", "content": f"""Eres Asistente May Roga, creado por Maykel Rodríguez García, experto en risoterapia y bienestar natural. Conoces todas las Técnicas de Vida (Tvid): TDB, TDM, TDN, TDK, TDP, TDMM, TDG. GUÍA al cliente como un verdadero coach: pregunta, escucha y adapta ejercicios paso a paso según sus respuestas. Nunca uses contacto físico. Mantén tono profesional, cálido y cercano, adapta ejemplos a la edad y situación del cliente. Información de Tvid adaptada según mensaje del usuario y tipo de servicio ({service}): {tvid_info} Bloques de la sesión según tiempo total: {bloques_info}""" }]
         for m in messages:
             formatted_messages.append({"role": "user", "content": m})
-
         response = openai.chat.completions.create(
             model="gpt-4",
             messages=formatted_messages
