@@ -10,7 +10,7 @@ CORS(app)
 # --- Claves desde variables de entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")  # Variable donde está tu código secreto real
+MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")  # Código secreto real
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 
@@ -94,7 +94,7 @@ Bloques de la sesion segun tiempo total:
 def home():
     return render_template("index.html", stripe_public_key=PUBLIC_KEY)
 
-# Esta ruta desbloquea todos los servicios si se pone el código secreto
+# Esta ruta verifica el código secreto y desbloquea servicios
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
@@ -159,10 +159,12 @@ def assistant_stream_message():
     secret_verified = data.get("secret_verified", False)
 
     if paid or secret_verified:
+        # OpenAI solo se ejecuta dentro del servicio autorizado
         answer = generar_respuesta_openai(service, messages)
         return jsonify({"answer": answer})
     else:
-        return jsonify({"answer": ""})  # Queda en blanco si no se paga ni hay código secreto
+        # Si no hay pago ni código secreto, se queda todo en blanco
+        return jsonify({"answer": ""})
 
 @app.route("/success")
 def success():
