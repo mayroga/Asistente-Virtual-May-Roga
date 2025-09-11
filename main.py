@@ -152,8 +152,11 @@ def assistant_stream_message():
     if not messages:
         return jsonify({"answer": "No se envio ningun mensaje."})
 
-    # SOLO responder si el servicio ha sido pagado o si el código secreto desbloquea TODO
-    if not data.get("paid") and not data.get("secret_verified"):
+    # --- CORRECCIÓN: acceso si pago o si se ingresa el código secreto real ---
+    codigo_ingresado = data.get("secret_code", "")
+    acceso = data.get("paid") or (codigo_ingresado == MAYROGA_SECRET)
+
+    if not acceso:
         return jsonify({"answer": "⛔ Acceso denegado. Debes pagar el servicio o usar el código secreto que desbloquea todos los servicios."})
 
     answer = generar_respuesta_openai(service, messages)
