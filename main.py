@@ -1,245 +1,172 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente May Roga</title>
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
-<script src="https://js.stripe.com/v3/"></script>
-<style>
-body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; padding:20px; }
-.container { background:#fff; padding:20px; border-radius:16px; width:100%; max-width:900px; box-shadow:0 6px 20px rgba(0,0,0,0.15); }
-.title-box { background:#8e24aa; color:#fff; padding:15px; border-radius:12px; text-align:center; font-size:1.8em; font-weight:bold; margin-bottom:20px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-.service, .microservice { border-radius:12px; padding:15px; margin-bottom:15px; color:#fff; font-weight:bold; }
-.service:nth-child(1){ background:#4CAF50; }
-.service:nth-child(2){ background:#ff9800; }
-.service:nth-child(3){ background:#9c27b0; }
-.microservice { background:#2196F3; color:#fff; font-weight:bold; }
-.microservice-category { margin-top:25px; }
-.service h2, .microservice h2 { margin:0 0 10px 0; }
-.service p, .microservice p { margin:4px 0; font-size:0.95em; }
-button { background:#fff; color:#333; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; margin-top:8px; font-weight:bold; }
-button:hover { background:#e0e0e0; }
-#chat-output { margin-top:20px; max-height:300px; overflow-y:auto; padding:10px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
-#chat-output p { padding:8px; border-radius:8px; margin:6px 0; max-width:80%; word-wrap:break-word; }
-#chat-output p.client { background:#e0e0e0; color:#000; align-self:flex-start; }
-#chat-output p.assistant { background:#eaf2fb; color:#2980b9; align-self:flex-end; }
-#chat-box { display:flex; margin-top:10px; }
-#chat-input { flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; color:#000; }
-#chat-send { margin-left:10px; padding:10px 18px; border-radius:8px; border:none; background:#2980b9; color:#fff; cursor:pointer; }
-#chat-send:hover { background:#1f6391; }
-#timer { text-align:center; margin-top:15px; font-size:1.2em; font-weight:bold; color:#d32f2f; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="title-box">Asistente May Roga</div>
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+import stripe
+import os
+import json
+import openai
 
-<h2 style="color:#2980b9;">Chat del Servicio</h2>
-<div id="chat-output"></div>
-<div id="chat-box">
-    <input id="chat-input" type="text" placeholder="Escribe tu mensaje">
-    <button id="chat-send" onclick="sendChat()">Enviar</button>
-</div>
-<div id="timer"></div>
+app = Flask(__name__, template_folder='templates', static_folder='static')
+CORS(app)
 
-<div style="margin:20px 0; text-align:center;">
-<input id="secret-input" type="password" placeholder="Ingresa tu código secreto">
-<button onclick="unlockAllServices()">Desbloquear Servicios</button>
-</div>
+# --- Claves desde variables de entorno ---
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
+MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 
-<div id="services"></div>
+# --- Configuración OpenAI ---
+openai.api_key = OPENAI_API_KEY
 
-<script>
-const backendURL = "https://asistente-virtual-may-roga.onrender.com";
-let currentService = null;
-let userMsgs = [];
-let timerInterval;
+# --- Funciones OpenAI aisladas ---
+def detectar_tvid(mensaje):
+    mensaje = mensaje.lower()
+    if "estres" in mensaje:
+        return ["TDB", "TDM"]
+    elif "ira" in mensaje:
+        return ["TDM"]
+    else:
+        return ["TDB"]
 
-// --- Servicios principales ---
-const services = [
-    {name:"Risoterapia y Bienestar Natural", price:8, duration:300},
-    {name:"Servicio Express", price:3, duration:48},
-    {name:"Horóscopo y Consejos de Vida", price:6, duration:80}
-];
+def adaptar_ejercicios(tecnicas, servicio):
+    adapted = []
+    for t in tecnicas:
+        ejercicios = ["Ejercicio 1", "Ejercicio 2"]
+        adapted.append({
+            "sigla": t,
+            "nombre": t,
+            "descripcion": f"Descripcion de {t}",
+            "ejercicios": ejercicios
+        })
+    return adapted
 
-// --- Microservicios Express ---
-const microservices = [
-    {category:"🌿 Mini guías naturales", items:[
-        {name:"Té Mágico en 2 Minutos", duration:120, price:3.99},
-        {name:"Infusión Anti-Estrés", duration:120, price:5.99},
-        {name:"Batido Energético Natural", duration:120, price:3.99},
-        {name:"Mini Guía de Plantas Curativas", duration:120, price:3.99},
-        {name:"Respiración Verde Express", duration:120, price:3.99}
-    ]},
-    {category:"😂 Ejercicios rápidos de risa", items:[
-        {name:"Risa Relámpago", duration:120, price:3.99},
-        {name:"Motívate en un Minuto", duration:90, price:3.99},
-        {name:"Respira y Sonríe", duration:120, price:3.99},
-        {name:"Confianza Express", duration:120, price:5.99},
-        {name:"Optimismo al Instante", duration:60, price:3.99}
-    ]},
-    {category:"🔮 Horóscopos y consejos breves", items:[
-        {name:"Horóscopo Flash", duration:60, price:3.99},
-        {name:"Consejo del Día", duration:90, price:5.99},
-        {name:"Amor Instantáneo", duration:60, price:3.99},
-        {name:"Abundancia en 2 Minutos", duration:120, price:5.99},
-        {name:"Mensaje de tu Estrella", duration:120, price:3.99}
-    ]},
-    {category:"💚 Hábitos saludables instantáneos", items:[
-        {name:"Mini Diagnóstico de Hábitos", duration:120, price:3.99},
-        {name:"Ejercicio TVid Express", duration:120, price:3.99},
-        {name:"Prevención en un Minuto", duration:60, price:5.99},
-        {name:"Reto 3 Días Express", duration:120, price:5.99},
-        {name:"Tracker de Bienestar Diario", duration:60, price:3.99}
-    ]},
-    {category:"🔥 Recetas verdes express", items:[
-        {name:"Receta Verde Express", duration:120, price:3.99},
-        {name:"Té Relajante Rápido", duration:120, price:5.99},
-        {name:"Batido Creativo", duration:120, price:3.99},
-        {name:"Infusión para Claridad Mental", duration:120, price:5.99},
-        {name:"Mini Detox Express", duration:120, price:3.99}
-    ]}
-];
+def generar_sesion_coach(tecnicas, servicio):
+    tiempo_total = 600  # 10 minutos por defecto
+    bloques = [
+        {"nombre": "Bienvenida", "duracion": int(tiempo_total*0.1), "actividad": "Saluda y pregunta"},
+        {"nombre": "Exploracion", "duracion": int(tiempo_total*0.2), "actividad": "Escucha necesidades"},
+        {"nombre": "Practica", "duracion": int(tiempo_total*0.6), "actividad": f"Guia ejercicios de {', '.join([t['sigla'] for t in tecnicas])}"},
+        {"nombre": "Cierre", "duracion": int(tiempo_total*0.1), "actividad": "Resumen y refuerzo positivo"}
+    ]
+    return bloques
 
-// --- Renderizar servicios ---
-const servicesDiv = document.getElementById("services");
-services.forEach(s=>{
-    const div=document.createElement('div');
-    div.className='service';
-    div.innerHTML=`<h2>${s.name}</h2>
-        <p>Precio: $${s.price}</p>
-        <p>Duración: ${Math.floor(s.duration/60)}:${(s.duration%60).toString().padStart(2,'0')} min</p>
-        <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
-        <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;
-    servicesDiv.appendChild(div);
-});
+def generar_respuesta_openai(service, messages):
+    try:
+        ultimo_mensaje = messages[-1] if messages else ""
+        tvid_seleccionada = detectar_tvid(ultimo_mensaje)
+        tvid_adaptada = adaptar_ejercicios(tvid_seleccionada, service)
+        bloques_sesion = generar_sesion_coach(tvid_adaptada, service)
 
-// Render microservicios
-microservices.forEach(cat=>{
-    const catDiv = document.createElement('div');
-    catDiv.className='microservice-category';
-    catDiv.innerHTML = `<h2 style="color:#555;">${cat.category}</h2>`;
-    cat.items.forEach(ms=>{
-        const div = document.createElement('div');
-        div.className='microservice';
-        div.innerHTML=`<h2>${ms.name}</h2>
-            <p>Precio: $${ms.price}</p>
-            <p>Duración: ${Math.floor(ms.duration/60)}:${(ms.duration%60).toString().padStart(2,'0')} min</p>
-            <button onclick="startService('${ms.name}', ${ms.duration})">Iniciar Chat</button>
-            <button onclick="buyService('${ms.name}',${ms.price})">Comprar</button>`;
-        catDiv.appendChild(div);
-    });
-    servicesDiv.appendChild(catDiv);
-});
+        tvid_info = "\n".join([
+            f"{t['sigla']} - {t['nombre']}: {t['descripcion']}\nEjercicios: {', '.join(t['ejercicios'])}"
+            for t in tvid_adaptada
+        ])
+        bloques_info = "\n".join([
+            f"{b['nombre']} ({b['duracion']} seg): {b['actividad']}" for b in bloques_sesion
+        ])
 
-// --- Funciones ---
-function normalizeName(name){
-    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-}
+        formatted_messages = [
+            {"role": "system", "content":
+             f"""Eres Asistente May Roga, creado por Maykel Rodriguez Garcia, experto en risoterapia y bienestar natural.
+Conoces todas las Tecnicas de Vida (Tvid): TDB, TDM, TDN, TDK, TDP, TDMM, TDG.
+GUIA al cliente como un verdadero coach: pregunta, escucha y adapta ejercicios paso a paso segun sus respuestas.
+Nunca uses contacto fisico.
+Manten tono profesional, calido y cercano, adapta ejemplos a la edad y situacion del cliente.
+Informacion de Tvid adaptada segun mensaje del usuario y tipo de servicio ({service}):
+{tvid_info}
+Bloques de la sesion segun tiempo total:
+{bloques_info}"""
+            }
+        ]
+        for m in messages:
+            formatted_messages.append({"role": "user", "content": m})
 
-async function buyService(product, amount){
-    const normalized = normalizeName(product);
-    try {
-        const res = await fetch(`${backendURL}/create-checkout-session`,{
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({product: normalized, amount})
-        });
-        const data = await res.json();
-        if(data.url){ window.open(data.url, "_blank"); }
-        else { alert("Error al crear sesión de pago"); }
-    } catch(e){
-        alert("Error al conectar con el servidor");
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=formatted_messages
+        )
+        answer = response.choices[0].message.content
+        return answer
+    except Exception as e:
+        return f"Error AI: {str(e)}"
+
+# --- Rutas Flask ---
+@app.route("/")
+def home():
+    return render_template("index.html", stripe_public_key=PUBLIC_KEY)
+
+@app.route("/assistant-unlock", methods=["POST"])
+def unlock():
+    data = request.json
+    return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
+
+@app.route("/create-checkout-session", methods=["POST"])
+def create_checkout_session():
+    data = request.json
+
+    # --- Convertir nombre del producto a mayusculas y sin tildes ---
+    product_name = data['product'].upper()
+    replacements = {
+        "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
+        "INFUSIÓN ANTI-ESTRÉS": "INFUSION ANTI-ESTRES",
+        "BATIDO ENERGÉTICO NATURAL": "BATIDO ENERGETICO NATURAL",
+        "MINI GUÍA DE PLANTAS CURATIVAS": "MINI GUIA DE PLANTAS CURATIVAS",
+        "RESPIRACIÓN VERDE EXPRESS": "RESPIRACION VERDE EXPRESS",
+        "RISA RELÁMPAGO": "RISA RELAMPAGO",
+        "MOTÍVATE EN UN MINUTO": "MOTIVATE EN UN MINUTO",
+        "RESPIRA Y SONRÍE": "RESPIRA Y SONRIE",
+        "HORÓSCOPO FLASH": "HOROSCOPO FLASH",
+        "CONSEJO DEL DÍA": "CONSEJO DEL DIA",
+        "AMOR INSTANTÁNEO": "AMOR INSTANTANEO",
+        "MINI DIAGNÓSTICO DE HÁBITOS": "MINI DIAGNOSTICO DE HABITOS",
+        "PREVENCIÓN EN UN MINUTO": "PREVENCION EN UN MINUTO",
+        "RETO 3 DÍAS EXPRESS": "RETO 3 DIAS EXPRESS",
+        "INFUSIÓN PARA CLARIDAD MENTAL": "INFUSION PARA CLARIDAD MENTAL"
     }
-}
+    if product_name in replacements:
+        product_name = replacements[product_name]
 
-async function unlockAllServices(){
-    const code=document.getElementById("secret-input").value.trim();
-    if(!code){ alert("Ingresa tu código"); return; }
-    const res=await fetch(`${backendURL}/assistant-unlock`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({secret: code})
-    });
-    const data = await res.json();
-    alert(data.success ? "Servicios desbloqueados ✅" : "Código incorrecto ❌");
-}
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {'name': product_name},
+                    'unit_amount': int(float(data['amount']) * 100)
+                },
+                'quantity': 1
+            }],
+            mode='payment',
+            success_url=f"{URL_SITE}/success?service={product_name}",
+            cancel_url=f"{URL_SITE}/cancel"
+        )
+        return jsonify({"url": session.url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
-function startService(serviceName, duration){
-    currentService = serviceName;
-    userMsgs = [];
-    document.getElementById("chat-output").innerHTML=`<p class="assistant">Conectando con ${serviceName}...</p>`;
-    startTimer(duration);
-}
+@app.route("/assistant-stream-message", methods=["POST"])
+def assistant_stream_message():
+    data = request.json
+    service = data.get("service")
+    messages = data.get("messages", [])
+   
+    if not messages:
+        return jsonify({"answer": "No se envio ningun mensaje."})
 
-function startTimer(duration){
-    clearInterval(timerInterval);
-    let timeLeft = duration;
-    const timerDiv = document.getElementById("timer");
-    timerDiv.textContent = formatTime(timeLeft);
-    timerInterval = setInterval(()=>{
-        timeLeft--;
-        timerDiv.textContent = formatTime(timeLeft);
-        if(timeLeft <= 0){ clearInterval(timerInterval); timerDiv.textContent = "⏰ Tiempo finalizado"; }
-    },1000);
-}
+    answer = generar_respuesta_openai(service, messages)
+    return jsonify({"answer": answer})
 
-function formatTime(seconds){
-    const m = Math.floor(seconds/60);
-    const s = seconds%60;
-    return `${m}:${s.toString().padStart(2,'0')} min`;
-}
+@app.route("/success")
+def success():
+    service = request.args.get("service", "")
+    return f"✅ Pago exitoso. Servicio activado: {service}"
 
-function speakText(text){
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-ES";
-    speechSynthesis.speak(utterance);
-}
+@app.route("/cancel")
+def cancel():
+    return "❌ Pago cancelado."
 
-async function sendChat(){
-    const input = document.getElementById("chat-input");
-    const msg = input.value.trim();
-    if(!msg || !currentService) return;
-
-    const out = document.getElementById("chat-output");
-    const p = document.createElement('p');
-    p.textContent="Tú: "+msg;
-    p.className="client";
-    out.appendChild(p);
-    input.value="";
-    userMsgs.push(msg);
-
-    try {
-        const res = await fetch(`${backendURL}/assistant-stream-message`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({service: currentService, messages: userMsgs})
-        });
-        const data = await res.json();
-
-        const divResp = document.createElement('div');
-        const p2 = document.createElement('p');
-        p2.textContent=data.answer;
-        p2.className="assistant";
-
-        const btn = document.createElement('button');
-        btn.textContent = "🔊 Escuchar";
-        btn.style.marginLeft = "10px";
-        btn.onclick = () => speakText(data.answer);
-
-        divResp.appendChild(p2);
-        divResp.appendChild(btn);
-
-        out.appendChild(divResp);
-        out.scrollTop = out.scrollHeight;
-    } catch(err){
-        const p2 = document.createElement('p');
-        p2.textContent="Error al generar respuesta.";
-        p2.className="assistant";
-        out.appendChild(p2);
-        out.scrollTop = out.scrollHeight;
-    }
-}
-</script>
-</div>
-</body>
-</html>
+# --- Ejecutar servidor ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
