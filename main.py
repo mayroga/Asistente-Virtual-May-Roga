@@ -9,17 +9,12 @@ CORS(app)
 
 # --- Claves desde variables de entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
-PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
+PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")  # Tu clave pública Stripe
+MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")  # Código secreto
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
+URL_SITE = os.environ.get("URL_SITE")  # https://asistente-virtual-may-roga.onrender.com
 
-# --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
-
-# --- Control de acceso para producción ---
-# True = acceso controlado; False = acceso libre (pruebas)
-ENABLE_ACCESS_CONTROL = False
 
 # --- Funciones OpenAI ---
 def detectar_tvid(mensaje):
@@ -88,10 +83,8 @@ Bloques de la sesion segun tiempo total:
             model="gpt-4",
             messages=formatted_messages
         )
-        answer = response.choices[0].message.content
-        return answer
+        return response.choices[0].message.content
     except Exception as e:
-        print("Error OpenAI:", str(e))
         return f"Error AI: {str(e)}"
 
 # --- Rutas Flask ---
@@ -102,32 +95,46 @@ def home():
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    secret_verified = data.get("secret") == MAYROGA_SECRET
-    return jsonify({"success": secret_verified})
+    return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
+
+# --- Todos los servicios ya incluidos ---
+SERVICES_REPLACEMENTS = {
+    "RISOTERAPIA Y BIENESTAR NATURAL": "Risoterapia y Bienestar Natural",
+    "SERVICIO EXPRESS": "Express Service",
+    "HOROSCOPO Y CONSEJOS DE VIDA": "Horoscope & Life Advice",
+    "TÉ MÁGICO EN 2 MINUTOS": "Magic Tea in 2 Minutes",
+    "INFUSIÓN ANTI-ESTRÉS": "Anti-Stress Infusion",
+    "BATIDO ENERGÉTICO NATURAL": "Natural Energy Smoothie",
+    "MINI GUÍA DE PLANTAS CURATIVAS": "Mini Healing Plants Guide",
+    "RESPIRACIÓN VERDE EXPRESS": "Green Breathing Express",
+    "RISA RELÁMPAGO": "Lightning Laughter",
+    "MOTÍVATE EN UN MINUTO": "Motivate in a Minute",
+    "RESPIRA Y SONRÍE": "Breathe and Smile",
+    "CONFIANZA EXPRESS": "Express Confidence",
+    "OPTIMISMO AL INSTANTE": "Instant Optimism",
+    "HORÓSCOPO FLASH": "Flash Horoscope",
+    "CONSEJO DEL DÍA": "Daily Advice",
+    "AMOR INSTANTÁNEO": "Instant Love",
+    "ABUNDANCIA EN 2 MINUTOS": "Abundance in 2 Minutes",
+    "MENSAJE DE TU ESTRELLA": "Message from Your Star",
+    "MINI DIAGNÓSTICO DE HÁBITOS": "Mini Habit Diagnosis",
+    "EJERCICIO TVID EXPRESS": "TVid Express Exercise",
+    "PREVENCIÓN EN UN MINUTO": "Prevention in a Minute",
+    "RETO 3 DÍAS EXPRESS": "3-Day Express Challenge",
+    "TRACKER DE BIENESTAR DIARIO": "Daily Wellbeing Tracker",
+    "RECETA VERDE EXPRESS": "Green Recipe Express",
+    "TÉ RELAJANTE RÁPIDO": "Quick Relaxing Tea",
+    "BATIDO CREATIVO": "Creative Smoothie",
+    "INFUSIÓN PARA CLARIDAD MENTAL": "Mental Clarity Infusion",
+    "MINI DETOX EXPRESS": "Mini Detox Express"
+}
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
     product_name = data['product'].upper()
-    replacements = {
-        "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
-        "INFUSIÓN ANTI-ESTRÉS": "INFUSION ANTI-ESTRES",
-        "BATIDO ENERGÉTICO NATURAL": "BATIDO ENERGETICO NATURAL",
-        "MINI GUÍA DE PLANTAS CURATIVAS": "MINI GUIA DE PLANTAS CURATIVAS",
-        "RESPIRACIÓN VERDE EXPRESS": "RESPIRACION VERDE EXPRESS",
-        "RISA RELÁMPAGO": "RISA RELAMPAGO",
-        "MOTÍVATE EN UN MINUTO": "MOTIVATE EN UN MINUTO",
-        "RESPIRA Y SONRÍE": "RESPIRA Y SONRIE",
-        "HORÓSCOPO FLASH": "HOROSCOPO FLASH",
-        "CONSEJO DEL DÍA": "CONSEJO DEL DIA",
-        "AMOR INSTANTÁNEO": "AMOR INSTANTANEO",
-        "MINI DIAGNÓSTICO DE HÁBITOS": "MINI DIAGNOSTICO DE HABITOS",
-        "PREVENCIÓN EN UN MINUTO": "PREVENCION EN UN MINUTO",
-        "RETO 3 DÍAS EXPRESS": "RETO 3 DIAS EXPRESS",
-        "INFUSIÓN PARA CLARIDAD MENTAL": "INFUSION PARA CLARIDAD MENTAL"
-    }
-    if product_name in replacements:
-        product_name = replacements[product_name]
+    if product_name in SERVICES_REPLACEMENTS:
+        product_name = SERVICES_REPLACEMENTS[product_name]
 
     try:
         session = stripe.checkout.Session.create(
@@ -153,20 +160,19 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
+
+    if not messages:
+        return jsonify({"answer": ""})
+
+    # SOLO responde si se paga o se pone código secreto
     paid = data.get("paid", False)
     secret_verified = data.get("secret_verified", False)
 
-    if not messages:
-        return jsonify({"answer": "No se envio ningun mensaje."})
-
-    # --- Control de acceso solo si ENABLE_ACCESS_CONTROL = True ---
-    if ENABLE_ACCESS_CONTROL:
-        if not (paid or secret_verified):
-            return jsonify({"answer": ""})
-
-    # Ejecuta OpenAI normalmente
-    answer = generar_respuesta_openai(service, messages)
-    return jsonify({"answer": answer})
+    if paid or secret_verified:
+        answer = generar_respuesta_openai(service, messages)
+        return jsonify({"answer": answer})
+    else:
+        return jsonify({"answer": ""})  # Queda en blanco si no se paga ni hay código secreto
 
 @app.route("/success")
 def success():
