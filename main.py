@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import stripe
 import os
+import json
 import openai
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -10,14 +11,14 @@ CORS(app)
 # --- Claves desde variables de entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
-MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")  # Código secreto real
+MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 
 # --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
 
-# --- Funciones OpenAI ---
+# --- Funciones OpenAI aisladas ---
 def detectar_tvid(mensaje):
     mensaje = mensaje.lower()
     if "estres" in mensaje:
@@ -94,17 +95,15 @@ Bloques de la sesion segun tiempo total:
 def home():
     return render_template("index.html", stripe_public_key=PUBLIC_KEY)
 
-# Esta ruta verifica el código secreto y desbloquea servicios
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    secret_input = data.get("secret", "")
-    success = (secret_input == MAYROGA_SECRET)
-    return jsonify({"success": success, "secret_verified": success})
+    return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
+
     product_name = data['product'].upper()
     replacements = {
         "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
@@ -152,32 +151,26 @@ def assistant_stream_message():
     messages = data.get("messages", [])
 
     if not messages:
-        return jsonify({"answer": ""})
+        return jsonify({"answer": ""})  # No se envió ningún mensaje
 
-    # SOLO responder si el servicio ha sido pagado o si el código secreto desbloquea TODO
+    # --- Verificar pago o código secreto ---
     paid = data.get("paid", False)
     secret_verified = data.get("secret_verified", False)
 
     if paid or secret_verified:
-        # OpenAI solo se ejecuta dentro del servicio autorizado
         answer = generar_respuesta_openai(service, messages)
         return jsonify({"answer": answer})
     else:
-        # Si no hay pago ni código secreto, se queda todo en blanco
-        return jsonify({"answer": ""})
+        return jsonify({"answer": ""})  # Queda en blanco si no hay pago ni código secreto
 
 @app.route("/success")
 def success():
     service = request.args.get("service", "")
-    return render_template("success.html")
+    return f"✅ Pago exitoso. Servicio activado: {service}"
 
 @app.route("/cancel")
 def cancel():
-    return render_template("cancel.html")
-
-@app.route("/failure")
-def failure():
-    return render_template("failure.html")
+    return "❌ Pago cancelado."
 
 # --- Ejecutar servidor ---
 if __name__ == "__main__":
