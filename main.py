@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import stripe
 import os
-import json
 import openai
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -18,7 +17,11 @@ URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 # --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
 
-# --- Funciones OpenAI aisladas ---
+# --- Control de acceso para producción ---
+# True = acceso controlado; False = acceso libre (pruebas)
+ENABLE_ACCESS_CONTROL = False
+
+# --- Funciones OpenAI ---
 def detectar_tvid(mensaje):
     mensaje = mensaje.lower()
     if "estres" in mensaje:
@@ -88,6 +91,7 @@ Bloques de la sesion segun tiempo total:
         answer = response.choices[0].message.content
         return answer
     except Exception as e:
+        print("Error OpenAI:", str(e))
         return f"Error AI: {str(e)}"
 
 # --- Rutas Flask ---
@@ -98,12 +102,12 @@ def home():
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
+    secret_verified = data.get("secret") == MAYROGA_SECRET
+    return jsonify({"success": secret_verified})
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
-
     product_name = data['product'].upper()
     replacements = {
         "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
@@ -149,19 +153,20 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
-
-    if not messages:
-        return jsonify({"answer": ""})  # No se envió ningún mensaje
-
-    # --- Verificar pago o código secreto ---
     paid = data.get("paid", False)
     secret_verified = data.get("secret_verified", False)
 
-    if paid or secret_verified:
-        answer = generar_respuesta_openai(service, messages)
-        return jsonify({"answer": answer})
-    else:
-        return jsonify({"answer": ""})  # Queda en blanco si no hay pago ni código secreto
+    if not messages:
+        return jsonify({"answer": "No se envio ningun mensaje."})
+
+    # --- Control de acceso solo si ENABLE_ACCESS_CONTROL = True ---
+    if ENABLE_ACCESS_CONTROL:
+        if not (paid or secret_verified):
+            return jsonify({"answer": ""})
+
+    # Ejecuta OpenAI normalmente
+    answer = generar_respuesta_openai(service, messages)
+    return jsonify({"answer": answer})
 
 @app.route("/success")
 def success():
