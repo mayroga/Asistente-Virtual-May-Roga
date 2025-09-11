@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asistente May Roga</title>
-<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
 body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
@@ -59,12 +58,12 @@ let userMsgs = [];
 let timerInterval;
 
 const services = [
-    {name:"Risoterapia y Bienestar Natural", price:12, duration:600},
-    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:6, duration:90},
-    {name:"RESPUESTA RAPIDA", price:2, duration:55},
-    {name:"Servicio Personalizado", price:50, duration:1200},
-    {name:"Servicio Corporativo", price:750, duration:1800},
-    {name:"Servicio Grupal", price:450, duration:900}
+    {name:"Risoterapia y Bienestar Natural", price:5, duration:300},
+    {name:"HOROSCOPO Y CONSEJOS DE VIDA", price:5, duration:90},
+    {name:"RESPUESTA RAPIDA", price:3.5, duration:48},
+    {name:"Receta Verde Express", price:3.99, duration:120},
+    {name:"Mensaje de tu Estrella", price:3.99, duration:120},
+    {name:"Respira y Sonríe", price:3.99, duration:120}
 ];
 
 const servicesDiv = document.getElementById("services");
@@ -76,7 +75,7 @@ services.forEach(s=>{
     <p>Duración: ${Math.floor(s.duration/60)} min</p>
     <p style="font-style:italic; font-size:0.9em; margin-top:5px;">${translateToEnglish(s.name)}</p>
     <button onclick="startService('${s.name}', ${s.duration})">Iniciar Chat</button>
-    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;  
+    <button onclick="buyService('${s.name}',${s.price})">Comprar</button>`;
     servicesDiv.appendChild(div);
 });
 
@@ -85,9 +84,9 @@ function translateToEnglish(name){
         case "Risoterapia y Bienestar Natural": return "Laughter Therapy & Natural Wellbeing";
         case "HOROSCOPO Y CONSEJOS DE VIDA": return "Horoscope & Life Advice";
         case "RESPUESTA RAPIDA": return "Quick Response";
-        case "Servicio Personalizado": return "Personalized Service";
-        case "Servicio Corporativo": return "Corporate Service";
-        case "Servicio Grupal": return "Group Service";
+        case "Receta Verde Express": return "Green Recipe Express";
+        case "Mensaje de tu Estrella": return "Message from Your Star";
+        case "Respira y Sonríe": return "Breathe and Smile";
         default: return "";
     }
 }
@@ -140,54 +139,4 @@ function formatTime(seconds){
 
 function speakText(text){
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-ES";
-    speechSynthesis.speak(utterance);
-}
-
-async function sendChat(){
-    const input = document.getElementById("chat-input");
-    const msg = input.value.trim();
-    if(!msg || !currentService) return;
-
-    const out = document.getElementById("chat-output");
-    const p = document.createElement('p');
-    p.textContent="Tú: "+msg;
-    p.className="client";
-    out.appendChild(p);
-    input.value="";
-    userMsgs.push(msg);
-
-    try {
-        const res = await fetch(`${backendURL}/assistant-stream-message`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({service: currentService, messages: userMsgs})
-        });
-        const data = await res.json();
-
-        const divResp = document.createElement('div');
-        const p2 = document.createElement('p');
-        p2.textContent=data.answer;
-        p2.className="assistant";
-
-        const btn = document.createElement('button');
-        btn.textContent = "🔊 Escuchar";
-        btn.style.marginLeft = "10px";
-        btn.onclick = () => speakText(data.answer);
-
-        divResp.appendChild(p2);
-        divResp.appendChild(btn);
-
-        out.appendChild(divResp);
-        out.scrollTop = out.scrollHeight;
-    } catch(err){
-        const p2 = document.createElement('p');
-        p2.textContent="Error al generar respuesta.";
-        p2.className="assistant";
-        out.appendChild(p2);
-        out.scrollTop = out.scrollHeight;
-    }
-}
-</script>
-</body>
-</html>
+    utterance.lang = "
