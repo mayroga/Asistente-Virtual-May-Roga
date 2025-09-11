@@ -165,51 +165,61 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
-# --- FLUJOS COMPLETOS Y WOW DE SERVICIOS MAY ROGA ---
+# --- FLUJOS COMPLETOS Y WOW DE SERVICIOS MAY ROGA ---  
 SERVICIOS_WOW = {
 
     "risoterapia y bienestar natural": [
-        {"nombre": "Bienvenida", "duracion": 30, "accion": "Saludo cálido. Explico que trabajaremos sobre la dualidad de tu día y bienestar inmediato."},
-        {"nombre": "Respiración profunda", "duracion": 60, "accion": "Respira profundo 3 veces, siente cómo tu cuerpo y mente se relajan."},
-        {"nombre": "Risa guiada", "duracion": 120, "accion": "Inicia sonrisa y risa ligera, conecta con sensaciones de alegría y bienestar físico."},
-        {"nombre": "Mini-TVid", "duracion": 60, "accion": "Identifica algo positivo y algo negativo de tu situación, y observa cómo ambos se complementan para crecer."},
-        {"nombre": "Cierre motivacional", "duracion": 30, "accion": "Refuerza motivación, bienestar y disposición a crecer en amor, dinero y salud."}
+        {"nombre": "Bienvenida", "duracion": 30, "accion": "Saludo cálido. Explico que trabajaremos sobre la dualidad de lo positivo y negativo, enfocándonos en bienestar inmediato."},
+        {"nombre": "Respiración profunda", "duracion": 60, "accion": "Respira profundo 3 veces, sintiendo cómo tu cuerpo y mente se relajan."},
+        {"nombre": "Sonrisa consciente", "duracion": 60, "accion": "Invito a sonreír suavemente, conectando la sonrisa con sensación de alegría y bienestar físico."},
+        {"nombre": "Mini-TVid de dualidad", "duracion": 90, "accion": "Identifica algo positivo y algo negativo de tu situación, observando cómo ambos se complementan para crecer."},
+        {"nombre": "Cierre motivacional", "duracion": 60, "accion": "Refuerzo motivación, bienestar y disposición a crecer en amor, salud y energía personal."}
     ],
 
     "horoscopo y consejos de vida": [
-        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y explicación rápida: 'Recibirás una guía rápida para tu día basada en tu horóscopo y consejos prácticos.'"},
-        {"nombre": "Mensaje principal del horóscopo", "duracion": 40, "accion": "Doy una predicción clara o situación probable del día, relacionada con motivación, salud, economía, amor o bienestar, señalando acciones concretas que puede hacer inmediatamente."},
-        {"nombre": "Consejos prácticos de vida", "duracion": 30, "accion": "Refuerzo con 3 acciones simples y aplicables que generen resultados visibles y sensación de logro en el día."},
-        {"nombre": "Cierre motivador", "duracion": 10, "accion": "Resalto beneficio inmediato de aplicar los consejos y refuerzo confianza y bienestar emocional."}
+        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y explicación rápida: recibirás orientación práctica y horóscopo del día."},
+        {"nombre": "Mensaje del horóscopo", "duracion": 50, "accion": "Doy una predicción clara sobre tu día, enfocada en motivación, salud, amor o economía."},
+        {"nombre": "Acciones prácticas", "duracion": 30, "accion": "Indico 3 acciones simples y aplicables de inmediato para generar resultados visibles y bienestar."},
+        {"nombre": "Cierre motivador", "duracion": 10, "accion": "Refuerzo la confianza y sensación positiva de aplicar los consejos."}
     ],
 
     "respuesta rápida": [
-        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo breve y directo."},
-        {"nombre": "Consejo inmediato", "duracion": 20, "accion": "Solución directa a tu problema puntual con acción clara."},
-        {"nombre": "Mini-TVid", "duracion": 10, "accion": "Refuerzo rápido de conciencia dual para asegurar eficacia inmediata."},
-        {"nombre": "Cierre motivacional", "duracion": 8, "accion": "Refuerza confianza y sensación de resultado inmediato."}
+        {"nombre": "Bienvenida", "duracion": 8, "accion": "Saludo breve y directo."},
+        {"nombre": "Solución inmediata", "duracion": 30, "accion": "Doy una acción concreta para resolver tu problema de manera rápida y eficaz."},
+        {"nombre": "Refuerzo final", "duracion": 10, "accion": "Refuerzo sensación de alivio y logro inmediato."}
     ],
 
     "receta verde express": [
-        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y explicación rápida: 'Vamos a preparar un consejo exprés para mejorar tu energía y bienestar.'"},
-        {"nombre": "Presentación de la receta o acción saludable", "duracion": 60, "accion": "Doy un tip nutricional rápido o una receta verde sencilla que se pueda aplicar inmediatamente, explicando sus beneficios concretos para la salud y bienestar."},
-        {"nombre": "Aplicación inmediata", "duracion": 30, "accion": "Sugerir cómo aplicar la receta o consejo hoy mismo, reforzando que la acción es palpable y directa."},
-        {"nombre": "Cierre motivador", "duracion": 20, "accion": "Resalto cómo esta pequeña acción tiene un efecto positivo inmediato en bienestar y energía, dejando sensación de logro."}
+        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y explicación rápida: recibirá un tip o receta saludable exprés."},
+        {"nombre": "Presentación de la receta", "duracion": 60, "accion": "Indico un consejo nutricional o receta verde rápida con beneficios claros para hoy."},
+        {"nombre": "Aplicación inmediata", "duracion": 40, "accion": "Explico cómo aplicar la receta hoy mismo, reforzando efecto positivo inmediato."},
+        {"nombre": "Cierre motivador", "duracion": 10, "accion": "Refuerzo sensación de logro y energía positiva por la acción realizada."}
     ],
 
     "mensaje de tu estrella": [
-        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo cálido y breve. Explico que recibirás un mensaje directo que ayudará tu día."},
-        {"nombre": "Mensaje inspirador", "duracion": 50, "accion": "Indico una acción concreta que puedas hacer inmediatamente para mejorar un área de tu vida (salud, economía, relaciones, motivación)."},
-        {"nombre": "Sugerencia de acción", "duracion": 30, "accion": "Refuerzo la acción del mensaje con instrucciones claras para aplicarla ahora mismo."},
-        {"nombre": "Cierre motivacional", "duracion": 10, "accion": "Resalto la importancia de aplicar la acción y el efecto positivo inmediato que tendrá."}
+        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y breve. Explico que recibirás un mensaje personal que ayudará tu día."},
+        {"nombre": "Mensaje motivador", "duracion": 50, "accion": "Indico un mensaje inspirador y sugiero una acción concreta para aplicar de inmediato."},
+        {"nombre": "Refuerzo de acción", "duracion": 40, "accion": "Guío cómo implementar la acción de manera sencilla, logrando efecto positivo inmediato."},
+        {"nombre": "Cierre positivo", "duracion": 10, "accion": "Refuerzo importancia de aplicar la acción y sensación de bienestar inmediato."}
     ],
 
     "respira y sonríe": [
-        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y explicación rápida: 'Vamos a tomar 2 minutos para relajarnos y sentir bienestar.'"},
-        {"nombre": "Respiración guiada", "duracion": 40, "accion": "Indico respiraciones profundas y conscientes, conectando la respiración con sensación de calma."},
-        {"nombre": "Sonrisa consciente", "duracion": 40, "accion": "Invito a sonreír suavemente mientras se respira, notar cómo cambia la sensación corporal y emocional."},
-        {"nombre": "Acción motivadora", "duracion": 20, "accion": "Dar una acción simple inmediata: 'Ahora, toma esta sensación positiva y aplícala en tu siguiente acción del día.'"},
-        {"nombre": "Cierre positivo", "duracion": 10, "accion": "Refuerzo que estos 2 minutos producen un cambio inmediato, dejando sensación de logro y motivación."}
+        {"nombre": "Bienvenida breve", "duracion": 10, "accion": "Saludo cálido y rápido: tomaremos 2 minutos para relajarnos y sentir bienestar."},
+        {"nombre": "Respiración guiada", "duracion": 50, "accion": "Indico respiraciones profundas y conscientes, conectando respiración con calma y bienestar."},
+        {"nombre": "Sonrisa consciente", "duracion": 50, "accion": "Invito a sonreír mientras respiras, notando el cambio en sensación corporal y emocional."},
+        {"nombre": "Acción motivadora", "duracion": 10, "accion": "Sugiero aplicar esta sensación positiva en tu siguiente acción del día."}
     ]
-
 }
+
+# --- Función para ejecutar servicio WOW ---  
+def ejecutar_servicio_wow(cliente, servicio, motivo="general"):
+    flujo = SERVICIOS_WOW.get(servicio.lower())
+    if not flujo:
+        return f"Servicio '{servicio}' no encontrado."
+
+    resultados = []
+    for paso in flujo:
+        accion_adaptada = f"{paso['accion']} (adaptado a {motivo})"
+        resultados.append(f"{paso['nombre']} ({paso['duracion']} seg): {accion_adaptada}")
+
+    return resultados
