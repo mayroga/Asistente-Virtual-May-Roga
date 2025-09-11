@@ -164,3 +164,66 @@ def cancel():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+# --- FLUJOS COMPLETOS Y WOW DE SERVICIOS MAY ROGA ---
+SERVICIOS_WOW = {
+
+    "risoterapia y bienestar natural": [
+        {"nombre": "Bienvenida", "duracion": 30, "accion": "Saludo cálido. Explico que trabajaremos sobre la dualidad de tu día y bienestar inmediato."},
+        {"nombre": "Respiración profunda", "duracion": 60, "accion": "Respira profundo 3 veces, siente cómo tu cuerpo y mente se relajan."},
+        {"nombre": "Risa guiada", "duracion": 120, "accion": "Inicia sonrisa y risa ligera, conecta con sensaciones de alegría y bienestar físico."},
+        {"nombre": "Mini-TVid", "duracion": 60, "accion": "Identifica algo positivo y algo negativo de tu situación, y observa cómo ambos se complementan para crecer."},
+        {"nombre": "Cierre motivacional", "duracion": 30, "accion": "Refuerza motivación, bienestar y disposición a crecer en amor, dinero y salud."}
+    ],
+
+    "horoscopo y consejos de vida": [
+        {"nombre": "Bienvenida", "duracion": 15, "accion": "Saludo y breve explicación de cómo el horóscopo y consejos guiarán tu día."},
+        {"nombre": "Lectura horóscopo", "duracion": 45, "accion": "Presento oportunidades y retos de tu día con dualidad positiva/negativa."},
+        {"nombre": "Mini-TVid", "duracion": 20, "accion": "Ejercicio breve para identificar dónde puedes actuar sobre positivo y negativo."},
+        {"nombre": "Cierre motivacional", "duracion": 10, "accion": "Sugerencia concreta para tu día que genere bienestar inmediato y acción palpable."}
+    ],
+
+    "respuesta rápida": [
+        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo breve y directo."},
+        {"nombre": "Consejo inmediato", "duracion": 20, "accion": "Solución directa a tu problema puntual con acción clara."},
+        {"nombre": "Mini-TVid", "duracion": 10, "accion": "Refuerzo rápido de conciencia dual para asegurar eficacia inmediata."},
+        {"nombre": "Cierre motivacional", "duracion": 8, "accion": "Refuerza confianza y sensación de resultado inmediato."}
+    ],
+
+    "receta verde express": [
+        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo y presentación de la receta rápida para tu bienestar."},
+        {"nombre": "Presentación de receta", "duracion": 60, "accion": "Guía paso a paso para preparar la receta saludable, lista para acción inmediata."},
+        {"nombre": "Mini-TVid", "duracion": 30, "accion": "Observa la dualidad de tus elecciones alimenticias y cómo impactan tu energía y salud."},
+        {"nombre": "Cierre motivacional", "duracion": 20, "accion": "Refuerza compromiso con tu bienestar y sensación de logro inmediato."}
+    ],
+
+    "mensaje de tu estrella": [
+        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo cálido y preparación para recibir un mensaje inspirador."},
+        {"nombre": "Mensaje inspirador", "duracion": 50, "accion": "Mensaje motivacional basado en dualidad, crecimiento y propósito."},
+        {"nombre": "Sugerir acción", "duracion": 30, "accion": "Indico acción concreta para tu día, que puedas aplicar ahora mismo."},
+        {"nombre": "Mini-TVid", "duracion": 20, "accion": "Ejercicio de conciencia sobre tus emociones y oportunidades de acción positiva y negativa."},
+        {"nombre": "Cierre motivacional", "duracion": 10, "accion": "Refuerzo final de inspiración, motivación y confianza."}
+    ],
+
+    "respira y sonríe": [
+        {"nombre": "Bienvenida", "duracion": 10, "accion": "Saludo y explicación breve del poder de respirar y sonreír para bienestar inmediato."},
+        {"nombre": "Respiración consciente", "duracion": 40, "accion": "Respira profundo varias veces y siente equilibrio y calma."},
+        {"nombre": "Sonrisa consciente", "duracion": 40, "accion": "Sonríe suavemente, conectando con sensación de bienestar y alegría."},
+        {"nombre": "Mini-TVid", "duracion": 20, "accion": "Ejercicio para observar pensamientos y emociones, integrando dualidad."},
+        {"nombre": "Cierre motivacional", "duracion": 10, "accion": "Refuerzo de bienestar, motivación y disposición a seguir creciendo."}
+    ]
+
+}
+
+# --- Función para ejecutar servicio WOW ---
+def ejecutar_servicio_wow(cliente, servicio, motivo="general"):
+    flujo = SERVICIOS_WOW.get(servicio.lower())
+    if not flujo:
+        return f"Servicio '{servicio}' no encontrado."
+    
+    resultados = []
+    for paso in flujo:
+        accion_adaptada = f"{paso['accion']} (adaptado a {motivo})"
+        resultados.append(f"{paso['nombre']} ({paso['duracion']} seg): {accion_adaptada}")
+    
+    return resultados
