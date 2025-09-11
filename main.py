@@ -4,18 +4,18 @@ import stripe
 import os
 import openai
 import json
-import datetime
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
-CORS(app, origins=["https://sites.google.com"])
 
+# --- Claves desde variables de entorno ---
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-URL_SITE = os.environ.get("URL_SITE")
+URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
 
+# --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
 
 # --- Cargar manual Tvid ---
@@ -27,12 +27,12 @@ with open('manual_tvid.json', 'r', encoding='utf-8') as f:
 
 # --- Tiempos de cada servicio en segundos ---
 SERVICIO_TIEMPOS = {
-    "respuesta rápida": 55,
-    "risoterapia y bienestar natural": 10*60,
+    "respuesta rápida": 48,
+    "risoterapia y bienestar natural": 300,
     "horoscopo y consejos de vida": 90,
-    "servicio personalizado": 20*60,
-    "servicio corporativo": 25*60,
-    "servicio grupal": 15*60
+    "receta verde express": 120,
+    "mensaje de tu estrella": 120,
+    "respira y sonríe": 120
 }
 
 # --- Función para detectar Tvid según palabras clave ---
@@ -58,16 +58,14 @@ def adaptar_ejercicios(tecnicas, servicio):
     adapted = []
     for t in tecnicas:
         ejercicios = t["ejercicios"]
-        if servicio.lower() == "servicio personalizado":
+        s = servicio.lower()
+        if s == "receta verde express":
             ejercicios = [f"{e} (guía personalizada)" for e in ejercicios]
-        elif servicio.lower() == "servicio corporativo":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 0]
+        elif s == "mensaje de tu estrella":
             ejercicios = [f"{e} (enfoque corporativo)" for e in ejercicios]
-        elif servicio.lower() == "servicio grupal":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 3 == 0]
+        elif s == "respira y sonríe":
             ejercicios = [f"{e} (dinámica grupal)" for e in ejercicios]
-        elif servicio.lower() == "risoterapia y bienestar natural":
-            ejercicios = [e for i, e in enumerate(ejercicios) if i % 2 == 1]
+        elif s == "risoterapia y bienestar natural":
             ejercicios = [f"{e} (bienestar y risa)" for e in ejercicios]
         adapted.append({
             "sigla": t["sigla"],
@@ -85,7 +83,6 @@ def generar_sesion_coach(tecnicas, servicio):
     if tiempo_total <= 60:
         bloques.append({"nombre": "Interacción rápida", "duracion": tiempo_total, "actividad": "Pregunta y respuesta rápida"})
     else:
-        # Dividir sesión en bloques según tiempos
         bienvenida = int(tiempo_total * 0.1)
         exploracion = int(tiempo_total * 0.2)
         practica = int(tiempo_total * 0.6)
@@ -98,6 +95,7 @@ def generar_sesion_coach(tecnicas, servicio):
         ]
     return bloques
 
+# --- Rutas Flask ---
 @app.route('/')
 def index():
     return render_template('index.html', stripe_public_key=PUBLIC_KEY)
