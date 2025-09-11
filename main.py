@@ -94,11 +94,13 @@ Bloques de la sesion segun tiempo total:
 def home():
     return render_template("index.html", stripe_public_key=PUBLIC_KEY)
 
+# Esta ruta desbloquea todos los servicios si se pone el código secreto
 @app.route("/assistant-unlock", methods=["POST"])
 def unlock():
     data = request.json
-    # Si el usuario ingresa el código secreto correcto, desbloquea TODOS los servicios
-    return jsonify({"success": data.get("secret") == MAYROGA_SECRET})
+    secret_input = data.get("secret", "")
+    success = (secret_input == MAYROGA_SECRET)
+    return jsonify({"success": success, "secret_verified": success})
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
@@ -150,23 +152,30 @@ def assistant_stream_message():
     messages = data.get("messages", [])
 
     if not messages:
-        return jsonify({"answer": ""})  # Si no hay mensaje, se queda en blanco
+        return jsonify({"answer": ""})
 
-    # SOLO responder si el servicio ha sido pagado o si el código secreto fue usado
-    if data.get("paid") or data.get("secret_verified"):
+    # SOLO responder si el servicio ha sido pagado o si el código secreto desbloquea TODO
+    paid = data.get("paid", False)
+    secret_verified = data.get("secret_verified", False)
+
+    if paid or secret_verified:
         answer = generar_respuesta_openai(service, messages)
         return jsonify({"answer": answer})
     else:
-        return jsonify({"answer": ""})  # Acceso denegado: respuesta en blanco
+        return jsonify({"answer": ""})  # Queda en blanco si no se paga ni hay código secreto
 
 @app.route("/success")
 def success():
     service = request.args.get("service", "")
-    return f"Pago exitoso. Servicio activado: {service}"
+    return render_template("success.html")
 
 @app.route("/cancel")
 def cancel():
     return render_template("cancel.html")
+
+@app.route("/failure")
+def failure():
+    return render_template("failure.html")
 
 # --- Ejecutar servidor ---
 if __name__ == "__main__":
