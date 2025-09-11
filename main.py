@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import stripe
 import os
-import json
 import openai
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -13,12 +12,12 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLIC_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 MAYROGA_SECRET = os.environ.get("MAYROGA_ACCESS_CODE")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-URL_SITE = os.environ.get("URL_SITE")  # Para success/cancel URLs
+URL_SITE = os.environ.get("URL_SITE")
 
 # --- Configuración OpenAI ---
 openai.api_key = OPENAI_API_KEY
 
-# --- Funciones OpenAI aisladas ---
+# --- Funciones OpenAI ---
 def detectar_tvid(mensaje):
     mensaje = mensaje.lower()
     if "estres" in mensaje:
@@ -41,7 +40,7 @@ def adaptar_ejercicios(tecnicas, servicio):
     return adapted
 
 def generar_sesion_coach(tecnicas, servicio):
-    tiempo_total = 600  # 10 minutos por defecto
+    tiempo_total = 600
     bloques = [
         {"nombre": "Bienvenida", "duracion": int(tiempo_total*0.1), "actividad": "Saluda y pregunta"},
         {"nombre": "Exploracion", "duracion": int(tiempo_total*0.2), "actividad": "Escucha necesidades"},
@@ -90,7 +89,7 @@ Bloques de la sesion segun tiempo total:
     except Exception as e:
         return f"Error AI: {str(e)}"
 
-# --- Rutas Flask ---
+# --- Rutas ---
 @app.route("/")
 def home():
     return render_template("index.html", stripe_public_key=PUBLIC_KEY)
@@ -103,29 +102,7 @@ def unlock():
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.json
-
-    # --- Convertir nombre del producto a mayusculas y sin tildes ---
     product_name = data['product'].upper()
-    replacements = {
-        "TÉ MAGICO EN 2 MINUTOS": "TE MAGICO EN DOS MINUTOS",
-        "INFUSIÓN ANTI-ESTRÉS": "INFUSION ANTI-ESTRES",
-        "BATIDO ENERGÉTICO NATURAL": "BATIDO ENERGETICO NATURAL",
-        "MINI GUÍA DE PLANTAS CURATIVAS": "MINI GUIA DE PLANTAS CURATIVAS",
-        "RESPIRACIÓN VERDE EXPRESS": "RESPIRACION VERDE EXPRESS",
-        "RISA RELÁMPAGO": "RISA RELAMPAGO",
-        "MOTÍVATE EN UN MINUTO": "MOTIVATE EN UN MINUTO",
-        "RESPIRA Y SONRÍE": "RESPIRA Y SONRIE",
-        "HORÓSCOPO FLASH": "HOROSCOPO FLASH",
-        "CONSEJO DEL DÍA": "CONSEJO DEL DIA",
-        "AMOR INSTANTÁNEO": "AMOR INSTANTANEO",
-        "MINI DIAGNÓSTICO DE HÁBITOS": "MINI DIAGNOSTICO DE HABITOS",
-        "PREVENCIÓN EN UN MINUTO": "PREVENCION EN UN MINUTO",
-        "RETO 3 DÍAS EXPRESS": "RETO 3 DIAS EXPRESS",
-        "INFUSIÓN PARA CLARIDAD MENTAL": "INFUSION PARA CLARIDAD MENTAL"
-    }
-    if product_name in replacements:
-        product_name = replacements[product_name]
-
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -150,10 +127,8 @@ def assistant_stream_message():
     data = request.json
     service = data.get("service")
     messages = data.get("messages", [])
-   
     if not messages:
         return jsonify({"answer": "No se envio ningun mensaje."})
-
     answer = generar_respuesta_openai(service, messages)
     return jsonify({"answer": answer})
 
@@ -166,7 +141,6 @@ def success():
 def cancel():
     return "❌ Pago cancelado."
 
-# --- Ejecutar servidor ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
