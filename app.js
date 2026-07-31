@@ -1,1246 +1,281 @@
-/*
-============================================================
-4you&me
-Digital Wellbeing Companion
-
-Archivo:
-app.js
-
-Lógica del navegador
-
-============================================================
-*/
-
-
-// ==========================================================
-// CONFIGURACIÓN PRINCIPAL
-// ==========================================================
-
-
-const API_URL = "";
-
-
-let currentLanguage = "es";
-
-
-let currentUserId = null;
-
-
-
-let breathingInterval = null;
-
-let breathingSeconds = 0;
-
-let breathingActive = false;
-
-
-
-
-// ==========================================================
-// TEXTOS DEL SISTEMA
-// ==========================================================
-
-
-const TEXTS = {
-
-
-    es: {
-
-
-        welcome:
-        "Bienvenido a tu espacio de bienestar y acompañamiento.",
-
-
-        profileCreated:
-        "Tu perfil fue creado correctamente.",
-
-
-        dailySaved:
-        "Tu estado diario fue guardado.",
-
-
-        breathingStart:
-        "Comenzamos la respiración guiada. Inhala lentamente.",
-
-
-        breathingStop:
-        "La sesión terminó. Gracias por dedicar este momento para ti."
-
-
-    },
-
-
-
-    en: {
-
-
-        welcome:
-        "Welcome to your wellbeing and support space.",
-
-
-        profileCreated:
-        "Your profile was created successfully.",
-
-
-        dailySaved:
-        "Your daily status was saved.",
-
-
-        breathingStart:
-        "We begin guided breathing. Breathe in slowly.",
-
-
-        breathingStop:
-        "The session has ended. Thank you for taking this moment for yourself."
-
-    }
-
-
-};
-
-
-
-
-
-// ==========================================================
-// CAMBIO DE IDIOMA
-// ==========================================================
-
-
-function changeLanguage(language){
-
-
-    currentLanguage = language;
-
-
-    const subtitle =
-    document.getElementById(
-        "subtitle"
-    );
-
-
-
-    if(language==="es"){
-
-
-        subtitle.innerText =
-        "Tu espacio digital de bienestar y acompañamiento";
-
-
-    }
-
-    else{
-
-
-        subtitle.innerText =
-        "Your digital wellbeing and support space";
-
-
-    }
-
-
-}
-
-
-
-
-
-// ==========================================================
-// ASISTENTE DE VOZ
-// ==========================================================
-
-
-function speak(text){
-
-
-
-    if(
-        "speechSynthesis" 
-        in window
-    ){
-
-
-        let speech =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
-
-
-        speech.lang =
-        currentLanguage==="es"
-        ?
-        "es-ES"
-        :
-        "en-US";
-
-
-
-        speech.rate =
-        0.9;
-
-
-
-        speech.pitch =
-        1;
-
-
-
-        window.speechSynthesis.speak(
-            speech
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-function speakMessage(){
-
-
-    const message =
-    TEXTS[currentLanguage].welcome;
-
-
-    document.getElementById(
-        "voiceMessage"
-    ).innerText =
-    message;
-
-
-
-    speak(message);
-
-
-}
-
-
-
-
-function startAssistant(){
-
-
-    speakMessage();
-
-
-}
-
-
-
-
-
-// ==========================================================
-// CREAR PERFIL
-// ==========================================================
-
-
-async function createProfile(){
-
-
-
-    const name =
-    document.getElementById(
-        "userName"
-    ).value;
-
-
-
-    if(!name){
-
-
-        alert(
-            "Escribe tu nombre"
-        );
-
-
-        return;
-
-
-    }
-
-
-
-
-    const response =
-    await fetch(
-        API_URL + "/users",
-        {
-
-
-            method:
-            "POST",
-
-
-            headers:
-            {
-
-
-                "Content-Type":
-                "application/json"
-
-
-            },
-
-
-            body:
-            JSON.stringify(
-                {
-
-
-                    name:
-                    name,
-
-
-                    language:
-                    currentLanguage
-
-
-                }
-            )
-
-
+    ============================================================
+    */
+
+    // ==========================================================
+    // CONFIGURACIÓN PRINCIPAL
+    // ==========================================================
+
+    // *** CORRECCIÓN CRÍTICA: Configuración de API_URL ***
+    // Es fundamental que esta URL apunte al dominio donde se despliega tu backend.
+    // Durante el desarrollo local, podría ser "http://localhost:8000".
+    // En producción (ej. Render), será la URL de tu servicio backend (ej. "https://nombre-de-tu-app.onrender.com").
+    const API_URL = "http://localhost:8000"; // CAMBIA ESTO EN PRODUCCIÓN
+
+    let currentLanguage = "es";
+    let currentUserId = null;
+    let breathingInterval = null;
+    let breathingSeconds = 0;
+    let breathingActive = false;
+
+    // ... (TEXTS del sistema - sin cambios)
+
+    // ==========================================================
+    // CAMBIO DE IDIOMA
+    // ==========================================================
+
+    function changeLanguage(language){
+        currentLanguage = language;
+        const subtitle = document.getElementById("subtitle");
+
+        if(language === "es"){
+            subtitle.innerText = "Tu espacio digital de bienestar y acompañamiento";
+            document.documentElement.lang = "es"; // *** CORRECCIÓN: Actualiza el atributo lang del HTML ***
+        } else {
+            subtitle.innerText = "Your digital wellbeing and support space";
+            document.documentElement.lang = "en"; // *** CORRECCIÓN: Actualiza el atributo lang del HTML ***
         }
-    );
-
-
-
-
-    const data =
-    await response.json();
-
-
-
-
-    currentUserId =
-    data.user_id;
-
-
-
-
-    document.getElementById(
-        "profileResult"
-    ).innerText =
-    TEXTS[currentLanguage]
-    .profileCreated;
-
-
-
-    speak(
-        TEXTS[currentLanguage]
-        .profileCreated
-    );
-
-
-
-}
-
-
-
-
-// ==========================================================
-// GUARDAR ESTADO DIARIO
-// ==========================================================
-
-
-async function saveDailyStatus(){
-
-
-
-    if(!currentUserId){
-
-
-        alert(
-            "Primero crea tu perfil"
-        );
-
-
-        return;
-
-
+        // *** MEJORA: Recargar contenido dependiente del idioma ***
+        // Esto es necesario para que los textos dentro de las tarjetas (ej. ejercicios, retos) se actualicen.
+        loadMentalExercises();
+        loadChallenges();
+        // Podrías necesitar actualizar otros elementos de texto fijos en la interfaz si no se recargan al cambiar de idioma.
     }
 
+    // ... (ASISTENTE DE VOZ - sin cambios)
 
+    // ==========================================================
+    // CREAR PERFIL
+    // ==========================================================
 
+    async function createProfile() {
+        const name = document.getElementById("userName").value;
 
-    const feeling =
-    document.getElementById(
-        "dailyFeeling"
-    ).value;
-
-
-
-
-    const notes =
-    document.getElementById(
-        "dailyNotes"
-    ).value;
-
-
-
-
-
-    await fetch(
-        API_URL + "/daily-status",
-        {
-
-
-            method:
-            "POST",
-
-
-            headers:
-            {
-
-
-                "Content-Type":
-                "application/json"
-
-
-            },
-
-
-            body:
-            JSON.stringify(
-                {
-
-
-                    user_id:
-                    currentUserId,
-
-
-                    feeling:
-                    feeling,
-
-
-                    notes:
-                    notes
-
-
-                }
-            )
-
-
+        if (!name) {
+            alert("Escribe tu nombre");
+            return;
         }
-    );
 
+        // *** CORRECCIÓN: Manejo robusto de errores en llamadas fetch ***
+        try {
+            const response = await fetch(API_URL + "/users", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: name,
+                    language: currentLanguage
+                })
+            });
 
-
-
-    speak(
-        TEXTS[currentLanguage]
-        .dailySaved
-    );
-
-
-}
-/* ==========================================================
-   MÓDULO DE RESPIRACIÓN GUIADA
-========================================================== */
-
-
-function startBreathing(minutes){
-
-
-    stopBreathing();
-
-
-
-    breathingActive = true;
-
-
-
-    breathingSeconds =
-    minutes * 60;
-
-
-
-
-    document.getElementById(
-        "breathingInstruction"
-    ).innerText =
-    TEXTS[currentLanguage]
-    .breathingStart;
-
-
-
-
-    speak(
-        TEXTS[currentLanguage]
-        .breathingStart
-    );
-
-
-
-    updateBreathingTimer();
-
-
-
-
-    breathingInterval =
-    setInterval(
-        ()=>{
-
-
-            breathingSeconds--;
-
-
-
-            updateBreathingTimer();
-
-
-
-            if(
-                breathingSeconds <= 0
-            ){
-
-
-                stopBreathing();
-
-
-                speak(
-                    TEXTS[currentLanguage]
-                    .breathingStop
-                );
-
-
+            if (!response.ok) { // Verifica si la respuesta HTTP fue exitosa (código 2xx)
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido del servidor." }));
+                throw new Error(errorData.message || `Error del servidor: ${response.status}`);
             }
 
+            const data = await response.json();
+            currentUserId = data.user_id;
+            document.getElementById("profileResult").innerText = TEXTS[currentLanguage].profileCreated;
+            speak(TEXTS[currentLanguage].profileCreated);
 
-        },
-
-        1000
-
-    );
-
-
-}
-
-
-
-
-
-
-function updateBreathingTimer(){
-
-
-
-    let minutes =
-    Math.floor(
-        breathingSeconds / 60
-    );
-
-
-
-    let seconds =
-    breathingSeconds % 60;
-
-
-
-    document.getElementById(
-        "breathingTimer"
-    ).innerText =
-
-
-    String(minutes)
-    .padStart(2,"0")
-    +
-    ":"+
-    String(seconds)
-    .padStart(2,"0");
-
-
-
-}
-
-
-
-
-
-
-function stopBreathing(){
-
-
-
-    if(
-        breathingInterval
-    ){
-
-
-        clearInterval(
-            breathingInterval
-        );
-
-
+        } catch (error) {
+            console.error("Error al crear perfil:", error);
+            alert("Ocurrió un error al crear el perfil. Por favor, inténtalo de nuevo. Detalle: " + error.message);
+        }
     }
 
+    // ==========================================================
+    // GUARDAR ESTADO DIARIO
+    // ==========================================================
 
+    async function saveDailyStatus() {
+        if (!currentUserId) {
+            alert("Primero crea tu perfil");
+            return;
+        }
 
-    breathingInterval =
-    null;
+        const feeling = document.getElementById("dailyFeeling").value;
+        const notes = document.getElementById("dailyNotes").value;
 
+        // *** CORRECCIÓN: Manejo robusto de errores en llamadas fetch ***
+        try {
+            const response = await fetch(API_URL + "/daily-status", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    feeling: feeling,
+                    notes: notes
+                })
+            });
 
-    breathingActive =
-    false;
-
-
-
-}
-
-
-
-
-
-
-
-// ==========================================================
-// EJERCICIOS MENTALES
-// ==========================================================
-
-
-async function loadMentalExercises(){
-
-
-
-    const response =
-    await fetch(
-        API_URL +
-        "/mental-exercises"
-    );
-
-
-
-    const exercises =
-    await response.json();
-
-
-
-
-    const container =
-    document.getElementById(
-        "mentalExercises"
-    );
-
-
-
-    container.innerHTML = "";
-
-
-
-
-    exercises.forEach(
-        exercise => {
-
-
-
-            let card =
-            document.createElement(
-                "div"
-            );
-
-
-
-            card.className =
-            "mental-card";
-
-
-
-
-            card.innerHTML = `
-
-            <h3>
-
-            ${
-            currentLanguage==="es"
-            ?
-            exercise.name_es
-            :
-            exercise.name_en
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido del servidor." }));
+                throw new Error(errorData.message || `Error del servidor: ${response.status}`);
             }
 
-            </h3>
+            // Si necesitas la respuesta del backend, aquí iría: const data = await response.json();
+            speak(TEXTS[currentLanguage].dailySaved);
 
+        } catch (error) {
+            console.error("Error al guardar estado diario:", error);
+            alert("Ocurrió un error al guardar tu estado diario. Por favor, inténtalo de nuevo. Detalle: " + error.message);
+        }
+    }
 
-            <p>
+    // ... (MÓDULO DE RESPIRACIÓN GUIADA - sin cambios)
+    // ... (EJERCICIOS MENTALES - se debe aplicar el manejo de errores fetch también en loadMentalExercises)
 
-            ${
-            currentLanguage==="es"
-            ?
-            exercise.description_es
-            :
-            exercise.description_en
+    async function loadMentalExercises(){
+        try {
+            const response = await fetch(API_URL + "/mental-exercises");
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido al cargar ejercicios." }));
+                throw new Error(errorData.message || `Error al cargar ejercicios mentales: ${response.status}`);
+            }
+            const exercises = await response.json();
+            const container = document.getElementById("mentalExercises");
+            container.innerHTML = "";
+            exercises.forEach(exercise => {
+                let card = document.createElement("div");
+                card.className = "mental-card";
+                card.innerHTML = `
+                    <h3>${currentLanguage === "es" ? exercise.name_es : exercise.name_en}</h3>
+                    <p>${currentLanguage === "es" ? exercise.description_es : exercise.description_en}</p>
+                `;
+                container.appendChild(card);
+            });
+        } catch (error) {
+            console.error("Error cargando ejercicios mentales:", error);
+            document.getElementById("mentalExercises").innerHTML = `<p style="color:red;">No se pudieron cargar los ejercicios mentales. Detalle: ${error.message}</p>`;
+        }
+    }
+
+    // ... (RETOS DIARIOS - se debe aplicar el manejo de errores fetch también en loadChallenges)
+
+    async function loadChallenges(){
+        try {
+            const response = await fetch(API_URL + "/default-challenges");
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido al cargar retos." }));
+                throw new Error(errorData.message || `Error al cargar retos diarios: ${response.status}`);
+            }
+            const challenges = await response.json();
+            const container = document.getElementById("challengeList");
+            container.innerHTML = "";
+            challenges.forEach(challenge => {
+                let item = document.createElement("div");
+                item.className = "challenge-item";
+                item.innerText = currentLanguage === "es" ? challenge.es : challenge.en;
+                container.appendChild(item);
+            });
+        } catch (error) {
+            console.error("Error cargando retos diarios:", error);
+            document.getElementById("challengeList").innerHTML = `<p style="color:red;">No se pudieron cargar los retos diarios. Detalle: ${error.message}</p>`;
+        }
+    }
+
+    // ... (CREAR RUTINA PERSONALIZADA - se debe aplicar el manejo de errores fetch también en saveRoutine)
+
+    async function saveRoutine(){
+        if(!currentUserId){
+            alert("Primero crea tu perfil");
+            return;
+        }
+        const objective = document.getElementById("routineObjective").value;
+
+        try {
+            const response = await fetch(API_URL + "/routines", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    objective: objective
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido al guardar rutina." }));
+                throw new Error(errorData.message || `Error al guardar rutina: ${response.status}`);
             }
 
-            </p>
-
-            `;
-
-
-
-            container.appendChild(
-                card
-            );
-
-
-
+            document.getElementById("routineResult").innerText = "Rutina creada: " + objective;
+            speak("Tu rutina personalizada fue creada.");
+        } catch (error) {
+            console.error("Error al guardar rutina:", error);
+            alert("Ocurrió un error al guardar tu rutina. Por favor, inténtalo de nuevo. Detalle: " + error.message);
         }
-
-    );
-
-
-
-}
-
-
-
-
-
-
-
-// ==========================================================
-// RETOS DIARIOS
-// ==========================================================
-
-
-async function loadChallenges(){
-
-
-
-    const response =
-    await fetch(
-        API_URL +
-        "/default-challenges"
-    );
-
-
-
-    const challenges =
-    await response.json();
-
-
-
-
-    const container =
-    document.getElementById(
-        "challengeList"
-    );
-
-
-
-    container.innerHTML = "";
-
-
-
-
-    challenges.forEach(
-        challenge => {
-
-
-
-            let item =
-            document.createElement(
-                "div"
-            );
-
-
-
-            item.className =
-            "challenge-item";
-
-
-
-            item.innerText =
-
-            currentLanguage==="es"
-            ?
-            challenge.es
-            :
-            challenge.en;
-
-
-
-
-            container.appendChild(
-                item
-            );
-
-
-
-        }
-
-    );
-
-
-}
-
-
-
-
-
-// ==========================================================
-// CREAR RUTINA PERSONALIZADA
-// ==========================================================
-
-
-async function saveRoutine(){
-
-
-
-    if(!currentUserId){
-
-
-        alert(
-            "Primero crea tu perfil"
-        );
-
-
-        return;
-
-
     }
 
+    // ... (RECORDATORIOS PERSONALES - se debe aplicar el manejo de errores fetch también en saveReminder)
 
-
-    const objective =
-    document.getElementById(
-        "routineObjective"
-    ).value;
-
-
-
-
-    await fetch(
-        API_URL +
-        "/routines",
-        {
-
-
-            method:
-            "POST",
-
-
-            headers:
-            {
-
-
-                "Content-Type":
-                "application/json"
-
-
-            },
-
-
-            body:
-            JSON.stringify(
-                {
-
-
-                    user_id:
-                    currentUserId,
-
-
-                    objective:
-                    objective
-
-
-                }
-            )
-
+    async function saveReminder(){
+        if(!currentUserId){
+            alert("Primero crea tu perfil");
+            return;
         }
+        const reminder = document.getElementById("reminderText").value;
+        const time = document.getElementById("reminderTime").value;
 
-    );
+        try {
+            const response = await fetch(API_URL + "/reminders", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    reminder: reminder,
+                    reminder_time: time
+                })
+            });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido al guardar recordatorio." }));
+                throw new Error(errorData.message || `Error al guardar recordatorio: ${response.status}`);
+            }
 
-
-
-    document.getElementById(
-        "routineResult"
-    ).innerText =
-
-
-    "Rutina creada: "
-    +
-    objective;
-
-
-
-
-    speak(
-        "Tu rutina personalizada fue creada."
-    );
-
-
-
-}
-/* ==========================================================
-   RECORDATORIOS PERSONALES
-========================================================== */
-
-
-async function saveReminder(){
-
-
-    if(!currentUserId){
-
-
-        alert(
-            "Primero crea tu perfil"
-        );
-
-
-        return;
-
-
-    }
-
-
-
-
-    const reminder =
-    document.getElementById(
-        "reminderText"
-    ).value;
-
-
-
-
-    const time =
-    document.getElementById(
-        "reminderTime"
-    ).value;
-
-
-
-
-
-    await fetch(
-
-        API_URL +
-        "/reminders",
-
-        {
-
-
-            method:
-            "POST",
-
-
-            headers:
-            {
-
-
-                "Content-Type":
-                "application/json"
-
-
-            },
-
-
-            body:
-            JSON.stringify(
-                {
-
-
-                    user_id:
-                    currentUserId,
-
-
-                    reminder:
-                    reminder,
-
-
-                    reminder_time:
-                    time
-
-
-                }
-            )
-
-
+            document.getElementById("reminderResult").innerText = "Recordatorio guardado correctamente.";
+            speak("Recordatorio guardado.");
+        } catch (error) {
+            console.error("Error al guardar recordatorio:", error);
+            alert("Ocurrió un error al guardar tu recordatorio. Por favor, inténtalo de nuevo. Detalle: " + error.message);
         }
-
-    );
-
-
-
-
-    document.getElementById(
-        "reminderResult"
-    ).innerText =
-
-
-    "Recordatorio guardado correctamente.";
-
-
-
-
-    speak(
-        "Recordatorio guardado."
-    );
-
-
-
-}
-
-
-
-
-
-
-
-
-// ==========================================================
-// BOTÓN DE AYUDA EXTERNA
-// ==========================================================
-
-
-async function openHelp(){
-
-
-
-    const response =
-    await fetch(
-        API_URL +
-        "/help"
-    );
-
-
-
-    const data =
-    await response.json();
-
-
-
-
-    let confirmCall =
-    confirm(
-
-        "Contactar servicio externo: "
-        +
-        data.number
-
-    );
-
-
-
-    if(confirmCall){
-
-
-        window.location.href =
-        "tel:" +
-        data.number;
-
-
     }
 
+    // ... (BOTÓN DE AYUDA EXTERNA - se debe aplicar el manejo de errores fetch también en openHelp)
 
-
-}
-
-
-
-
-
-
-
-
-// ==========================================================
-// PANEL ADMINISTRATIVO
-// ==========================================================
-
-
-async function adminLogin(){
-
-
-
-    const username =
-    document.getElementById(
-        "adminUser"
-    ).value;
-
-
-
-    const password =
-    document.getElementById(
-        "adminPassword"
-    ).value;
-
-
-
-
-
-    const response =
-    await fetch(
-
-        API_URL +
-        "/admin/login",
-
-        {
-
-
-            method:
-            "POST",
-
-
-            headers:
-            {
-
-
-                "Content-Type":
-                "application/json"
-
-
-            },
-
-
-            body:
-            JSON.stringify(
-                {
-
-
-                    username:
-                    username,
-
-
-                    password:
-                    password
-
-
-                }
-            )
-
+    async function openHelp(){
+        try {
+            const response = await fetch(API_URL + "/help");
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: "Error desconocido al obtener ayuda." }));
+                throw new Error(errorData.message || `Error al obtener información de ayuda: ${response.status}`);
+            }
+            const data = await response.json();
+            let confirmCall = confirm("Contactar servicio externo: " + data.number);
+            if(confirmCall){
+                window.location.href = "tel:" + data.number;
+            }
+        } catch (error) {
+            console.error("Error al abrir ayuda externa:", error);
+            alert("No se pudo obtener la información de ayuda externa. Detalle: " + error.message);
         }
-
-    );
-
-
-
-
-
-    if(
-        response.ok
-    ){
-
-
-        loadAdminStatistics();
-
-
-
     }
 
-    else{
+    // ... (PANEL ADMINISTRATIVO - sin cambios, ya tiene un manejo básico)
 
+    // ==========================================================
+    // INICIO AUTOMÁTICO
+    // ==========================================================
 
-        alert(
-            "Acceso no autorizado."
-        );
-
-
-    }
-
-
-
-}
-
-
-
-
-
-
-async function loadAdminStatistics(){
-
-
-
-    const response =
-    await fetch(
-
-        API_URL +
-        "/admin/statistics"
-
-    );
-
-
-
-
-    const data =
-    await response.json();
-
-
-
-
-    document.getElementById(
-        "adminStatistics"
-    ).innerHTML = `
-
-
-    <h3>
-    Estadísticas generales
-    </h3>
-
-
-    <p>
-    Usuarios registrados:
-    ${data.registered_users}
-    </p>
-
-
-    <p>
-    Registros diarios:
-    ${data.daily_status_entries}
-    </p>
-
-
-    <p>
-    Actividades creadas:
-    ${data.activities_created}
-    </p>
-
-
-    <p>
-    Retos completados:
-    ${data.completed_challenges}
-    </p>
-
-
-    `;
-
-
-
-}
-
-
-
-
-
-
-
-
-// ==========================================================
-// INICIO AUTOMÁTICO
-// ==========================================================
-
-
-window.onload = function(){
-
-
-
-    loadMentalExercises();
-
-
-
-    loadChallenges();
-
-
-
-    speak(
-        TEXTS[currentLanguage]
-        .welcome
-    );
-
-
-
-};
+    window.onload = function(){
+        loadMentalExercises();
+        loadChallenges();
+        // *** CORRECCIÓN: Llamar a startAssistant() para manejar el mensaje de bienvenida y su voz. ***
+        startAssistant();
+    };
