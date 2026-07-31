@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>
+4you&me - Bienestar y Acompañamiento Digital
+</title>
+
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+
+<body>
+
+
+<header class="top-header">
+
+    <h1>
+        🌱 4you&me
+    </h1>
+
+    <p id="subtitle">
+        Tu espacio digital de bienestar y acompañamiento
+    </p>
+
+
+    <div class="language-box">
+
+        <button onclick="changeLanguage('es')">
+            Español
+        </button>
+
+
+        <button onclick="changeLanguage('en')">
+            English
+        </button>
+
+    </div>
+
+
+</header>
+
+
+
+<main>
+
+
+
+<section id="welcome-section" class="card">
+
+
+<h2 id="welcome-title">
+Bienvenido a tu espacio personal
+</h2>
+
+
+<p id="welcome-text">
+
+Un lugar para crear rutinas positivas,
+realizar ejercicios simples,
+disfrutar momentos de tranquilidad
+y fortalecer tus hábitos diarios.
+
+</p>
+
+
+<button 
+class="primary-button"
+onclick="startAssistant()">
+
+🔊 Iniciar acompañamiento
+
+</button>
+
+
+</section>
+
+
+
+
+
+<section id="profile-section" class="card">
+
+
+<h2>
+👤 Perfil
+</h2>
+
+
+<label>
+Nombre
+</label>
+
+
+<input 
+id="userName"
+type="text"
+placeholder="Escribe tu nombre">
+
+
+
+<button
+class="primary-button"
+onclick="createProfile()">
+
+Crear perfil
+
+</button>
+
+
+
+<div id="profileResult"></div>
+
+
+</section>
+
+
+
+
+
+
+<section id="daily-section" class="card">
+
+
+<h2>
+🌞 Estado diario
+</h2>
+
+
+<p>
+¿Cómo deseas registrar tu día?
+</p>
+
+
+<select id="dailyFeeling">
+
+
+<option value="Excelente">
+Excelente
+</option>
+
+
+<option value="Bien">
+Bien
+</option>
+
+
+<option value="Tranquilo">
+Tranquilo
+</option>
+
+
+<option value="Necesito un momento para mí">
+Necesito un momento para mí
+</option>
+
+
+</select>
+
+
+
+<textarea
+id="dailyNotes"
+placeholder="Escribe algo sobre tu día">
+
+</textarea>
+
+
+
+<button
+class="primary-button"
+onclick="saveDailyStatus()">
+
+Guardar estado diario
+
+</button>
+
+
+
+</section>
+
+
+
+
+
+
+<section id="breathing-section" class="card">
+
+
+<h2>
+🌬️ Respiración guiada
+</h2>
+
+
+<p>
+
+Selecciona una sesión:
+
+</p>
+
+
+<div class="button-group">
+
+
+<button onclick="startBreathing(3)">
+3 minutos
+</button>
+
+
+<button onclick="startBreathing(5)">
+5 minutos
+</button>
+
+
+<button onclick="startBreathing(10)">
+10 minutos
+</button>
+
+
+</div>
+
+
+
+<div id="breathingCircle">
+
+</div>
+
+
+<div id="breathingInstruction">
+
+Preparado para comenzar
+
+</div>
+
+
+<div id="breathingTimer">
+
+00:00
+
+</div>
+
+
+<button
+class="primary-button"
+onclick="stopBreathing()">
+
+Detener
+
+</button>
+
+
+
+</section>
+
+<!-- =====================================================
+     EJERCICIOS MENTALES
+===================================================== -->
+
+
+<section id="mental-section" class="card">
+
+
+<h2>
+🧠 Ejercicios mentales
+</h2>
+
+
+<p>
+
+Actividades simples para concentración,
+memoria y atención.
+
+</p>
+
+
+
+<div id="mentalExercises">
+
+</div>
+
+
+<button
+class="primary-button"
+onclick="loadMentalExercises()">
+
+Mostrar ejercicios
+
+</button>
+
+
+
+</section>
+
+
+
+
+
+<!-- =====================================================
+     RETOS DIARIOS
+===================================================== -->
+
+
+<section id="challenge-section" class="card">
+
+
+<h2>
+⭐ Retos diarios
+</h2>
+
+
+
+<div id="challengeList">
+
+</div>
+
+
+
+<button
+class="primary-button"
+onclick="loadChallenges()">
+
+Ver retos
+
+</button>
+
+
+
+</section>
+
+
+
+
+
+
+
+<!-- =====================================================
+     RUTINAS PERSONALIZADAS
+===================================================== -->
+
+
+<section id="routine-section" class="card">
+
+
+<h2>
+📅 Mi rutina personalizada
+</h2>
+
+
+
+<p>
+Selecciona un objetivo:
+</p>
+
+
+
+<select id="routineObjective">
+
+
+<option value="Más energía">
+
+Más energía
+
+</option>
+
+
+<option value="Más movimiento">
+
+Más movimiento
+
+</option>
+
+
+<option value="Más tranquilidad">
+
+Más tranquilidad
+
+</option>
+
+
+<option value="Más conexión social">
+
+Más conexión social
+
+</option>
+
+
+<option value="Más organización">
+
+Más organización
+
+</option>
+
+
+
+</select>
+
+
+
+<button
+class="primary-button"
+onclick="saveRoutine()">
+
+Crear rutina
+
+</button>
+
+
+
+<div id="routineResult">
+
+</div>
+
+
+
+</section>
+
+
+
+
+
+
+
+
+<!-- =====================================================
+     RECORDATORIOS
+===================================================== -->
+
+
+<section id="reminder-section" class="card">
+
+
+<h2>
+⏰ Recordatorios personales
+</h2>
+
+
+
+<label>
+Actividad
+</label>
+
+
+<input
+id="reminderText"
+type="text"
+placeholder="Ejemplo: tomar agua, descansar, caminar">
+
+
+<label>
+Hora
+</label>
+
+
+<input
+id="reminderTime"
+type="time">
+
+
+
+<button
+class="primary-button"
+onclick="saveReminder()">
+
+Guardar recordatorio
+
+</button>
+
+
+
+<div id="reminderResult">
+
+</div>
+
+
+
+</section>
+
+
+
+
+
+
+
+
+<!-- =====================================================
+     ASISTENTE DE VOZ
+===================================================== -->
+
+
+<section id="voice-section" class="card">
+
+
+<h2>
+🔊 Asistente con voz
+</h2>
+
+
+<p id="voiceMessage">
+
+Presiona para escuchar un mensaje positivo.
+
+</p>
+
+
+
+<button
+class="primary-button"
+onclick="speakMessage()">
+
+Hablar
+
+</button>
+
+
+
+</section>
+
+
+
+
+
+
+
+
+<!-- =====================================================
+     BOTÓN DE AYUDA EXTERNA
+===================================================== -->
+
+
+<section id="help-section">
+
+
+<button
+id="helpButton"
+onclick="openHelp()">
+
+🆘 Ayuda externa
+
+</button>
+
+
+<p>
+
+Este botón permite contactar servicios externos
+configurados.
+
+</p>
+
+
+</section>
+
+
+
+
+
+
+
+
+<!-- =====================================================
+     PANEL ADMINISTRATIVO
+===================================================== -->
+
+
+<section id="admin-section" class="card">
+
+
+<h2>
+⚙️ Panel administrativo
+</h2>
+
+
+
+<input
+id="adminUser"
+placeholder="Usuario administrador">
+
+
+
+<input
+id="adminPassword"
+type="password"
+placeholder="Contraseña">
+
+
+
+<button
+class="primary-button"
+onclick="adminLogin()">
+
+Ingresar
+
+</button>
+
+
+
+<div id="adminStatistics">
+
+</div>
+
+
+
+</section>
+
+
+
+
+
+
+
+</main>
+
+
+
+
+
+
+
+<footer>
+
+
+<p>
+
+© 4you&me - Bienestar y acompañamiento digital
+
+</p>
+
+
+</footer>
+
+
+
+
+
+
+<script src="app.js"></script>
+
+
+
+</body>
+
+
+</html>
