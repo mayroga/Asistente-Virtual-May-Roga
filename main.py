@@ -114,8 +114,8 @@ def diversidad_vector(vector1, vector2):
 # === MODIFICACIÓN: CONSTANTES DE TIEMPO Y PROPÓSITO ACORTADAS PARA LECTURA RÁPIDA ===
 WHEN_ES = "Ahora. Levántate."
 WHEN_EN = "Now. Move."
-FOR_WHAT_ES = "Romper rutina. Recuérdate vivo."
-FOR_WHAT_EN = "Break routine. Remember life."
+FOR_WHAT_ES = "Rompe la rutina. Recuérda estás vivo."
+FOR_WHAT_EN = "Break routine. Remember you are alife."
 
 # ============================================================
 # CATÁLOGO DE MISIONES CWRE V2.1
@@ -660,17 +660,19 @@ async def crear_checkout(request: Request):
         data = await request.json()
         tipo_plan = data.get("tipo_plan")
         user_id = data.get("user_id", "cliente_otg")
+
         if tipo_plan not in PLANES_STRIPE:
             raise HTTPException(status_code=400, detail="Plan inválido")
-       
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{"price": PLANES_STRIPE[tipo_plan], "quantity": 1}],
             mode="subscription" if tipo_plan != "unico" else "payment",
-            success_url="https://onrender.com",
-            cancel_url="https://onrender.com",
+            success_url="https://open-than-go.onrender.com",
+            cancel_url="https://open-than-go.onrender.com",
             client_reference_id=user_id
         )
+
         return {"url": session.url}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -681,8 +683,10 @@ async def login_admin(request: Request):
         data = await request.json()
         username = data.get("username")
         password = data.get("password")
+
         if username == ADMIN_USER and password == ADMIN_PASS:
             return {"status": "success", "role": "admin", "user_id": "admin_master"}
+
         return JSONResponse(status_code=401, content={"error": "Credenciales incorrectas"})
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": "Payload malformado"})
@@ -691,16 +695,32 @@ async def login_admin(request: Request):
 async def webhook_stripe(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
+
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
+
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         print(f"Pago exitoso para usuario: {session.get('client_reference_id')}")
-    return {"status": "success"}
-# ==========================================================================================
 
+    return {"status": "success"}
+
+# ==========================================================================================
+# NUEVO ENDPOINT: Obtener preguntas específicas por empresa
+# ==========================================================================================
+@app.get("/api/get-company-questions")
+async def get_company_questions(company: str, lang: str = "es"):
+    company_lower = company.lower()
+    if company_lower not in COMPANY_QUESTIONS:
+        raise HTTPException(status_code=404, detail="Company not found")
+   
+    questions = COMPANY_QUESTIONS[company_lower][lang]
+    logo_path = COMPANY_QUESTIONS[company_lower]["logo_path"]
+    return JSONResponse({"questions": questions, "logo_path": logo_path})
+
+# ==========================================================================================
 # OPEN THAN GO SYSTEM - Kernel Absolute Engine V.6.0.1
 # Company: May Roga LLC
 # File: main.py - SECCIÓN 2 DE 2 (CWRE Logic)
@@ -713,27 +733,53 @@ async def mando_integral(request: Request):
     payload = await request.json()
     opcion_usuario = str(payload.get("modo", "")).strip().upper()
     zip_code = str(payload.get("zip", "")).strip()
-    estado = str(payload.get("estado", "FL")).strip()
-    region = str(payload.get("region", "")).strip()
+    # estado = str(payload.get("estado", "FL")).strip() # Not used in current logic, but kept
+    # region = str(payload.get("region", "")).strip() # Not used in current logic, but kept
     mente = str(payload.get("mente", "aburrido")).lower()
     budget = str(payload.get("budget", "0"))
     perfil_tipo = str(payload.get("perfil", "solo")).lower()
     desahogo = str(payload.get("desahogo", "")).lower()
     lang = str(payload.get("lang", "es")).lower()
    
+    # NEW: calidez_humana_pregunta is passed from frontend company flow
+    calidez_humana_pregunta = payload.get("calidez_humana_pregunta", "")
+
     if zip_code and not re.fullmatch(r"^\d{5}$", zip_code):
-        return JSONResponse({"error": "Código Postal inválido. Debe ser 5 dígitos numéricos."}, status_code=400)
-       
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Código Postal inválido. Debe ser 5 dígitos numéricos."}
+        )
+
     perfil_local = payload.get("perfil_local", {})
     if not isinstance(perfil_local, dict):
         perfil_local = {}
-       
+
     perfil_local = {
         **DEFAULT_NECESSITY_VECTOR,
         **{k: v for k, v in perfil_local.items() if k in DEFAULT_NECESSITY_VECTOR or k == "indicador_ansiedad"}
     }
+
     if "indicador_ansiedad" not in perfil_local:
         perfil_local["indicador_ansiedad"] = 0
+
+    # === INTERCEPCIÓN DE SEGURIDAD Y AVISO LEGAL OBLIGATORIO ===
+    ADVERTENCIA_LEGAL_ES = (
+        "AVISO DE SEGURIDAD: Está prohibido usar Open Than Go mientras manejas. Tu seguridad es lo primero. "
+        "El uso es bajo tu propio riesgo y exime de toda responsabilidad a May Roga LLC."
+    )
+    ADVERTENCIA_LEGAL_EN = (
+        "SAFETY NOTICE: Using Open Than Go while driving is strictly prohibited. Your safety comes first. "
+        "Use is at your own risk and exempts May Roga LLC from all liability."
+    )
+
+    # Inicialización de variables para evitar NameError en todas las ramas de ejecución
+    marca_detectada = None
+    instruccion_fisiologica_es = "Detente, respira libre."
+    instruccion_fisiologica_en = "Stop, breathe free."
+    diagnostico_sintoma_es = "Agotamiento rutinario."
+    diagnostico_sintoma_en = "Routine exhaustion."
+    enlace_yt = ""
+    enlace_sp = ""
        
     # ==========================================================================================
     # MANIFIESTO MATRICIAL ABSOLUTO: TRADUCTOR PARÁSITO E INTERCEPTOR RECONFIGURADO V2
